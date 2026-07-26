@@ -25,6 +25,8 @@ create policy "municipios_insert_approved" on public.municipios
   for insert with check (public.current_role() in ('gerencia', 'admin'));
 create policy "municipios_update_approved" on public.municipios
   for update using (public.current_role() in ('gerencia', 'admin'));
+create policy "municipios_delete_approved" on public.municipios
+  for delete using (public.current_role() in ('gerencia', 'admin'));
 
 create policy "processos_all_approved" on public.processos
   for all using (public.current_role() in ('gerencia', 'admin'))
