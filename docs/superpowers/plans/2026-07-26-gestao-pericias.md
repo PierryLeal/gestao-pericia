@@ -21,6 +21,7 @@
 - Every table listed in §5.1 of the spec (Nº Processo, Data-Hora, Local, Perito, Colaborador, Situação) must show a tooltip with the extra fields listed in the spec.
 - Permissions are enforced in two layers: Next.js middleware/guards AND Postgres RLS policies.
 - TDD: write the failing test before the implementation for every unit with business logic (schemas, guards, actions, non-trivial components). Commit after each green test.
+- **Runtime reality check (discovered during Task 1/2 execution, supersedes the Tech Stack line above):** `create-next-app@latest` and `shadcn@latest` installed **Next.js 16.2.12, React 19.2.4, Tailwind CSS v4** (CSS-first config, no `tailwind.config.js`), and shadcn/ui components built on **`@base-ui/react` instead of Radix UI**. Base UI has no `asChild` prop — polymorphic composition uses a `render` prop instead: `<Trigger render={<Button variant="outline" />}>children</Trigger>` (the outer component's children and other props win; the render element supplies the base tag/its own props). Every code block below already uses `render` instead of `asChild`. Confirmed empirically (throwaway RTL renders) before any task past Task 2 was dispatched: `SelectTrigger` still renders `role="combobox"`, `Switch` keeps its `checked`/`onCheckedChange` API, and `Tooltip` shows its content on hover via `userEvent.hover()` + `findBy` with no `TooltipProvider` wrapper required. `Command`/`CommandInput`/`CommandItem` are unaffected (still built on `cmdk`, not Base UI).
 
 ---
 
@@ -1860,11 +1861,11 @@ export function ProcessoCombobox({
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" role="combobox" className="w-full justify-between">
-            {selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : 'Selecione um processo'}
-            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-          </Button>
+        <PopoverTrigger
+          render={<Button type="button" variant="outline" role="combobox" className="w-full justify-between" />}
+        >
+          {selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : 'Selecione um processo'}
+          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0">
           <Command shouldFilter={false}>
@@ -2051,11 +2052,11 @@ export function MunicipioCombobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" role="combobox" className="w-full justify-between">
-          {selected ? `${selected.nome}/${selected.uf}` : 'Selecione um município'}
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
+      <PopoverTrigger
+        render={<Button type="button" variant="outline" role="combobox" className="w-full justify-between" />}
+      >
+        {selected ? `${selected.nome}/${selected.uf}` : 'Selecione um município'}
+        <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0">
         <Command shouldFilter={false}>
@@ -2428,9 +2429,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 export function TooltipCell({ label, detail }: { label: React.ReactNode; detail: React.ReactNode }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="cursor-default">{label}</span>
-      </TooltipTrigger>
+      <TooltipTrigger render={<span className="cursor-default" />}>{label}</TooltipTrigger>
       <TooltipContent>{detail}</TooltipContent>
     </Tooltip>
   );
@@ -2632,9 +2631,7 @@ export default async function PericiasPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Perícias</h1>
-        <Button asChild>
-          <Link href="/pericias/nova">Nova perícia</Link>
-        </Button>
+        <Button render={<Link href="/pericias/nova" />}>Nova perícia</Button>
       </div>
       <PericiasFilters />
       <PericiasTable items={items} />
@@ -3248,7 +3245,7 @@ export default async function PeritosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Peritos</h1>
-        <Button asChild><Link href="/peritos/novo">Novo perito</Link></Button>
+        <Button render={<Link href="/peritos/novo" />}>Novo perito</Button>
       </div>
       <PeritosTable items={items} />
     </div>
@@ -3556,7 +3553,7 @@ export default async function ColaboradoresPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Colaboradores</h1>
-        <Button asChild><Link href="/colaboradores/novo">Novo colaborador</Link></Button>
+        <Button render={<Link href="/colaboradores/novo" />}>Novo colaborador</Button>
       </div>
       <ColaboradoresTable items={items} />
     </div>
