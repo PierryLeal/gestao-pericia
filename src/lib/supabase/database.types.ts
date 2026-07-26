@@ -1,0 +1,53 @@
+export type PericiaSituacao = 'pendente' | 'marcada' | 'realizada' | 'cancelada';
+export type ProfileRoleValue = 'pendente' | 'gerencia' | 'admin';
+
+export type Database = {
+  public: {
+    Tables: {
+      profiles: {
+        Row: { id: string; nome: string; email: string; role: ProfileRoleValue; created_at: string };
+        Insert: { id: string; nome?: string; email: string; role?: ProfileRoleValue };
+        Update: Partial<{ nome: string; email: string; role: ProfileRoleValue }>;
+      };
+      municipios: {
+        Row: { id: number; nome: string; uf: string };
+        Insert: { id: number; nome: string; uf: string };
+        Update: Partial<{ nome: string; uf: string }>;
+      };
+      processos: {
+        Row: { id: number; numero: string; autor: string; reu: string; created_at: string };
+        Insert: { numero: string; autor: string; reu: string };
+        Update: Partial<{ numero: string; autor: string; reu: string }>;
+      };
+      peritos: {
+        Row: {
+          id: number; nome: string; contato: string; formacao: string; crea: string;
+          documento: string; ja_trabalhamos: boolean; relacao: number; resultados: number;
+          created_at: string;
+        };
+        Insert: {
+          nome: string; contato?: string; formacao?: string; crea?: string; documento?: string;
+          ja_trabalhamos?: boolean; relacao?: number; resultados?: number;
+        };
+        Update: Partial<Database['public']['Tables']['peritos']['Insert']>;
+      };
+      colaboradores: {
+        Row: { id: number; nome: string; contato: string; formacao: string; interno: boolean; created_at: string };
+        Insert: { nome: string; contato?: string; formacao?: string; interno?: boolean };
+        Update: Partial<Database['public']['Tables']['colaboradores']['Insert']>;
+      };
+      pericias: {
+        Row: {
+          id: number; processo_id: number; data_agendada: string; hora_agendada: string;
+          municipio_id: number; perito_id: number; colaborador_id: number | null;
+          situacao: PericiaSituacao; created_at: string;
+        };
+        Insert: {
+          processo_id: number; data_agendada: string; hora_agendada: string; municipio_id: number;
+          perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao;
+        };
+        Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
+      };
+    };
+  };
+};
