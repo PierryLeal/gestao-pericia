@@ -29,7 +29,11 @@ export function ProcessoCombobox({
   useEffect(() => {
     const handle = setTimeout(() => {
       startTransition(async () => {
-        setResults(await searchProcessos(query));
+        try {
+          setResults(await searchProcessos(query));
+        } catch {
+          setResults([]);
+        }
       });
     }, 250);
     return () => clearTimeout(handle);

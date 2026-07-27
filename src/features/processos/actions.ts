@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
+import { postgrestQuoted } from '@/lib/postgrest';
 import { processoSchema, type ProcessoInput } from './schemas';
 
 export type Processo = { id: number; numero: string; autor: string; reu: string };
@@ -12,7 +13,8 @@ export async function searchProcessos(query: string): Promise<Processo[]> {
   const supabase = await createClient();
   let request = supabase.from('processos').select('id, numero, autor, reu').order('numero').limit(20);
   if (query.trim()) {
-    request = request.or(`numero.ilike.%${query}%,autor.ilike.%${query}%,reu.ilike.%${query}%`);
+    const pattern = postgrestQuoted(`%${query}%`);
+    request = request.or(`numero.ilike.${pattern},autor.ilike.${pattern},reu.ilike.${pattern}`);
   }
   const { data, error } = await request;
   if (error) throw new Error(error.message);

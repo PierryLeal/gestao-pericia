@@ -28,7 +28,11 @@ export function MunicipioCombobox({
   useEffect(() => {
     const handle = setTimeout(() => {
       startTransition(async () => {
-        setResults(await searchMunicipios(query));
+        try {
+          setResults(await searchMunicipios(query));
+        } catch {
+          setResults([]);
+        }
       });
     }, 250);
     return () => clearTimeout(handle);
