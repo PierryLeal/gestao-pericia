@@ -8,16 +8,19 @@ export type Database = {
         Row: { id: string; nome: string; email: string; role: ProfileRoleValue; created_at: string };
         Insert: { id: string; nome?: string; email: string; role?: ProfileRoleValue };
         Update: Partial<{ nome: string; email: string; role: ProfileRoleValue }>;
+        Relationships: [];
       };
       municipios: {
         Row: { id: number; nome: string; uf: string };
         Insert: { id: number; nome: string; uf: string };
         Update: Partial<{ nome: string; uf: string }>;
+        Relationships: [];
       };
       processos: {
         Row: { id: number; numero: string; autor: string; reu: string; created_at: string };
         Insert: { numero: string; autor: string; reu: string };
         Update: Partial<{ numero: string; autor: string; reu: string }>;
+        Relationships: [];
       };
       peritos: {
         Row: {
@@ -30,11 +33,13 @@ export type Database = {
           ja_trabalhamos?: boolean; relacao?: number; resultados?: number;
         };
         Update: Partial<Database['public']['Tables']['peritos']['Insert']>;
+        Relationships: [];
       };
       colaboradores: {
         Row: { id: number; nome: string; contato: string; formacao: string; interno: boolean; created_at: string };
         Insert: { nome: string; contato?: string; formacao?: string; interno?: boolean };
         Update: Partial<Database['public']['Tables']['colaboradores']['Insert']>;
+        Relationships: [];
       };
       pericias: {
         Row: {
@@ -47,7 +52,10 @@ export type Database = {
           perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao;
         };
         Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 };
