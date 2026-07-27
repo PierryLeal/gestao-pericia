@@ -16,7 +16,7 @@ export default async function PericiasPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Perícias</h1>
-        <Button render={<Link href="/pericias/nova" />}>Nova perícia</Button>
+        <Button render={<Link href="/pericias/nova" />} nativeButton={false}>Nova perícia</Button>
       </div>
       <PericiasFilters />
       <PericiasTable items={items} />

@@ -38,6 +38,9 @@ export function PericiaForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const peritoItems = Object.fromEntries(peritos.map((p) => [String(p.id), p.nome]));
+  const colaboradorItems = Object.fromEntries(colaboradores.map((c) => [String(c.id), c.nome]));
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!processo || !municipio || !peritoId) {
@@ -90,7 +93,7 @@ export function PericiaForm({
 
       <div className="space-y-2">
         <Label htmlFor="perito">Perito</Label>
-        <Select value={peritoId} onValueChange={(v) => setPeritoId(v ?? '')}>
+        <Select items={peritoItems} value={peritoId} onValueChange={(v) => setPeritoId(v ?? '')}>
           <SelectTrigger id="perito"><SelectValue placeholder="Selecione um perito" /></SelectTrigger>
           <SelectContent>
             {peritos.map((p) => (
@@ -102,7 +105,7 @@ export function PericiaForm({
 
       <div className="space-y-2">
         <Label htmlFor="colaborador">Colaborador (opcional)</Label>
-        <Select value={colaboradorId} onValueChange={(v) => setColaboradorId(v ?? '')}>
+        <Select items={colaboradorItems} value={colaboradorId} onValueChange={(v) => setColaboradorId(v ?? '')}>
           <SelectTrigger id="colaborador"><SelectValue placeholder="Selecione um colaborador" /></SelectTrigger>
           <SelectContent>
             {colaboradores.map((c) => (
