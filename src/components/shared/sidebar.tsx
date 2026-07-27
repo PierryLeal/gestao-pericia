@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/features/auth/guards';
+import { signOut } from '@/features/auth/actions';
+import { Button } from '@/components/ui/button';
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[] }[] = [
   { href: '/', label: 'Perícias', roles: ['admin', 'gerencia'] },
@@ -31,6 +33,11 @@ export function Sidebar({ role }: { role: Role }) {
           {item.label}
         </Link>
       ))}
+      <form action={signOut} className="mt-auto">
+        <Button type="submit" variant="ghost" className="w-full justify-start">
+          Sair
+        </Button>
+      </form>
     </nav>
   );
 }
