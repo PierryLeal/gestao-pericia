@@ -1,0 +1,31 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+import { requireRole } from '@/features/auth/guards';
+import type { ActionResult } from '@/lib/action-result';
+import { updateRoleSchema, type Role } from './schemas';
+
+export type ProfileRow = { id: string; nome: string; email: string; role: Role };
+
+export async function listProfiles(): Promise<ProfileRow[]> {
+  await requireRole(['admin']);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nome, email, role')
+    .order('created_at');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function updateProfileRole(userId: string, role: Role): Promise<ActionResult<null>> {
+  await requireRole(['admin']);
+  const parsed = updateRoleSchema.safeParse({ userId, role });
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  const supabase = await createClient();
+  const { error } = await supabase.from('profiles').update({ role: parsed.data.role }).eq('id', parsed.data.userId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/perfis');
+  return { success: true, data: null };
+}
