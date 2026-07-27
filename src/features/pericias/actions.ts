@@ -6,7 +6,7 @@ import type { ActionResult } from '@/lib/action-result';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 import type { PericiaSituacao } from '@/lib/supabase/database.types';
-import { periciaSchema, type PericiaInput } from './schemas';
+import { periciaSchema, situacaoOptions, type PericiaInput } from './schemas';
 
 export type PericiaListItem = {
   id: number;
@@ -50,10 +50,11 @@ export async function listPericias(
     `)
     .order('data_agendada', { ascending: false });
 
-  if (filters.situacao) {
-    // filters.situacao is a caller-supplied string (e.g. a URL search param); the
-    // column itself is constrained to the PericiaSituacao literal union, so this
-    // narrowing cast is the only type-safe way to pass it through to `.eq`.
+  if (filters.situacao && situacaoOptions.includes(filters.situacao as (typeof situacaoOptions)[number])) {
+    // filters.situacao is a caller-supplied string (e.g. a URL search param); it is
+    // validated against the known situacao values above before being narrowed to the
+    // PericiaSituacao literal union, so an invalid value is silently ignored instead
+    // of reaching the database and throwing.
     query = query.eq('situacao', filters.situacao as PericiaSituacao);
   }
   if (filters.busca) {
