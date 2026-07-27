@@ -1,0 +1,76 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { requireRole } from '@/features/auth/guards';
+import type { ActionResult } from '@/lib/action-result';
+import type { Database } from '@/lib/supabase/database.types';
+import { peritoSchema, type PeritoInput } from './schemas';
+
+export type Perito = {
+  id: number; nome: string; contato: string; formacao: string; crea: string;
+  documento: string; jaTrabalhamos: boolean; relacao: number; resultados: number;
+};
+
+function toRow(input: PeritoInput) {
+  return {
+    nome: input.nome,
+    contato: input.contato,
+    formacao: input.formacao,
+    crea: input.crea,
+    documento: input.documento,
+    ja_trabalhamos: input.jaTrabalhamos,
+    relacao: input.relacao,
+    resultados: input.resultados,
+  };
+}
+
+function fromRow(row: Database['public']['Tables']['peritos']['Row']): Perito {
+  return {
+    id: row.id, nome: row.nome, contato: row.contato, formacao: row.formacao, crea: row.crea,
+    documento: row.documento, jaTrabalhamos: row.ja_trabalhamos, relacao: row.relacao, resultados: row.resultados,
+  };
+}
+
+export async function listPeritos(): Promise<Perito[]> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('peritos').select('*').order('nome');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(fromRow);
+}
+
+export async function listPeritosOptions(): Promise<{ id: number; nome: string }[]> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('peritos').select('id, nome').order('nome');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getPerito(id: number): Promise<Perito | null> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('peritos').select('*').eq('id', id).single();
+  if (error || !data) return null;
+  return fromRow(data);
+}
+
+export async function createPerito(input: PeritoInput): Promise<ActionResult<Perito>> {
+  await requireRole(['admin', 'gerencia']);
+  const parsed = peritoSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('peritos').insert(toRow(parsed.data)).select('*').single();
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: fromRow(data) };
+}
+
+export async function updatePerito(id: number, input: PeritoInput): Promise<ActionResult<Perito>> {
+  await requireRole(['admin', 'gerencia']);
+  const parsed = peritoSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('peritos').update(toRow(parsed.data)).eq('id', id).select('*').single();
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: fromRow(data) };
+}
