@@ -18,6 +18,14 @@ describe('resolveRedirect', () => {
     expect(resolveRedirect({ path: '/', isAuthenticated: true, role: 'pendente' })).toBe('/pendente');
   });
 
+  it('sends authenticated users with a missing/unresolved role to /pendente instead of allowing through', () => {
+    expect(resolveRedirect({ path: '/', isAuthenticated: true, role: null })).toBe('/pendente');
+  });
+
+  it('does not redirect a null-role user already on /pendente', () => {
+    expect(resolveRedirect({ path: '/pendente', isAuthenticated: true, role: null })).toBeNull();
+  });
+
   it('does not redirect pendente users already on /pendente', () => {
     expect(resolveRedirect({ path: '/pendente', isAuthenticated: true, role: 'pendente' })).toBeNull();
   });

@@ -15,7 +15,11 @@ export function resolveRedirect({ path, isAuthenticated, role }: RouteGuardInput
     return isPublic ? null : '/login';
   }
   if (path === '/login') return '/';
-  if (role === 'pendente') {
+  if (role !== 'gerencia' && role !== 'admin') {
+    // Default-deny: treat 'pendente', missing, or any unrecognized role the
+    // same as pendente instead of falling through to allow (`null`), which
+    // would otherwise cause an infinite redirect loop between the app
+    // layout (which requires a resolvable profile) and middleware.
     return path === '/pendente' ? null : '/pendente';
   }
   if (path === '/pendente') return '/';
