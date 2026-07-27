@@ -19,7 +19,7 @@ export async function getCurrentProfile(): Promise<CurrentProfile | null> {
     .select('id, nome, email, role')
     .eq('id', user.id)
     .single();
-  return (profile as CurrentProfile) ?? null;
+  return (profile as unknown as CurrentProfile) ?? null;
 }
 
 export async function requireRole(roles: Role[]): Promise<CurrentProfile> {
