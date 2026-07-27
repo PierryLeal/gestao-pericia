@@ -6,6 +6,7 @@ import type { ActionResult } from '@/lib/action-result';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 import type { PericiaSituacao } from '@/lib/supabase/database.types';
+import { postgrestQuoted } from '@/lib/postgrest';
 import { periciaSchema, situacaoOptions, type PericiaInput } from './schemas';
 
 export type PericiaListItem = {
@@ -43,9 +44,9 @@ export async function listPericias(
     .from('pericias')
     .select(`
       id, data_agendada, hora_agendada, situacao,
-      processo:processos ( id, numero, autor, reu ),
-      municipio:municipios ( id, nome, uf ),
-      perito:peritos ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
+      processo:processos!inner ( id, numero, autor, reu ),
+      municipio:municipios!inner ( id, nome, uf ),
+      perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
       colaborador:colaboradores ( id, nome, contato, formacao, interno )
     `)
     .order('data_agendada', { ascending: false });
@@ -58,7 +59,7 @@ export async function listPericias(
     query = query.eq('situacao', filters.situacao as PericiaSituacao);
   }
   if (filters.busca) {
-    query = query.filter('processo.numero', 'ilike', `%${filters.busca}%`);
+    query = query.filter('processo.numero', 'ilike', postgrestQuoted(`%${filters.busca}%`));
   }
 
   const { data, error } = await query;
