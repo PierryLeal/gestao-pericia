@@ -52,7 +52,36 @@ export type Database = {
           perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao;
         };
         Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'pericias_processo_id_fkey';
+            columns: ['processo_id'];
+            isOneToOne: false;
+            referencedRelation: 'processos';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pericias_municipio_id_fkey';
+            columns: ['municipio_id'];
+            isOneToOne: false;
+            referencedRelation: 'municipios';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pericias_perito_id_fkey';
+            columns: ['perito_id'];
+            isOneToOne: false;
+            referencedRelation: 'peritos';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pericias_colaborador_id_fkey';
+            columns: ['colaborador_id'];
+            isOneToOne: false;
+            referencedRelation: 'colaboradores';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
