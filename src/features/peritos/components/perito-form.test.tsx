@@ -3,23 +3,33 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { PeritoForm } from './perito-form';
 
-const pushMock = vi.fn();
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock, refresh: vi.fn() }),
-}));
-
 vi.mock('../actions', () => ({
   createPerito: vi.fn(async () => ({ success: false, error: 'Nome é obrigatório' })),
+  updatePerito: vi.fn(),
 }));
 
 describe('PeritoForm', () => {
-  it('shows the error returned by the action when validation fails', async () => {
+  it('calls onError with the message returned by the action when validation fails', async () => {
     const user = userEvent.setup();
-    render(<PeritoForm />);
+    const onError = vi.fn();
+    render(<PeritoForm onSaved={vi.fn()} onError={onError} />);
 
     await user.click(screen.getByRole('button', { name: /salvar perito/i }));
 
-    expect(await screen.findByText('Nome é obrigatório')).toBeInTheDocument();
+    expect(onError).toHaveBeenCalledWith('Nome é obrigatório');
+  });
+
+  it('pre-fills fields when editing an existing perito', () => {
+    render(
+      <PeritoForm
+        perito={{
+          id: 1, nome: 'Carlos', contato: '11999999999', formacao: 'Eng.', crea: '123',
+          documento: '000', jaTrabalhamos: true, relacao: 8, resultados: 9,
+        }}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Nome')).toHaveValue('Carlos');
   });
 });

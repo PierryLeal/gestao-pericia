@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,8 +9,15 @@ import { Switch } from '@/components/ui/switch';
 import { createPerito, updatePerito, type Perito } from '../actions';
 import type { PeritoInput } from '../schemas';
 
-export function PeritoForm({ perito }: { perito?: Perito }) {
-  const router = useRouter();
+export function PeritoForm({
+  perito,
+  onSaved,
+  onError,
+}: {
+  perito?: Perito;
+  onSaved: (perito: Perito) => void;
+  onError: (message: string) => void;
+}) {
   const [nome, setNome] = useState(perito?.nome ?? '');
   const [contato, setContato] = useState(perito?.contato ?? '');
   const [formacao, setFormacao] = useState(perito?.formacao ?? '');
@@ -19,26 +26,23 @@ export function PeritoForm({ perito }: { perito?: Perito }) {
   const [jaTrabalhamos, setJaTrabalhamos] = useState(perito?.jaTrabalhamos ?? false);
   const [relacao, setRelacao] = useState(perito?.relacao ?? 0);
   const [resultados, setResultados] = useState(perito?.resultados ?? 0);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setError(null);
     const input: PeritoInput = { nome, contato, formacao, crea, documento, jaTrabalhamos, relacao, resultados };
     const result = perito ? await updatePerito(perito.id, input) : await createPerito(input);
     setSaving(false);
     if (!result.success) {
-      setError(result.error);
+      onError(result.error);
       return;
     }
-    router.push('/peritos');
-    router.refresh();
+    onSaved(result.data);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <Label htmlFor="nome">Nome</Label>
         <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} />
@@ -81,8 +85,8 @@ export function PeritoForm({ perito }: { perito?: Perito }) {
           />
         </div>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" disabled={saving}>
+      <Button type="submit" disabled={saving} className="w-full">
+        {saving && <Loader2 className="size-4 animate-spin" />}
         {saving ? 'Salvando...' : 'Salvar perito'}
       </Button>
     </form>
