@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ClipboardList, UserCheck, Users, ShieldCheck,
+  ClipboardList, Folder, UserCheck, Users, ShieldCheck,
   PanelLeftClose, PanelLeftOpen, LogOut, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 
 export const NAV_ITEMS: { href: string; label: string; roles: Role[]; icon: LucideIcon }[] = [
   { href: '/', label: 'Perícias', roles: ['admin', 'gerencia'], icon: ClipboardList },
+  { href: '/processos', label: 'Processos', roles: ['admin', 'gerencia'], icon: Folder },
   { href: '/peritos', label: 'Peritos', roles: ['admin', 'gerencia'], icon: UserCheck },
   { href: '/colaboradores', label: 'Colaboradores', roles: ['admin', 'gerencia'], icon: Users },
   { href: '/perfis', label: 'Perfis', roles: ['admin'], icon: ShieldCheck },
