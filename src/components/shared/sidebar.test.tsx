@@ -45,4 +45,14 @@ describe('Sidebar', () => {
     render(<Sidebar role="admin" />);
     expect(screen.queryByText('Peritos')).not.toBeInTheDocument();
   });
+
+  it('gives Sair and toggle buttons accessible names when collapsed', async () => {
+    const user = userEvent.setup();
+    render(<Sidebar role="admin" />);
+
+    await user.click(screen.getByRole('button', { name: /recolher/i }));
+
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Expandir menu' })).toBeInTheDocument();
+  });
 });

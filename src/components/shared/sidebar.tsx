@@ -91,6 +91,7 @@ export function Sidebar({ role }: { role: Role }) {
           <Button
             type="submit"
             variant="ghost"
+            aria-label={collapsed ? 'Sair' : undefined}
             className={cn('w-full justify-start gap-2', collapsed && 'justify-center px-0')}
           >
             <LogOut className="size-4 shrink-0" />
@@ -100,6 +101,7 @@ export function Sidebar({ role }: { role: Role }) {
         <Button
           type="button"
           variant="ghost"
+          aria-label={collapsed ? 'Expandir menu' : undefined}
           className={cn('w-full justify-start gap-2', collapsed && 'justify-center px-0')}
           onClick={toggleCollapsed}
         >
