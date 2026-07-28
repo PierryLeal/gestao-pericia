@@ -74,7 +74,7 @@ export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onE
               </TableRow>
               {isExpanded && (
                 <TableRow>
-                  <TableCell colSpan={8} className="bg-muted/30">
+                  <TableCell colSpan={8} className="whitespace-normal bg-muted/30">
                     <div className="grid gap-4 py-2 md:grid-cols-3">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Processo</p>
