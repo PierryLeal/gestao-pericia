@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PericiasTable } from './pericias-table';
 import type { PericiaListItem } from '../actions';
 
@@ -21,28 +21,49 @@ const items: PericiaListItem[] = [
 ];
 
 describe('PericiasTable', () => {
-  it('renders the required columns', () => {
-    render(<PericiasTable items={items} />);
+  it('renders the required columns without the detail row initially', () => {
+    render(<PericiasTable items={items} onEdit={vi.fn()} />);
     expect(screen.getByText('0001234-56.2026.8.26.0100')).toBeInTheDocument();
     expect(screen.getByText('São Paulo/SP')).toBeInTheDocument();
     expect(screen.getByText('Carlos Lima')).toBeInTheDocument();
-    expect(screen.getByText('Marcada')).toBeInTheDocument();
+    expect(screen.queryByText('Maria Souza × João Pereira')).not.toBeInTheDocument();
   });
 
-  it('shows the autor x reu tooltip on hover over the processo number', async () => {
+  it('expands the detail row with processo/perito/colaborador blocks when the chevron is clicked', async () => {
     const user = userEvent.setup();
-    render(<PericiasTable items={items} />);
-    await user.hover(screen.getByText('0001234-56.2026.8.26.0100'));
-    expect(await screen.findByText('Maria Souza × João Pereira')).toBeInTheDocument();
+    render(<PericiasTable items={items} onEdit={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /detalhes da perícia/i }));
+
+    expect(screen.getByText('Maria Souza × João Pereira')).toBeInTheDocument();
+    expect(screen.getByText(/CREA: 123456/)).toBeInTheDocument();
+    expect(screen.getByText('Nenhum colaborador vinculado.')).toBeInTheDocument();
   });
 
-  it('shows a dash when there is no colaborador', () => {
-    render(<PericiasTable items={items} />);
-    expect(screen.getByText('—')).toBeInTheDocument();
+  it('collapses the detail row when the chevron is clicked again', async () => {
+    const user = userEvent.setup();
+    render(<PericiasTable items={items} onEdit={vi.fn()} />);
+
+    const toggle = screen.getByRole('button', { name: /detalhes da perícia/i });
+    await user.click(toggle);
+    expect(screen.getByText('Maria Souza × João Pereira')).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(screen.queryByText('Maria Souza × João Pereira')).not.toBeInTheDocument();
+  });
+
+  it('calls onEdit when the edit icon is clicked', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(<PericiasTable items={items} onEdit={onEdit} />);
+
+    await user.click(screen.getByRole('button', { name: /editar perícia/i }));
+
+    expect(onEdit).toHaveBeenCalledWith(items[0]);
   });
 
   it('shows a message when there are no items', () => {
-    render(<PericiasTable items={[]} />);
+    render(<PericiasTable items={[]} onEdit={vi.fn()} />);
     expect(screen.getByText('Nenhuma perícia encontrada.')).toBeInTheDocument();
   });
 });
