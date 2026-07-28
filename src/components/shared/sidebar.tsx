@@ -55,6 +55,7 @@ export function Sidebar({ role }: { role: Role }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of a client-only UI preference from localStorage on mount; there is no SSR-safe way to know this before hydration, and a lazy useState initializer would cause a hydration mismatch instead.
     if (localStorage.getItem(STORAGE_KEY) === 'true') setCollapsed(true);
   }, []);
 
