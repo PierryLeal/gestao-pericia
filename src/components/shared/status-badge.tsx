@@ -2,10 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import type { PericiaListItem } from '@/features/pericias/actions';
 
 const STYLES: Record<PericiaListItem['situacao'], string> = {
-  pendente: 'bg-yellow-100 text-yellow-800',
-  marcada: 'bg-blue-100 text-blue-800',
-  realizada: 'bg-green-100 text-green-800',
-  cancelada: 'bg-red-100 text-red-800',
+  pendente: 'bg-[var(--status-pendente)]/15 text-[var(--status-pendente)]',
+  marcada: 'bg-[var(--status-marcada)]/15 text-[var(--status-marcada)]',
+  realizada: 'bg-[var(--status-realizada)]/15 text-[var(--status-realizada)]',
+  cancelada: 'bg-[var(--status-cancelada)]/15 text-[var(--status-cancelada)]',
 };
 
 const LABELS: Record<PericiaListItem['situacao'], string> = {
