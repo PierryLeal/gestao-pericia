@@ -3,21 +3,30 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ColaboradorForm } from './colaborador-form';
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
-}));
-
 vi.mock('../actions', () => ({
   createColaborador: vi.fn(async () => ({ success: false, error: 'Nome é obrigatório' })),
+  updateColaborador: vi.fn(),
 }));
 
 describe('ColaboradorForm', () => {
-  it('shows the error returned by the action when validation fails', async () => {
+  it('calls onError with the message returned by the action when validation fails', async () => {
     const user = userEvent.setup();
-    render(<ColaboradorForm />);
+    const onError = vi.fn();
+    render(<ColaboradorForm onSaved={vi.fn()} onError={onError} />);
 
     await user.click(screen.getByRole('button', { name: /salvar colaborador/i }));
 
-    expect(await screen.findByText('Nome é obrigatório')).toBeInTheDocument();
+    expect(onError).toHaveBeenCalledWith('Nome é obrigatório');
+  });
+
+  it('pre-fills fields when editing an existing colaborador', () => {
+    render(
+      <ColaboradorForm
+        colaborador={{ id: 1, nome: 'Bruna', contato: '11988887777', formacao: 'Direito', interno: false }}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Nome')).toHaveValue('Bruna');
   });
 });
