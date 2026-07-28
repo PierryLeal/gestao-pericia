@@ -5,13 +5,6 @@ import { PericiaForm } from './pericia-form';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 
-const pushMock = vi.fn();
-const refreshMock = vi.fn();
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock, refresh: refreshMock }),
-}));
-
 vi.mock('../actions', () => ({
   createPericia: vi.fn(async () => ({ success: true, data: { id: 5 } })),
   updatePericia: vi.fn(async () => ({ success: true, data: { id: 5 } })),
@@ -34,18 +27,20 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
 }));
 
 describe('PericiaForm', () => {
-  it('requires processo, municipio, and perito before submitting', async () => {
+  it('calls onError when processo, municipio, or perito are missing', async () => {
     const user = userEvent.setup();
-    render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} />);
+    const onError = vi.fn();
+    render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={onError} />);
 
     await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
 
-    expect(await screen.findByText('Preencha processo, município e perito.')).toBeInTheDocument();
+    expect(onError).toHaveBeenCalledWith('Preencha processo, município e perito.');
   });
 
-  it('submits successfully once processo, municipio, and perito are set', async () => {
+  it('calls onSaved with the id once processo, municipio, and perito are set', async () => {
     const user = userEvent.setup();
-    render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} />);
+    const onSaved = vi.fn();
+    render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={onSaved} onError={vi.fn()} />);
 
     await user.click(screen.getByText('selecionar processo'));
     await user.click(screen.getByText('selecionar município'));
@@ -55,6 +50,6 @@ describe('PericiaForm', () => {
     await user.click(await screen.findByText('Carlos'));
     await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
 
-    expect(pushMock).toHaveBeenCalledWith('/');
+    expect(onSaved).toHaveBeenCalledWith(5);
   });
 });

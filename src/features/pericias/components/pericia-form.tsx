@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,12 +20,15 @@ export function PericiaForm({
   pericia,
   peritos,
   colaboradores,
+  onSaved,
+  onError,
 }: {
   pericia?: PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
   peritos: PeritoOption[];
   colaboradores: ColaboradorOption[];
+  onSaved: (id: number) => void;
+  onError: (message: string) => void;
 }) {
-  const router = useRouter();
   const [processo, setProcesso] = useState<Processo | null>(pericia?.processo ?? null);
   const [municipio, setMunicipio] = useState<MunicipioIBGE | null>(pericia?.municipio ?? null);
   const [peritoId, setPeritoId] = useState(pericia?.peritoId ? String(pericia.peritoId) : '');
@@ -35,7 +38,6 @@ export function PericiaForm({
   const [dataAgendada, setDataAgendada] = useState(pericia?.dataAgendada ?? '');
   const [horaAgendada, setHoraAgendada] = useState(pericia?.horaAgendada ?? '');
   const [situacao, setSituacao] = useState<PericiaInput['situacao']>(pericia?.situacao ?? 'pendente');
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const peritoItems = Object.fromEntries(peritos.map((p) => [String(p.id), p.nome]));
@@ -44,11 +46,10 @@ export function PericiaForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!processo || !municipio || !peritoId) {
-      setError('Preencha processo, município e perito.');
+      onError('Preencha processo, município e perito.');
       return;
     }
     setSaving(true);
-    setError(null);
     const input: PericiaInput = {
       processoId: processo.id,
       municipioId: municipio.id,
@@ -61,15 +62,14 @@ export function PericiaForm({
     const result = pericia ? await updatePericia(pericia.id, input) : await createPericia(input);
     setSaving(false);
     if (!result.success) {
-      setError(result.error);
+      onError(result.error);
       return;
     }
-    router.push('/');
-    router.refresh();
+    onSaved(result.data.id);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <Label>Processo</Label>
         <ProcessoCombobox value={processo?.id ?? null} selected={processo} onChange={setProcesso} />
@@ -127,9 +127,8 @@ export function PericiaForm({
         </Select>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      <Button type="submit" disabled={saving}>
+      <Button type="submit" disabled={saving} className="w-full">
+        {saving && <Loader2 className="size-4 animate-spin" />}
         {saving ? 'Salvando...' : 'Salvar perícia'}
       </Button>
     </form>
