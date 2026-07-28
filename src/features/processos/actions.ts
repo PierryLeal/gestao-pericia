@@ -41,3 +41,41 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
   }
   return { success: true, data };
 }
+
+export async function listProcessos(): Promise<Processo[]> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('processos').select('id, numero, autor, reu').order('numero');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getProcesso(id: number): Promise<Processo | null> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('processos').select('id, numero, autor, reu').eq('id', id).single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function updateProcesso(id: number, input: ProcessoInput): Promise<ActionResult<Processo>> {
+  await requireRole(['admin', 'gerencia']);
+  const parsed = processoSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('processos')
+    .update(parsed.data)
+    .eq('id', id)
+    .select('id, numero, autor, reu')
+    .single();
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Já existe um processo com esse número' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data };
+}
