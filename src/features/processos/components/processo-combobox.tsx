@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
@@ -52,7 +52,15 @@ export function ProcessoCombobox({
           <Command shouldFilter={false}>
             <CommandInput placeholder="Buscar processo..." value={query} onValueChange={setQuery} />
             <CommandList>
-              <CommandEmpty>{isPending ? 'Buscando...' : 'Nenhum processo encontrado.'}</CommandEmpty>
+              <CommandEmpty>
+                {isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="size-4 animate-spin" /> Buscando...
+                  </span>
+                ) : (
+                  'Nenhum processo encontrado.'
+                )}
+              </CommandEmpty>
               <CommandGroup>
                 {results.map((processo) => (
                   <CommandItem

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
@@ -56,7 +56,15 @@ export function MunicipioCombobox({
         <Command shouldFilter={false}>
           <CommandInput placeholder="Buscar município..." value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>{isPending ? 'Buscando...' : 'Digite ao menos 2 letras.'}</CommandEmpty>
+            <CommandEmpty>
+              {isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="size-4 animate-spin" /> Buscando...
+                </span>
+              ) : (
+                'Digite ao menos 2 letras.'
+              )}
+            </CommandEmpty>
             <CommandGroup>
               {results.map((municipio) => (
                 <CommandItem
