@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { formatPhone } from '@/lib/masks';
 import { createColaborador, updateColaborador, type Colaborador } from '../actions';
 import type { ColaboradorInput } from '../schemas';
 
@@ -19,7 +20,7 @@ export function ColaboradorForm({
   onError: (message: string) => void;
 }) {
   const [nome, setNome] = useState(colaborador?.nome ?? '');
-  const [contato, setContato] = useState(colaborador?.contato ?? '');
+  const [contato, setContato] = useState(formatPhone(colaborador?.contato ?? ''));
   const [formacao, setFormacao] = useState(colaborador?.formacao ?? '');
   const [interno, setInterno] = useState(colaborador?.interno ?? true);
   const [saving, setSaving] = useState(false);
@@ -47,7 +48,10 @@ export function ColaboradorForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="contato">Contato</Label>
-        <Input id="contato" value={contato} onChange={(e) => setContato(e.target.value)} />
+        <Input
+          id="contato" value={contato} onChange={(e) => setContato(formatPhone(e.target.value))}
+          placeholder="(99) 99999-9999"
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="formacao">Formação</Label>

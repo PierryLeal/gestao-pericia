@@ -34,4 +34,22 @@ describe('PeritoForm', () => {
     expect(screen.getByRole('combobox', { name: /relação/i })).toHaveTextContent('Boa');
     expect(screen.getByRole('combobox', { name: /resultado/i })).toHaveTextContent('Positivo');
   });
+
+  it('formats the contato field as the user types', async () => {
+    const user = userEvent.setup();
+    render(<PeritoForm onSaved={vi.fn()} onError={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('Contato'), '11999998888');
+
+    expect(screen.getByLabelText('Contato')).toHaveValue('(11) 99999-8888');
+  });
+
+  it('formats the documento field as CPF as the user types', async () => {
+    const user = userEvent.setup();
+    render(<PeritoForm onSaved={vi.fn()} onError={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('Documento'), '12345678900');
+
+    expect(screen.getByLabelText('Documento')).toHaveValue('123.456.789-00');
+  });
 });

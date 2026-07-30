@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatPhone, formatCPF } from '@/lib/masks';
 import { createPerito, updatePerito, type Perito } from '../actions';
 import { relacaoOptions, resultadoOptions, type PeritoInput } from '../schemas';
 
@@ -27,10 +28,10 @@ export function PeritoForm({
   onError: (message: string) => void;
 }) {
   const [nome, setNome] = useState(perito?.nome ?? '');
-  const [contato, setContato] = useState(perito?.contato ?? '');
+  const [contato, setContato] = useState(formatPhone(perito?.contato ?? ''));
   const [formacao, setFormacao] = useState(perito?.formacao ?? '');
   const [crea, setCrea] = useState(perito?.crea ?? '');
-  const [documento, setDocumento] = useState(perito?.documento ?? '');
+  const [documento, setDocumento] = useState(formatCPF(perito?.documento ?? ''));
   const [jaTrabalhamos, setJaTrabalhamos] = useState(perito?.jaTrabalhamos ?? false);
   const [relacao, setRelacao] = useState<PeritoInput['relacao']>(perito?.relacao ?? 'neutra');
   const [resultados, setResultados] = useState<PeritoInput['resultados']>(perito?.resultados ?? 'parcial');
@@ -57,7 +58,10 @@ export function PeritoForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="contato">Contato</Label>
-        <Input id="contato" value={contato} onChange={(e) => setContato(e.target.value)} />
+        <Input
+          id="contato" value={contato} onChange={(e) => setContato(formatPhone(e.target.value))}
+          placeholder="(99) 99999-9999"
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="formacao">Formação</Label>
@@ -70,7 +74,10 @@ export function PeritoForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="documento">Documento</Label>
-          <Input id="documento" value={documento} onChange={(e) => setDocumento(e.target.value)} />
+          <Input
+            id="documento" value={documento} onChange={(e) => setDocumento(formatCPF(e.target.value))}
+            placeholder="999.999.999-99"
+          />
         </div>
       </div>
       <div className="flex items-center gap-2">

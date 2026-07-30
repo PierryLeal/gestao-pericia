@@ -29,4 +29,13 @@ describe('ColaboradorForm', () => {
     );
     expect(screen.getByLabelText('Nome')).toHaveValue('Bruna');
   });
+
+  it('formats the contato field as the user types', async () => {
+    const user = userEvent.setup();
+    render(<ColaboradorForm onSaved={vi.fn()} onError={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('Contato'), '11999998888');
+
+    expect(screen.getByLabelText('Contato')).toHaveValue('(11) 99999-8888');
+  });
 });
