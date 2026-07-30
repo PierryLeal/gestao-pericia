@@ -13,7 +13,7 @@ export default function Loading() {
           Nova perícia
         </Button>
       </div>
-      <PericiasFilters />
+      <PericiasFilters peritos={[]} colaboradores={[]} />
       <TableSkeleton columns={8} />
     </div>
   );

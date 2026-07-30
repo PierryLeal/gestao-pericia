@@ -26,7 +26,15 @@ export function OptionCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<Button type="button" variant="outline" role="combobox" className="w-full justify-between" />}
+        render={(
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-label={placeholder}
+            className="w-full justify-between"
+          />
+        )}
       >
         {selected ? selected.nome : placeholder}
         <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />

@@ -67,7 +67,7 @@ export function PericiasScreen({
           Nova perícia
         </Button>
       </div>
-      <PericiasFilters />
+      <PericiasFilters peritos={peritos} colaboradores={colaboradores} />
       <Suspense fallback={<TableSkeleton columns={8} />}>
         <PericiasTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
       </Suspense>
