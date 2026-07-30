@@ -24,12 +24,14 @@ describe('PeritoForm', () => {
       <PeritoForm
         perito={{
           id: 1, nome: 'Carlos', contato: '11999999999', formacao: 'Eng.', crea: '123',
-          documento: '000', jaTrabalhamos: true, relacao: 8, resultados: 9,
+          documento: '000', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
         }}
         onSaved={vi.fn()}
         onError={vi.fn()}
       />
     );
     expect(screen.getByLabelText('Nome')).toHaveValue('Carlos');
+    expect(screen.getByRole('combobox', { name: /relação/i })).toHaveTextContent('Boa');
+    expect(screen.getByRole('combobox', { name: /resultado/i })).toHaveTextContent('Positivo');
   });
 });

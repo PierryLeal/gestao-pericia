@@ -3,12 +3,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
-import type { Database } from '@/lib/supabase/database.types';
+import type { Database, PeritoRelacao, PeritoResultado } from '@/lib/supabase/database.types';
 import { peritoSchema, type PeritoInput } from './schemas';
 
 export type Perito = {
   id: number; nome: string; contato: string; formacao: string; crea: string;
-  documento: string; jaTrabalhamos: boolean; relacao: number; resultados: number;
+  documento: string; jaTrabalhamos: boolean; relacao: PeritoRelacao; resultados: PeritoResultado;
 };
 
 function toRow(input: PeritoInput) {

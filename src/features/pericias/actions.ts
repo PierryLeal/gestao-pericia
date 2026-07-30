@@ -5,7 +5,7 @@ import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
-import type { PericiaSituacao } from '@/lib/supabase/database.types';
+import type { PericiaSituacao, PeritoRelacao, PeritoResultado } from '@/lib/supabase/database.types';
 import { postgrestQuoted } from '@/lib/postgrest';
 import { periciaSchema, situacaoOptions, type PericiaInput } from './schemas';
 
@@ -18,7 +18,7 @@ export type PericiaListItem = {
   municipio: { id: number; nome: string; uf: string };
   perito: {
     id: number; nome: string; contato: string; formacao: string; crea: string;
-    jaTrabalhamos: boolean; relacao: number; resultados: number;
+    jaTrabalhamos: boolean; relacao: PeritoRelacao; resultados: PeritoResultado;
   };
   colaborador: { id: number; nome: string; contato: string; formacao: string; interno: boolean } | null;
 };

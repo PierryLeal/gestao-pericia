@@ -15,7 +15,7 @@ vi.mock('../actions', () => ({
 
 const items = [{
   id: 1, nome: 'Carlos', contato: '', formacao: '', crea: '', documento: '',
-  jaTrabalhamos: false, relacao: 0, resultados: 0,
+  jaTrabalhamos: false, relacao: 'neutra' as const, resultados: 'parcial' as const,
 }];
 
 describe('PeritosScreen', () => {

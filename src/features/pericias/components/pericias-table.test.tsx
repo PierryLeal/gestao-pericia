@@ -14,7 +14,7 @@ const items: PericiaListItem[] = [
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     perito: {
       id: 1, nome: 'Carlos Lima', contato: '(11) 90000-0000', formacao: 'Eng. Civil', crea: '123456',
-      jaTrabalhamos: true, relacao: 8, resultados: 9,
+      jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
     },
     colaborador: null,
   },

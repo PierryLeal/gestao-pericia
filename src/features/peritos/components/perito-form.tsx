@@ -6,8 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createPerito, updatePerito, type Perito } from '../actions';
-import type { PeritoInput } from '../schemas';
+import { relacaoOptions, resultadoOptions, type PeritoInput } from '../schemas';
+
+const RELACAO_LABELS: Record<(typeof relacaoOptions)[number], string> = {
+  ruim: 'Ruim', neutra: 'Neutra', boa: 'Boa', otima: 'Ótima',
+};
+const RESULTADO_LABELS: Record<(typeof resultadoOptions)[number], string> = {
+  negativo: 'Negativo', parcial: 'Parcial', positivo: 'Positivo',
+};
 
 export function PeritoForm({
   perito,
@@ -24,8 +32,8 @@ export function PeritoForm({
   const [crea, setCrea] = useState(perito?.crea ?? '');
   const [documento, setDocumento] = useState(perito?.documento ?? '');
   const [jaTrabalhamos, setJaTrabalhamos] = useState(perito?.jaTrabalhamos ?? false);
-  const [relacao, setRelacao] = useState(perito?.relacao ?? 0);
-  const [resultados, setResultados] = useState(perito?.resultados ?? 0);
+  const [relacao, setRelacao] = useState<PeritoInput['relacao']>(perito?.relacao ?? 'neutra');
+  const [resultados, setResultados] = useState<PeritoInput['resultados']>(perito?.resultados ?? 'parcial');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -71,18 +79,30 @@ export function PeritoForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="relacao">Relação (0 a 10)</Label>
-          <Input
-            id="relacao" type="number" min={0} max={10} value={relacao}
-            onChange={(e) => setRelacao(Number(e.target.value))}
-          />
+          <Label htmlFor="relacao">Relação</Label>
+          <Select value={relacao} onValueChange={(v) => setRelacao(v as PeritoInput['relacao'])}>
+            <SelectTrigger id="relacao">
+              {relacao ? RELACAO_LABELS[relacao] : 'Selecione...'}
+            </SelectTrigger>
+            <SelectContent>
+              {relacaoOptions.map((r) => (
+                <SelectItem key={r} value={r}>{RELACAO_LABELS[r]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="resultados">Resultados (0 a 10)</Label>
-          <Input
-            id="resultados" type="number" min={0} max={10} value={resultados}
-            onChange={(e) => setResultados(Number(e.target.value))}
-          />
+          <Label htmlFor="resultados">Resultado</Label>
+          <Select value={resultados} onValueChange={(v) => setResultados(v as PeritoInput['resultados'])}>
+            <SelectTrigger id="resultados">
+              {resultados ? RESULTADO_LABELS[resultados] : 'Selecione...'}
+            </SelectTrigger>
+            <SelectContent>
+              {resultadoOptions.map((r) => (
+                <SelectItem key={r} value={r}>{RESULTADO_LABELS[r]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <Button type="submit" disabled={saving} className="w-full">

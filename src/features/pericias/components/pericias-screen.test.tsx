@@ -35,7 +35,7 @@ const items: PericiaListItem[] = [
     situacao: 'marcada',
     processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B' },
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
-    perito: { id: 1, nome: 'Carlos', contato: '', formacao: '', crea: '', jaTrabalhamos: false, relacao: 0, resultados: 0 },
+    perito: { id: 1, nome: 'Carlos', contato: '', formacao: '', crea: '', jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial' },
     colaborador: null,
   },
 ];
