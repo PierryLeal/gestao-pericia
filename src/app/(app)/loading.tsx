@@ -1,13 +1,19 @@
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { PericiasFilters } from '@/features/pericias/components/pericias-filters';
 
 export default function Loading() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="h-8 w-28 animate-pulse rounded-md bg-muted" />
-        <div className="h-9 w-32 animate-pulse rounded-md bg-muted" />
+        <h1 className="text-2xl font-semibold">Perícias</h1>
+        <Button type="button" disabled>
+          <Plus className="size-4" />
+          Nova perícia
+        </Button>
       </div>
-      <div className="h-9 w-full max-w-md animate-pulse rounded-md bg-muted" />
+      <PericiasFilters />
       <TableSkeleton columns={8} />
     </div>
   );

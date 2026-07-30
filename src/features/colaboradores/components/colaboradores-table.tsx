@@ -1,9 +1,21 @@
 'use client';
 
+import { use } from 'react';
 import { Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { Colaborador } from '../actions';
+
+export function ColaboradoresTableAsync({
+  itemsPromise,
+  onEdit,
+}: {
+  itemsPromise: Promise<Colaborador[]>;
+  onEdit: (colaborador: Colaborador) => void;
+}) {
+  const items = use(itemsPromise);
+  return <ColaboradoresTable items={items} onEdit={onEdit} />;
+}
 
 export function ColaboradoresTable({ items, onEdit }: { items: Colaborador[]; onEdit: (colaborador: Colaborador) => void }) {
   if (items.length === 0) {

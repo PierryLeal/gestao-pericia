@@ -47,24 +47,24 @@
 }
 
 :root {
-  --background: #0a1614;
-  --foreground: #edefee;
-  --card: #101f1d;
-  --card-foreground: #edefee;
-  --popover: #101f1d;
-  --popover-foreground: #edefee;
-  --primary: #35c2ae;
-  --primary-foreground: #07211d;
-  --secondary: #16302d;
-  --secondary-foreground: #edefee;
-  --muted: #142523;
-  --muted-foreground: #8fa6a3;
-  --accent: #16302d;
-  --accent-foreground: #edefee;
-  --destructive: #e06a5f;
-  --border: #1e3634;
-  --input: #1e3634;
-  --ring: #35c2ae;
+  --background: #ffffff;
+  --foreground: #101f1d;
+  --card: #ffffff;
+  --card-foreground: #101f1d;
+  --popover: #ffffff;
+  --popover-foreground: #101f1d;
+  --primary: #199484;
+  --primary-foreground: #ffffff;
+  --secondary: #eef4f3;
+  --secondary-foreground: #101f1d;
+  --muted: #f3f5f4;
+  --muted-foreground: #5b6b69;
+  --accent: #eaf6f4;
+  --accent-foreground: #101f1d;
+  --destructive: #d1493d;
+  --border: #e2e6e5;
+  --input: #e2e6e5;
+  --ring: #199484;
   --chart-1: #35c2ae;
   --chart-2: #4a9fe0;
   --chart-3: #4abe7a;
@@ -98,5 +98,20 @@
   }
   h1, h2, h3 {
     @apply font-heading;
+  }
+}
+
+@keyframes nav-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+@layer utilities {
+  .animate-nav-progress {
+    animation: nav-progress 1s ease-in-out infinite;
   }
 }

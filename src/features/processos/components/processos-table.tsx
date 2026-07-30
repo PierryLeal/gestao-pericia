@@ -1,9 +1,21 @@
 'use client';
 
+import { use } from 'react';
 import { Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { Processo } from '../actions';
+
+export function ProcessosTableAsync({
+  itemsPromise,
+  onEdit,
+}: {
+  itemsPromise: Promise<Processo[]>;
+  onEdit: (processo: Processo) => void;
+}) {
+  const items = use(itemsPromise);
+  return <ProcessosTable items={items} onEdit={onEdit} />;
+}
 
 export function ProcessosTable({ items, onEdit }: { items: Processo[]; onEdit: (processo: Processo) => void }) {
   if (items.length === 0) {

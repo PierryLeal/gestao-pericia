@@ -1,9 +1,21 @@
 'use client';
 
+import { use } from 'react';
 import { Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { Perito } from '../actions';
+
+export function PeritosTableAsync({
+  itemsPromise,
+  onEdit,
+}: {
+  itemsPromise: Promise<Perito[]>;
+  onEdit: (perito: Perito) => void;
+}) {
+  const items = use(itemsPromise);
+  return <PeritosTable items={items} onEdit={onEdit} />;
+}
 
 export function PeritosTable({ items, onEdit }: { items: Perito[]; onEdit: (perito: Perito) => void }) {
   if (items.length === 0) {

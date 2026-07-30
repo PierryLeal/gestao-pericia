@@ -9,15 +9,15 @@ export default async function PericiasPage({
   searchParams: Promise<{ situacao?: string; busca?: string }>;
 }) {
   const { situacao, busca } = await searchParams;
-  const [items, peritos, colaboradores] = await Promise.all([
-    listPericias({ situacao, busca }),
+  const itemsPromise = listPericias({ situacao, busca });
+  const [peritos, colaboradores] = await Promise.all([
     listPeritosOptions(),
     listColaboradoresOptions(),
   ]);
 
   return (
     <PericiasScreen
-      items={items}
+      itemsPromise={itemsPromise}
       peritos={peritos}
       colaboradores={colaboradores}
       getPericiaForEdit={getPericiaForEdit}

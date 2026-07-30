@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { ProfileRoleValue } from '@/lib/supabase/database.types';
 
@@ -10,7 +11,7 @@ export type CurrentProfile = {
   role: Role;
 };
 
-export async function getCurrentProfile(): Promise<CurrentProfile | null> {
+export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -20,7 +21,7 @@ export async function getCurrentProfile(): Promise<CurrentProfile | null> {
     .eq('id', user.id)
     .single();
   return (profile as unknown as CurrentProfile) ?? null;
-}
+});
 
 export async function requireRole(roles: Role[]): Promise<CurrentProfile> {
   const profile = await getCurrentProfile();

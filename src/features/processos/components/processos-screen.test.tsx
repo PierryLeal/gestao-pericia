@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ProcessosScreen } from './processos-screen';
@@ -24,7 +24,9 @@ const items = [{ id: 1, numero: 'P-1', autor: 'Ana', reu: 'Bia' }];
 describe('ProcessosScreen', () => {
   it('opens the create dialog and saves a new processo', async () => {
     const user = userEvent.setup();
-    render(<ProcessosScreen items={items} />);
+    await act(async () => {
+      render(<ProcessosScreen itemsPromise={Promise.resolve(items)} />);
+    });
 
     await user.click(screen.getByRole('button', { name: /novo processo/i }));
     await user.type(screen.getByLabelText('Número do processo'), 'P-2');
@@ -37,9 +39,11 @@ describe('ProcessosScreen', () => {
 
   it('opens the edit dialog pre-filled with the selected processo', async () => {
     const user = userEvent.setup();
-    render(<ProcessosScreen items={items} />);
+    await act(async () => {
+      render(<ProcessosScreen itemsPromise={Promise.resolve(items)} />);
+    });
 
-    await user.click(screen.getByRole('button', { name: /editar p-1/i }));
+    await user.click(await screen.findByRole('button', { name: /editar p-1/i }));
 
     expect(screen.getByLabelText('Número do processo')).toHaveValue('P-1');
     expect(screen.getByRole('heading', { name: 'Editar processo' })).toBeInTheDocument();

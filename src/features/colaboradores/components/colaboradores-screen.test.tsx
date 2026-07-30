@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ColaboradoresScreen } from './colaboradores-screen';
@@ -18,7 +18,9 @@ const items = [{ id: 1, nome: 'Bruna', contato: '', formacao: '', interno: true 
 describe('ColaboradoresScreen', () => {
   it('opens the edit dialog pre-filled with the selected colaborador', async () => {
     const user = userEvent.setup();
-    render(<ColaboradoresScreen items={items} />);
+    await act(async () => {
+      render(<ColaboradoresScreen itemsPromise={Promise.resolve(items)} />);
+    });
 
     await user.click(screen.getByRole('button', { name: /editar bruna/i }));
 
@@ -28,7 +30,9 @@ describe('ColaboradoresScreen', () => {
 
   it('closes the dialog and refreshes after a successful save', async () => {
     const user = userEvent.setup();
-    render(<ColaboradoresScreen items={items} />);
+    await act(async () => {
+      render(<ColaboradoresScreen itemsPromise={Promise.resolve(items)} />);
+    });
 
     await user.click(screen.getByRole('button', { name: /novo colaborador/i }));
     await user.type(screen.getByLabelText('Nome'), 'Eduardo');

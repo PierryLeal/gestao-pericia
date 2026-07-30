@@ -6,8 +6,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       <div className="hidden flex-1 flex-col justify-between bg-gradient-to-br from-[#0A1614] via-[#123330] to-[#1F5C52] p-12 lg:flex">
-        <span className="font-heading text-2xl font-semibold text-foreground">Gestão de Perícias</span>
-        <p className="max-w-sm text-sm text-muted-foreground">
+        <span className="font-heading text-2xl font-semibold text-white">Gestão de Perícias</span>
+        <p className="max-w-sm text-sm text-white/70">
           Cadastro e acompanhamento de perícias, processos, peritos e colaboradores em um só lugar.
         </p>
       </div>

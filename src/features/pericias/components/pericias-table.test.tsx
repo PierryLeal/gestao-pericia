@@ -26,7 +26,7 @@ describe('PericiasTable', () => {
     expect(screen.getByText('0001234-56.2026.8.26.0100')).toBeInTheDocument();
     expect(screen.getByText('São Paulo/SP')).toBeInTheDocument();
     expect(screen.getByText('Carlos Lima')).toBeInTheDocument();
-    expect(screen.queryByText('Maria Souza × João Pereira')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Autor: Maria Souza/)).not.toBeInTheDocument();
   });
 
   it('expands the detail row with processo/perito/colaborador blocks when the chevron is clicked', async () => {
@@ -35,7 +35,8 @@ describe('PericiasTable', () => {
 
     await user.click(screen.getByRole('button', { name: /detalhes da perícia/i }));
 
-    expect(screen.getByText('Maria Souza × João Pereira')).toBeInTheDocument();
+    expect(screen.getByText(/Autor: Maria Souza/)).toBeInTheDocument();
+    expect(screen.getByText(/Réu: João Pereira/)).toBeInTheDocument();
     expect(screen.getByText(/CREA: 123456/)).toBeInTheDocument();
     expect(screen.getByText('Nenhum colaborador vinculado.')).toBeInTheDocument();
   });
@@ -46,10 +47,10 @@ describe('PericiasTable', () => {
 
     const toggle = screen.getByRole('button', { name: /detalhes da perícia/i });
     await user.click(toggle);
-    expect(screen.getByText('Maria Souza × João Pereira')).toBeInTheDocument();
+    expect(screen.getByText(/Autor: Maria Souza/)).toBeInTheDocument();
 
     await user.click(toggle);
-    expect(screen.queryByText('Maria Souza × João Pereira')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Autor: Maria Souza/)).not.toBeInTheDocument();
   });
 
   it('calls onEdit when the edit icon is clicked', async () => {

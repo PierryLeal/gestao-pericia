@@ -12,6 +12,7 @@ export function PericiasFilters() {
   const [busca, setBusca] = useState(searchParams.get('busca') ?? '');
 
   useEffect(() => {
+    if (busca === (searchParams.get('busca') ?? '')) return;
     const handle = setTimeout(() => updateParam('busca', busca), 300);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps

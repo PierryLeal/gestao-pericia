@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { PeritosScreen } from './peritos-screen';
@@ -21,7 +21,9 @@ const items = [{
 describe('PeritosScreen', () => {
   it('opens the edit dialog pre-filled with the selected perito', async () => {
     const user = userEvent.setup();
-    render(<PeritosScreen items={items} />);
+    await act(async () => {
+      render(<PeritosScreen itemsPromise={Promise.resolve(items)} />);
+    });
 
     await user.click(screen.getByRole('button', { name: /editar carlos/i }));
 
@@ -31,7 +33,9 @@ describe('PeritosScreen', () => {
 
   it('closes the dialog and refreshes after a successful save', async () => {
     const user = userEvent.setup();
-    render(<PeritosScreen items={items} />);
+    await act(async () => {
+      render(<PeritosScreen itemsPromise={Promise.resolve(items)} />);
+    });
 
     await user.click(screen.getByRole('button', { name: /novo perito/i }));
     await user.type(screen.getByLabelText('Nome'), 'Diana');

@@ -1,11 +1,16 @@
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 
 export default function Loading() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="h-8 w-32 animate-pulse rounded-md bg-muted" />
-        <div className="h-9 w-32 animate-pulse rounded-md bg-muted" />
+        <h1 className="text-2xl font-semibold">Peritos</h1>
+        <Button type="button" disabled>
+          <Plus className="size-4" />
+          Novo perito
+        </Button>
       </div>
       <TableSkeleton columns={7} />
     </div>

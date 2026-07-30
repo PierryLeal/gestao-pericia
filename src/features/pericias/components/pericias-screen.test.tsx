@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { PericiasScreen } from './pericias-screen';
@@ -56,14 +56,16 @@ describe('PericiasScreen', () => {
       municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     }));
 
-    render(
-      <PericiasScreen
-        items={items}
-        peritos={[{ id: 1, nome: 'Carlos' }]}
-        colaboradores={[]}
-        getPericiaForEdit={getPericiaForEdit}
-      />
-    );
+    await act(async () => {
+      render(
+        <PericiasScreen
+          itemsPromise={Promise.resolve(items)}
+          peritos={[{ id: 1, nome: 'Carlos' }]}
+          colaboradores={[]}
+          getPericiaForEdit={getPericiaForEdit}
+        />
+      );
+    });
 
     await user.click(screen.getByRole('button', { name: /editar perícia/i }));
 
@@ -78,14 +80,16 @@ describe('PericiasScreen', () => {
     const user = userEvent.setup();
     const getPericiaForEdit = vi.fn(async () => null);
 
-    render(
-      <PericiasScreen
-        items={items}
-        peritos={[{ id: 1, nome: 'Carlos' }]}
-        colaboradores={[]}
-        getPericiaForEdit={getPericiaForEdit}
-      />
-    );
+    await act(async () => {
+      render(
+        <PericiasScreen
+          itemsPromise={Promise.resolve(items)}
+          peritos={[{ id: 1, nome: 'Carlos' }]}
+          colaboradores={[]}
+          getPericiaForEdit={getPericiaForEdit}
+        />
+      );
+    });
 
     await user.click(screen.getByRole('button', { name: /editar perícia/i }));
 

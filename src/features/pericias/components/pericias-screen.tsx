@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { PericiasTable } from './pericias-table';
+import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { PericiasTableAsync } from './pericias-table';
 import { PericiasFilters } from './pericias-filters';
 import { PericiaForm } from './pericia-form';
 import type { PericiaListItem } from '../actions';
@@ -19,12 +20,12 @@ type ColaboradorOption = { id: number; nome: string };
 type EditingPericia = PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
 
 export function PericiasScreen({
-  items,
+  itemsPromise,
   peritos,
   colaboradores,
   getPericiaForEdit,
 }: {
-  items: PericiaListItem[];
+  itemsPromise: Promise<PericiaListItem[]>;
   peritos: PeritoOption[];
   colaboradores: ColaboradorOption[];
   getPericiaForEdit: (id: number) => Promise<EditingPericia | null>;
@@ -67,7 +68,9 @@ export function PericiasScreen({
         </Button>
       </div>
       <PericiasFilters />
-      <PericiasTable items={items} onEdit={openEdit} />
+      <Suspense fallback={<TableSkeleton columns={8} />}>
+        <PericiasTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+      </Suspense>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>

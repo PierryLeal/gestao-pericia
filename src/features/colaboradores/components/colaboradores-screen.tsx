@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ColaboradoresTable } from './colaboradores-table';
+import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { ColaboradoresTableAsync } from './colaboradores-table';
 import { ColaboradorForm } from './colaborador-form';
 import type { Colaborador } from '../actions';
 
-export function ColaboradoresScreen({ items }: { items: Colaborador[] }) {
+export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Colaborador[]> }) {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Colaborador | null>(null);
@@ -40,7 +41,9 @@ export function ColaboradoresScreen({ items }: { items: Colaborador[] }) {
           Novo colaborador
         </Button>
       </div>
-      <ColaboradoresTable items={items} onEdit={openEdit} />
+      <Suspense fallback={<TableSkeleton columns={5} />}>
+        <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+      </Suspense>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

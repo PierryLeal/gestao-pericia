@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { PeritosTable } from './peritos-table';
+import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { PeritosTableAsync } from './peritos-table';
 import { PeritoForm } from './perito-form';
 import type { Perito } from '../actions';
 
-export function PeritosScreen({ items }: { items: Perito[] }) {
+export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]> }) {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Perito | null>(null);
@@ -40,7 +41,9 @@ export function PeritosScreen({ items }: { items: Perito[] }) {
           Novo perito
         </Button>
       </div>
-      <PeritosTable items={items} onEdit={openEdit} />
+      <Suspense fallback={<TableSkeleton columns={7} />}>
+        <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+      </Suspense>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

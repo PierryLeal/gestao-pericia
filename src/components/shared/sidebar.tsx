@@ -12,6 +12,7 @@ import type { Role } from '@/features/auth/guards';
 import { signOut } from '@/features/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { NavProgressReporter } from '@/components/shared/nav-progress';
 
 export const NAV_ITEMS: { href: string; label: string; roles: Role[]; icon: LucideIcon }[] = [
   { href: '/', label: 'Perícias', roles: ['admin', 'gerencia'], icon: ClipboardList },
@@ -39,6 +40,7 @@ function NavLink({
     >
       <Icon className="size-4 shrink-0" />
       {!collapsed && label}
+      <NavProgressReporter />
     </Link>
   );
   if (!collapsed) return link;

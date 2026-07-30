@@ -1,12 +1,23 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, use, useState } from 'react';
 import { ChevronRight, Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { cn } from '@/lib/utils';
 import type { PericiaListItem } from '../actions';
+
+export function PericiasTableAsync({
+  itemsPromise,
+  onEdit,
+}: {
+  itemsPromise: Promise<PericiaListItem[]>;
+  onEdit: (item: PericiaListItem) => void;
+}) {
+  const items = use(itemsPromise);
+  return <PericiasTable items={items} onEdit={onEdit} />;
+}
 
 export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onEdit: (item: PericiaListItem) => void }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -78,7 +89,11 @@ export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onE
                     <div className="grid gap-4 py-2 md:grid-cols-3">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Processo</p>
-                        <p className="text-sm">{item.processo.autor} × {item.processo.reu}</p>
+                        <p className="text-sm">
+                          Autor: {item.processo.autor}
+                          <br />
+                          Réu: {item.processo.reu}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Perito</p>
