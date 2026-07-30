@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { ColaboradoresTableAsync } from './colaboradores-table';
 import { ColaboradorForm } from './colaborador-form';
+import { ColaboradoresFilters } from './colaboradores-filters';
 import type { Colaborador } from '../actions';
 
 export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Colaborador[]> }) {
@@ -41,6 +42,7 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
           Novo colaborador
         </Button>
       </div>
+      <ColaboradoresFilters />
       <Suspense fallback={<TableSkeleton columns={5} />}>
         <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
       </Suspense>
