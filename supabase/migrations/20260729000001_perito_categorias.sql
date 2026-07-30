@@ -3,6 +3,7 @@ create type public.perito_resultado as enum ('negativo', 'parcial', 'positivo');
 
 alter table public.peritos add column relacao_new public.perito_relacao;
 update public.peritos set relacao_new = case
+  when relacao = 0 then 'neutra'
   when relacao <= 3 then 'ruim'
   when relacao <= 6 then 'neutra'
   when relacao <= 8 then 'boa'
@@ -15,6 +16,7 @@ alter table public.peritos rename column relacao_new to relacao;
 
 alter table public.peritos add column resultados_new public.perito_resultado;
 update public.peritos set resultados_new = case
+  when resultados = 0 then 'parcial'
   when resultados <= 3 then 'negativo'
   when resultados <= 6 then 'parcial'
   else 'positivo'
