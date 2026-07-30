@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { PeritosTableAsync } from './peritos-table';
+import { PeritosFilters } from './peritos-filters';
 import { PeritoForm } from './perito-form';
 import type { Perito } from '../actions';
 
@@ -41,6 +42,7 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
           Novo perito
         </Button>
       </div>
+      <PeritosFilters />
       <Suspense fallback={<TableSkeleton columns={7} />}>
         <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
       </Suspense>
