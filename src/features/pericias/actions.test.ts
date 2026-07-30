@@ -11,6 +11,7 @@ const mockUpdate = vi.fn(() => ({ eq: mockEq }));
 // builder, so tests can assert the embedded-resource join syntax actually
 // used (e.g. `processos!inner` vs a plain, non-inner embed).
 const periciasSelectCalls: string[] = [];
+const periciasEqCalls: [string, unknown][] = [];
 let periciasQueryResult: { data: unknown[] | null; error: { message: string } | null } = {
   data: [],
   error: null,
@@ -23,7 +24,10 @@ function periciasQueryBuilder() {
       return builder;
     }),
     order: vi.fn(() => builder),
-    eq: vi.fn(() => builder),
+    eq: vi.fn((column: string, value: unknown) => {
+      periciasEqCalls.push([column, value]);
+      return builder;
+    }),
     filter: vi.fn(() => builder),
     then: (resolve: (v: typeof periciasQueryResult) => void, reject?: (e: unknown) => void) =>
       Promise.resolve(periciasQueryResult).then(resolve, reject),
@@ -53,6 +57,7 @@ const validInput = {
 
 beforeEach(() => {
   periciasSelectCalls.length = 0;
+  periciasEqCalls.length = 0;
   periciasQueryResult = { data: [], error: null };
 });
 
@@ -163,5 +168,25 @@ describe('listPericias', () => {
         },
       },
     ]);
+  });
+
+  it('filters by data when provided', async () => {
+    await listPericias({ data: '2026-08-01' });
+    expect(periciasEqCalls).toContainEqual(['data_agendada', '2026-08-01']);
+  });
+
+  it('filters by municipioId when provided', async () => {
+    await listPericias({ municipioId: 3550308 });
+    expect(periciasEqCalls).toContainEqual(['municipio_id', 3550308]);
+  });
+
+  it('filters by peritoId when provided', async () => {
+    await listPericias({ peritoId: 7 });
+    expect(periciasEqCalls).toContainEqual(['perito_id', 7]);
+  });
+
+  it('filters by colaboradorId when provided', async () => {
+    await listPericias({ colaboradorId: 3 });
+    expect(periciasEqCalls).toContainEqual(['colaborador_id', 3]);
   });
 });

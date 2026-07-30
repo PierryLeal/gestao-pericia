@@ -36,7 +36,10 @@ function toRow(input: PericiaInput) {
 }
 
 export async function listPericias(
-  filters: { situacao?: string; busca?: string } = {}
+  filters: {
+    situacao?: string; busca?: string; data?: string;
+    municipioId?: number; peritoId?: number; colaboradorId?: number;
+  } = {}
 ): Promise<PericiaListItem[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
@@ -60,6 +63,18 @@ export async function listPericias(
   }
   if (filters.busca) {
     query = query.filter('processo.numero', 'ilike', postgrestQuoted(`%${filters.busca}%`));
+  }
+  if (filters.data) {
+    query = query.eq('data_agendada', filters.data);
+  }
+  if (filters.municipioId) {
+    query = query.eq('municipio_id', filters.municipioId);
+  }
+  if (filters.peritoId) {
+    query = query.eq('perito_id', filters.peritoId);
+  }
+  if (filters.colaboradorId) {
+    query = query.eq('colaborador_id', filters.colaboradorId);
   }
 
   const { data, error } = await query;
