@@ -6,6 +6,7 @@ import { ProcessosScreen } from './processos-screen';
 const refresh = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('../actions', () => ({

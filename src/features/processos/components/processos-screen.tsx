@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { ProcessosTableAsync } from './processos-table';
 import { ProcessoForm } from './processo-form';
+import { ProcessosFilters } from './processos-filters';
 import type { Processo } from '../actions';
 
 export function ProcessosScreen({ itemsPromise }: { itemsPromise: Promise<Processo[]> }) {
@@ -41,6 +42,7 @@ export function ProcessosScreen({ itemsPromise }: { itemsPromise: Promise<Proces
           Novo processo
         </Button>
       </div>
+      <ProcessosFilters />
       <Suspense fallback={<TableSkeleton columns={4} />}>
         <ProcessosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
       </Suspense>
