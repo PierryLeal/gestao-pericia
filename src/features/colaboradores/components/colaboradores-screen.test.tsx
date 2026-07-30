@@ -4,8 +4,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { ColaboradoresScreen } from './colaboradores-screen';
 
 const refresh = vi.fn();
+const push = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh }),
+  useRouter: () => ({ refresh, push }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('../actions', () => ({
