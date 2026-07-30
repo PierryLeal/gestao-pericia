@@ -1,5 +1,7 @@
 export type PericiaSituacao = 'pendente' | 'marcada' | 'realizada' | 'cancelada';
 export type ProfileRoleValue = 'pendente' | 'gerencia' | 'admin';
+export type PeritoRelacao = 'ruim' | 'neutra' | 'boa' | 'otima';
+export type PeritoResultado = 'negativo' | 'parcial' | 'positivo';
 
 export type Database = {
   public: {
@@ -25,12 +27,12 @@ export type Database = {
       peritos: {
         Row: {
           id: number; nome: string; contato: string; formacao: string; crea: string;
-          documento: string; ja_trabalhamos: boolean; relacao: number; resultados: number;
+          documento: string; ja_trabalhamos: boolean; relacao: PeritoRelacao; resultados: PeritoResultado;
           created_at: string;
         };
         Insert: {
           nome: string; contato?: string; formacao?: string; crea?: string; documento?: string;
-          ja_trabalhamos?: boolean; relacao?: number; resultados?: number;
+          ja_trabalhamos?: boolean; relacao?: PeritoRelacao; resultados?: PeritoResultado;
         };
         Update: Partial<Database['public']['Tables']['peritos']['Insert']>;
         Relationships: [];

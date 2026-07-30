@@ -1,33 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { peritoSchema } from './schemas';
+import { peritoSchema, relacaoOptions, resultadoOptions } from './schemas';
 
 describe('peritoSchema', () => {
-  it('accepts a valid perito', () => {
+  it('accepts the known relacao and resultado values', () => {
     const result = peritoSchema.safeParse({
-      nome: 'João Silva',
-      contato: '(11) 99999-0000',
-      formacao: 'Engenharia Civil',
-      crea: '123456',
-      documento: '111.111.111-11',
-      jaTrabalhamos: true,
-      relacao: 8,
-      resultados: 9,
+      nome: 'Carlos', relacao: 'boa', resultados: 'positivo',
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects an empty nome', () => {
-    const result = peritoSchema.safeParse({ nome: '' });
+  it('rejects a relacao value outside the fixed set', () => {
+    const result = peritoSchema.safeParse({ nome: 'Carlos', relacao: 'excelente' });
     expect(result.success).toBe(false);
   });
 
-  it('rejects relacao above 10', () => {
-    const result = peritoSchema.safeParse({ nome: 'X', relacao: 11 });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects resultados below 0', () => {
-    const result = peritoSchema.safeParse({ nome: 'X', resultados: -1 });
-    expect(result.success).toBe(false);
+  it('exports the exact option lists used by the UI', () => {
+    expect(relacaoOptions).toEqual(['ruim', 'neutra', 'boa', 'otima']);
+    expect(resultadoOptions).toEqual(['negativo', 'parcial', 'positivo']);
   });
 });
