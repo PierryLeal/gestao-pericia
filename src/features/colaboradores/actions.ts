@@ -11,10 +11,14 @@ function toRow(input: ColaboradorInput) {
   return { nome: input.nome, contato: input.contato, formacao: input.formacao, interno: input.interno };
 }
 
-export async function listColaboradores(): Promise<Colaborador[]> {
+export async function listColaboradores(busca?: string): Promise<Colaborador[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('colaboradores').select('*').order('nome');
+  let query = supabase.from('colaboradores').select('*');
+  if (busca?.trim()) {
+    query = query.ilike('nome', `%${busca}%`);
+  }
+  const { data, error } = await query.order('nome');
   if (error) throw new Error(error.message);
   return data ?? [];
 }

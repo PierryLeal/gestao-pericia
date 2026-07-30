@@ -42,10 +42,15 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
   return { success: true, data };
 }
 
-export async function listProcessos(): Promise<Processo[]> {
+export async function listProcessos(busca?: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('processos').select('id, numero, autor, reu').order('numero');
+  let query = supabase.from('processos').select('id, numero, autor, reu');
+  if (busca?.trim()) {
+    const pattern = postgrestQuoted(`%${busca}%`);
+    query = query.or(`numero.ilike.${pattern},autor.ilike.${pattern},reu.ilike.${pattern}`);
+  }
+  const { data, error } = await query.order('numero');
   if (error) throw new Error(error.message);
   return data ?? [];
 }

@@ -4,7 +4,8 @@ import { listProcessos, getProcesso, updateProcesso } from './actions';
 const mockSingle = vi.fn();
 const mockEq = vi.fn(() => ({ single: mockSingle }));
 const mockOrder = vi.fn();
-const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockEq }));
+const mockOr = vi.fn(() => ({ order: mockOrder }));
+const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockEq, or: mockOr }));
 const mockUpdateEq = vi.fn(() => ({ select: () => ({ single: mockSingle }) }));
 const mockUpdate = vi.fn(() => ({ eq: mockUpdateEq }));
 
@@ -25,6 +26,22 @@ describe('listProcessos', () => {
     mockOrder.mockResolvedValue({ data: [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }], error: null });
     const result = await listProcessos();
     expect(result).toEqual([{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }]);
+  });
+});
+
+describe('listProcessos busca', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('filters by numero/autor/reu when busca is provided', async () => {
+    mockOrder.mockResolvedValue({ data: [], error: null });
+    await listProcessos('Souza');
+    expect(mockOr).toHaveBeenCalledWith(expect.stringContaining('numero.ilike'));
+  });
+
+  it('does not filter when busca is empty', async () => {
+    mockOrder.mockResolvedValue({ data: [], error: null });
+    await listProcessos();
+    expect(mockOr).not.toHaveBeenCalled();
   });
 });
 

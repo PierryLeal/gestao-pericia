@@ -31,10 +31,14 @@ function fromRow(row: Database['public']['Tables']['peritos']['Row']): Perito {
   };
 }
 
-export async function listPeritos(): Promise<Perito[]> {
+export async function listPeritos(busca?: string): Promise<Perito[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('peritos').select('*').order('nome');
+  let query = supabase.from('peritos').select('*');
+  if (busca?.trim()) {
+    query = query.ilike('nome', `%${busca}%`);
+  }
+  const { data, error } = await query.order('nome');
   if (error) throw new Error(error.message);
   return (data ?? []).map(fromRow);
 }
