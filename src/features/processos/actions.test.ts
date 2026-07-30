@@ -32,16 +32,27 @@ describe('listProcessos', () => {
 describe('listProcessos busca', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  const rows = [
+    { id: 1, numero: 'P-1', autor: 'Ana Souza', reu: 'B' },
+    { id: 2, numero: 'P-2', autor: 'André Costa', reu: 'C' },
+  ];
+
   it('filters by numero/autor/reu when busca is provided', async () => {
-    mockOrder.mockResolvedValue({ data: [], error: null });
-    await listProcessos('Souza');
-    expect(mockOr).toHaveBeenCalledWith(expect.stringContaining('numero.ilike'));
+    mockOrder.mockResolvedValue({ data: rows, error: null });
+    const result = await listProcessos('Souza');
+    expect(result).toEqual([rows[0]]);
+  });
+
+  it('matches accent-insensitively (e.g. "andre" matches "André")', async () => {
+    mockOrder.mockResolvedValue({ data: rows, error: null });
+    const result = await listProcessos('andre');
+    expect(result).toEqual([rows[1]]);
   });
 
   it('does not filter when busca is empty', async () => {
-    mockOrder.mockResolvedValue({ data: [], error: null });
-    await listProcessos();
-    expect(mockOr).not.toHaveBeenCalled();
+    mockOrder.mockResolvedValue({ data: rows, error: null });
+    const result = await listProcessos();
+    expect(result).toEqual(rows);
   });
 });
 

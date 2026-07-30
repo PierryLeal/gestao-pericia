@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { RelacaoBadge } from '@/components/shared/relacao-badge';
 import { ResultadoBadge } from '@/components/shared/resultado-badge';
+import { formatPhone } from '@/lib/masks';
 import type { Perito } from '../actions';
 
 export function PeritosTableAsync({
@@ -41,7 +42,7 @@ export function PeritosTable({ items, onEdit }: { items: Perito[]; onEdit: (peri
         {items.map((item) => (
           <TableRow key={item.id}>
             <TableCell>{item.nome}</TableCell>
-            <TableCell>{item.contato}</TableCell>
+            <TableCell>{formatPhone(item.contato)}</TableCell>
             <TableCell>{item.formacao}</TableCell>
             <TableCell>{item.crea}</TableCell>
             <TableCell><RelacaoBadge relacao={item.relacao} /></TableCell>

@@ -14,7 +14,7 @@ export default function Loading() {
         </Button>
       </div>
       <PeritosFilters />
-      <TableSkeleton columns={7} />
+      <TableSkeleton headers={['Nome', 'Contato', 'Formação', 'CREA', 'Relação', 'Resultados', '']} />
     </div>
   );
 }

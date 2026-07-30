@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { RelacaoBadge } from '@/components/shared/relacao-badge';
 import { ResultadoBadge } from '@/components/shared/resultado-badge';
 import { cn } from '@/lib/utils';
+import { formatPhone } from '@/lib/masks';
 import type { PericiaListItem } from '../actions';
 
 export function PericiasTableAsync({
@@ -100,7 +101,11 @@ export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onE
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Perito</p>
                         <p className="text-sm">
-                          Contato: {item.perito.contato} · Formação: {item.perito.formacao} · CREA: {item.perito.crea}
+                          Contato: {formatPhone(item.perito.contato)}
+                          <br />
+                          Formação: {item.perito.formacao}
+                          <br />
+                          CREA: {item.perito.crea}
                           <br />
                           Já trabalhamos: {item.perito.jaTrabalhamos ? 'Sim' : 'Não'}
                         </p>
@@ -113,7 +118,7 @@ export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onE
                         <p className="text-xs font-medium text-muted-foreground">Colaborador</p>
                         {item.colaborador ? (
                           <p className="text-sm">
-                            Contato: {item.colaborador.contato} · Formação: {item.colaborador.formacao} ·{' '}
+                            Contato: {formatPhone(item.colaborador.contato)} · Formação: {item.colaborador.formacao} ·{' '}
                             {item.colaborador.interno ? 'Interno' : 'Externo'}
                           </p>
                         ) : (

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
 import type { Database, PeritoRelacao, PeritoResultado } from '@/lib/supabase/database.types';
+import { matchesSearch } from '@/lib/search';
 import { peritoSchema, type PeritoInput } from './schemas';
 
 export type Perito = {
@@ -34,13 +35,11 @@ function fromRow(row: Database['public']['Tables']['peritos']['Row']): Perito {
 export async function listPeritos(busca?: string): Promise<Perito[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let query = supabase.from('peritos').select('*');
-  if (busca?.trim()) {
-    query = query.ilike('nome', `%${busca}%`);
-  }
-  const { data, error } = await query.order('nome');
+  const { data, error } = await supabase.from('peritos').select('*').order('nome');
   if (error) throw new Error(error.message);
-  return (data ?? []).map(fromRow);
+  const peritos = (data ?? []).map(fromRow);
+  if (!busca?.trim()) return peritos;
+  return peritos.filter((perito) => matchesSearch(perito.nome, busca));
 }
 
 export async function listPeritosOptions(): Promise<{ id: number; nome: string }[]> {

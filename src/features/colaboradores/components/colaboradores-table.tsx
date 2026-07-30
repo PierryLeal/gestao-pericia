@@ -4,6 +4,7 @@ import { use } from 'react';
 import { Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { formatPhone } from '@/lib/masks';
 import type { Colaborador } from '../actions';
 
 export function ColaboradoresTableAsync({
@@ -37,7 +38,7 @@ export function ColaboradoresTable({ items, onEdit }: { items: Colaborador[]; on
         {items.map((item) => (
           <TableRow key={item.id}>
             <TableCell>{item.nome}</TableCell>
-            <TableCell>{item.contato}</TableCell>
+            <TableCell>{formatPhone(item.contato)}</TableCell>
             <TableCell>{item.formacao}</TableCell>
             <TableCell>{item.interno ? 'Interno' : 'Externo'}</TableCell>
             <TableCell>

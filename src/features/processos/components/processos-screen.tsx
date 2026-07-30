@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -12,8 +12,11 @@ import { ProcessoForm } from './processo-form';
 import { ProcessosFilters } from './processos-filters';
 import type { Processo } from '../actions';
 
+const PROCESSOS_HEADERS = ['Número', 'Autor', 'Réu', ''];
+
 export function ProcessosScreen({ itemsPromise }: { itemsPromise: Promise<Processo[]> }) {
   const router = useRouter();
+  const [isFiltering, startFilterTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Processo | null>(null);
 
@@ -42,10 +45,14 @@ export function ProcessosScreen({ itemsPromise }: { itemsPromise: Promise<Proces
           Novo processo
         </Button>
       </div>
-      <ProcessosFilters />
-      <Suspense fallback={<TableSkeleton columns={4} />}>
-        <ProcessosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
-      </Suspense>
+      <ProcessosFilters startTransition={startFilterTransition} />
+      {isFiltering ? (
+        <TableSkeleton headers={PROCESSOS_HEADERS} />
+      ) : (
+        <Suspense fallback={<TableSkeleton headers={PROCESSOS_HEADERS} />}>
+          <ProcessosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+        </Suspense>
+      )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

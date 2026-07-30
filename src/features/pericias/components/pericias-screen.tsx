@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -19,18 +19,23 @@ type PeritoOption = { id: number; nome: string };
 type ColaboradorOption = { id: number; nome: string };
 type EditingPericia = PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
 
+const PERICIAS_HEADERS = ['', 'Nº Processo', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', ''];
+
 export function PericiasScreen({
   itemsPromise,
   peritos,
   colaboradores,
+  municipio,
   getPericiaForEdit,
 }: {
   itemsPromise: Promise<PericiaListItem[]>;
   peritos: PeritoOption[];
   colaboradores: ColaboradorOption[];
+  municipio: MunicipioIBGE | null;
   getPericiaForEdit: (id: number) => Promise<EditingPericia | null>;
 }) {
   const router = useRouter();
+  const [isFiltering, startFilterTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EditingPericia | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -67,10 +72,19 @@ export function PericiasScreen({
           Nova perícia
         </Button>
       </div>
-      <PericiasFilters peritos={peritos} colaboradores={colaboradores} />
-      <Suspense fallback={<TableSkeleton columns={8} />}>
-        <PericiasTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
-      </Suspense>
+      <PericiasFilters
+        peritos={peritos}
+        colaboradores={colaboradores}
+        municipio={municipio}
+        startTransition={startFilterTransition}
+      />
+      {isFiltering ? (
+        <TableSkeleton headers={PERICIAS_HEADERS} />
+      ) : (
+        <Suspense fallback={<TableSkeleton headers={PERICIAS_HEADERS} />}>
+          <PericiasTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+        </Suspense>
+      )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>

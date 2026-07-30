@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
 import { postgrestQuoted } from '@/lib/postgrest';
+import { matchesSearch } from '@/lib/search';
 import { processoSchema, type ProcessoInput } from './schemas';
 
 export type Processo = { id: number; numero: string; autor: string; reu: string };
@@ -45,14 +46,16 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
 export async function listProcessos(busca?: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let query = supabase.from('processos').select('id, numero, autor, reu');
-  if (busca?.trim()) {
-    const pattern = postgrestQuoted(`%${busca}%`);
-    query = query.or(`numero.ilike.${pattern},autor.ilike.${pattern},reu.ilike.${pattern}`);
-  }
-  const { data, error } = await query.order('numero');
+  const { data, error } = await supabase.from('processos').select('id, numero, autor, reu').order('numero');
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const processos = data ?? [];
+  if (!busca?.trim()) return processos;
+  return processos.filter(
+    (processo) =>
+      matchesSearch(processo.numero, busca) ||
+      matchesSearch(processo.autor, busca) ||
+      matchesSearch(processo.reu, busca)
+  );
 }
 
 export async function getProcesso(id: number): Promise<Processo | null> {

@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 describe('ColaboradoresFilters', () => {
   it('does not push a navigation on mount when nothing changed', async () => {
     params = new URLSearchParams();
-    render(<ColaboradoresFilters />);
+    render(<ColaboradoresFilters startTransition={(cb) => cb()} />);
     await new Promise((r) => setTimeout(r, 350));
     expect(push).not.toHaveBeenCalled();
   });
@@ -22,9 +22,9 @@ describe('ColaboradoresFilters', () => {
   it('pushes the busca value after the user types and the debounce elapses', async () => {
     params = new URLSearchParams();
     const user = userEvent.setup();
-    render(<ColaboradoresFilters />);
+    render(<ColaboradoresFilters startTransition={(cb) => cb()} />);
 
-    await user.type(screen.getByPlaceholderText('Buscar por nome'), 'Bruna');
+    await user.type(screen.getByPlaceholderText('Nome'), 'Bruna');
     await new Promise((r) => setTimeout(r, 350));
 
     expect(push).toHaveBeenCalledWith('/colaboradores?busca=Bruna');

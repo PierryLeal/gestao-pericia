@@ -16,6 +16,14 @@ describe('formatPhone', () => {
   it('returns an empty string for empty input', () => {
     expect(formatPhone('')).toBe('');
   });
+
+  it('formats an 11-digit mobile number as (XX) XXXXX-XXXX', () => {
+    expect(formatPhone('31998651475')).toBe('(31) 99865-1475');
+  });
+
+  it('formats a 10-digit landline number as (XX) XXXX-XXXX', () => {
+    expect(formatPhone('3199861475')).toBe('(31) 9986-1475');
+  });
 });
 
 describe('formatCPF', () => {

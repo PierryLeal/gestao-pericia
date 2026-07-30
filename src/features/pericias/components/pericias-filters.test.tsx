@@ -26,7 +26,7 @@ describe('PericiasFilters', () => {
 
   it('does not push a navigation on mount when nothing changed', async () => {
     params = new URLSearchParams();
-    render(<PericiasFilters peritos={[]} colaboradores={[]} />);
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
     await new Promise((r) => setTimeout(r, 350));
 
@@ -36,9 +36,9 @@ describe('PericiasFilters', () => {
   it('pushes the new busca value after the user types and the debounce elapses', async () => {
     params = new URLSearchParams();
     const user = userEvent.setup();
-    render(<PericiasFilters peritos={[]} colaboradores={[]} />);
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
-    await user.type(screen.getByPlaceholderText('Buscar por número do processo'), 'P-1');
+    await user.type(screen.getByPlaceholderText('Número do processo'), 'P-1');
     await new Promise((r) => setTimeout(r, 350));
 
     expect(push).toHaveBeenCalledWith('/?busca=P-1');
@@ -47,7 +47,7 @@ describe('PericiasFilters', () => {
   it('pushes municipioId when a município is selected in the Local filter', async () => {
     params = new URLSearchParams();
     const user = userEvent.setup();
-    render(<PericiasFilters peritos={[]} colaboradores={[]} />);
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
     await user.click(screen.getByText('selecionar município'));
 
@@ -57,7 +57,7 @@ describe('PericiasFilters', () => {
   it('pushes peritoId when a perito is selected in the Perito filter', async () => {
     params = new URLSearchParams();
     const user = userEvent.setup();
-    render(<PericiasFilters peritos={[{ id: 1, nome: 'Carlos Lima' }]} colaboradores={[]} />);
+    render(<PericiasFilters peritos={[{ id: 1, nome: 'Carlos Lima' }]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
     await user.click(screen.getByRole('combobox', { name: /perito/i }));
     await user.click(await screen.findByText('Carlos Lima'));
@@ -68,7 +68,7 @@ describe('PericiasFilters', () => {
   it('pushes data when a date is picked', async () => {
     params = new URLSearchParams();
     const user = userEvent.setup();
-    render(<PericiasFilters peritos={[]} colaboradores={[]} />);
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
     await user.type(screen.getByLabelText('Data'), '2026-08-01');
 
@@ -80,7 +80,7 @@ describe('PericiasFilters', () => {
       'busca=P-1&situacao=Em+andamento&data=2026-08-01&municipioId=3550308&peritoId=1&colaboradorId=2'
     );
     const user = userEvent.setup();
-    render(<PericiasFilters peritos={[]} colaboradores={[]} />);
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
     await user.click(screen.getByRole('button', { name: /limpar filtros/i }));
 

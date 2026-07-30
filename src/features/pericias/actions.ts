@@ -6,7 +6,6 @@ import type { ActionResult } from '@/lib/action-result';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 import type { PericiaSituacao, PeritoRelacao, PeritoResultado } from '@/lib/supabase/database.types';
-import { postgrestQuoted } from '@/lib/postgrest';
 import { periciaSchema, situacaoOptions, type PericiaInput } from './schemas';
 
 export type PericiaListItem = {
@@ -62,7 +61,7 @@ export async function listPericias(
     query = query.eq('situacao', filters.situacao as PericiaSituacao);
   }
   if (filters.busca) {
-    query = query.filter('processo.numero', 'ilike', postgrestQuoted(`%${filters.busca}%`));
+    query = query.filter('processo.numero', 'ilike', `%${filters.busca}%`);
   }
   if (filters.data) {
     query = query.eq('data_agendada', filters.data);

@@ -62,6 +62,7 @@ describe('PericiasScreen', () => {
           itemsPromise={Promise.resolve(items)}
           peritos={[{ id: 1, nome: 'Carlos' }]}
           colaboradores={[]}
+          municipio={null}
           getPericiaForEdit={getPericiaForEdit}
         />
       );
@@ -86,6 +87,7 @@ describe('PericiasScreen', () => {
           itemsPromise={Promise.resolve(items)}
           peritos={[{ id: 1, nome: 'Carlos' }]}
           colaboradores={[]}
+          municipio={null}
           getPericiaForEdit={getPericiaForEdit}
         />
       );

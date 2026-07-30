@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
+import { matchesSearch } from '@/lib/search';
 import { colaboradorSchema, type ColaboradorInput } from './schemas';
 
 export type Colaborador = { id: number; nome: string; contato: string; formacao: string; interno: boolean };
@@ -14,13 +15,11 @@ function toRow(input: ColaboradorInput) {
 export async function listColaboradores(busca?: string): Promise<Colaborador[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let query = supabase.from('colaboradores').select('*');
-  if (busca?.trim()) {
-    query = query.ilike('nome', `%${busca}%`);
-  }
-  const { data, error } = await query.order('nome');
+  const { data, error } = await supabase.from('colaboradores').select('*').order('nome');
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const colaboradores = data ?? [];
+  if (!busca?.trim()) return colaboradores;
+  return colaboradores.filter((colaborador) => matchesSearch(colaborador.nome, busca));
 }
 
 export async function listColaboradoresOptions(): Promise<{ id: number; nome: string }[]> {

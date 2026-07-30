@@ -1,3 +1,5 @@
+import { matchesSearch } from '@/lib/search';
+
 export type MunicipioIBGE = {
   id: number;
   nome: string;
@@ -29,8 +31,7 @@ export async function searchMunicipios(query: string): Promise<MunicipioIBGE[]> 
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
   const all = await loadAll();
-  const normalized = trimmed.toLowerCase();
-  return all.filter((m) => m.nome.toLowerCase().includes(normalized)).slice(0, 20);
+  return all.filter((m) => matchesSearch(m.nome, trimmed)).slice(0, 20);
 }
 
 export function __resetMunicipioCache() {

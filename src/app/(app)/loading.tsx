@@ -13,8 +13,8 @@ export default function Loading() {
           Nova perícia
         </Button>
       </div>
-      <PericiasFilters peritos={[]} colaboradores={[]} />
-      <TableSkeleton columns={8} />
+      <PericiasFilters peritos={[]} colaboradores={[]} municipio={null} />
+      <TableSkeleton headers={['', 'Nº Processo', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', '']} />
     </div>
   );
 }

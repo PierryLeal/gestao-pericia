@@ -12,3 +12,15 @@ export async function upsertMunicipio(input: MunicipioInput): Promise<MunicipioI
   if (error) throw new Error(error.message);
   return parsed;
 }
+
+export async function getMunicipioById(id: number): Promise<MunicipioInput | null> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('municipios')
+    .select('id, nome, uf')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}

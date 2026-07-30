@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -12,8 +12,11 @@ import { ColaboradorForm } from './colaborador-form';
 import { ColaboradoresFilters } from './colaboradores-filters';
 import type { Colaborador } from '../actions';
 
+const COLABORADORES_HEADERS = ['Nome', 'Contato', 'Formação', 'Tipo', ''];
+
 export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Colaborador[]> }) {
   const router = useRouter();
+  const [isFiltering, startFilterTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Colaborador | null>(null);
 
@@ -42,10 +45,14 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
           Novo colaborador
         </Button>
       </div>
-      <ColaboradoresFilters />
-      <Suspense fallback={<TableSkeleton columns={5} />}>
-        <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
-      </Suspense>
+      <ColaboradoresFilters startTransition={startFilterTransition} />
+      {isFiltering ? (
+        <TableSkeleton headers={COLABORADORES_HEADERS} />
+      ) : (
+        <Suspense fallback={<TableSkeleton headers={COLABORADORES_HEADERS} />}>
+          <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+        </Suspense>
+      )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

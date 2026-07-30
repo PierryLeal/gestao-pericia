@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -12,8 +12,11 @@ import { PeritosFilters } from './peritos-filters';
 import { PeritoForm } from './perito-form';
 import type { Perito } from '../actions';
 
+const PERITOS_HEADERS = ['Nome', 'Contato', 'Formação', 'CREA', 'Relação', 'Resultados', ''];
+
 export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]> }) {
   const router = useRouter();
+  const [isFiltering, startFilterTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Perito | null>(null);
 
@@ -42,10 +45,14 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
           Novo perito
         </Button>
       </div>
-      <PeritosFilters />
-      <Suspense fallback={<TableSkeleton columns={7} />}>
-        <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
-      </Suspense>
+      <PeritosFilters startTransition={startFilterTransition} />
+      {isFiltering ? (
+        <TableSkeleton headers={PERITOS_HEADERS} />
+      ) : (
+        <Suspense fallback={<TableSkeleton headers={PERITOS_HEADERS} />}>
+          <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+        </Suspense>
+      )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

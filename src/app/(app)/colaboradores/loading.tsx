@@ -14,7 +14,7 @@ export default function Loading() {
         </Button>
       </div>
       <ColaboradoresFilters />
-      <TableSkeleton columns={5} />
+      <TableSkeleton headers={['Nome', 'Contato', 'Formação', 'Tipo', '']} />
     </div>
   );
 }
