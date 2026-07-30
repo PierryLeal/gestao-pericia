@@ -7,11 +7,14 @@ async function main() {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
   }
 
+  const email = process.env.ADMIN_EMAIL ?? 'admin@admin.com';
+  const password = process.env.ADMIN_PASSWORD ?? 'admin123';
+
   const supabase = createClient(url, serviceKey);
 
   const { data, error } = await supabase.auth.admin.createUser({
-    email: 'admin@admin.com',
-    password: 'admin123',
+    email,
+    password,
     email_confirm: true,
   });
   if (error) throw error;
