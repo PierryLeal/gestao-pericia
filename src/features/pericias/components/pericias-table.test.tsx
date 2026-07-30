@@ -38,6 +38,8 @@ describe('PericiasTable', () => {
     expect(screen.getByText(/Autor: Maria Souza/)).toBeInTheDocument();
     expect(screen.getByText(/Réu: João Pereira/)).toBeInTheDocument();
     expect(screen.getByText(/CREA: 123456/)).toBeInTheDocument();
+    expect(screen.getByText('Boa')).toBeInTheDocument();
+    expect(screen.getByText('Positivo')).toBeInTheDocument();
     expect(screen.getByText('Nenhum colaborador vinculado.')).toBeInTheDocument();
   });
 

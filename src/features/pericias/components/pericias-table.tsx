@@ -5,6 +5,8 @@ import { ChevronRight, Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { RelacaoBadge } from '@/components/shared/relacao-badge';
+import { ResultadoBadge } from '@/components/shared/resultado-badge';
 import { cn } from '@/lib/utils';
 import type { PericiaListItem } from '../actions';
 
@@ -100,8 +102,12 @@ export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onE
                         <p className="text-sm">
                           Contato: {item.perito.contato} · Formação: {item.perito.formacao} · CREA: {item.perito.crea}
                           <br />
-                          Já trabalhamos: {item.perito.jaTrabalhamos ? 'Sim' : 'Não'} · Relação: {item.perito.relacao}/10 · Resultados: {item.perito.resultados}/10
+                          Já trabalhamos: {item.perito.jaTrabalhamos ? 'Sim' : 'Não'}
                         </p>
+                        <div className="mt-1 flex gap-1.5">
+                          <RelacaoBadge relacao={item.perito.relacao} />
+                          <ResultadoBadge resultado={item.perito.resultados} />
+                        </div>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Colaborador</p>

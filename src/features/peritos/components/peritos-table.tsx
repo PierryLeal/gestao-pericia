@@ -4,6 +4,8 @@ import { use } from 'react';
 import { Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { RelacaoBadge } from '@/components/shared/relacao-badge';
+import { ResultadoBadge } from '@/components/shared/resultado-badge';
 import type { Perito } from '../actions';
 
 export function PeritosTableAsync({
@@ -42,8 +44,8 @@ export function PeritosTable({ items, onEdit }: { items: Perito[]; onEdit: (peri
             <TableCell>{item.contato}</TableCell>
             <TableCell>{item.formacao}</TableCell>
             <TableCell>{item.crea}</TableCell>
-            <TableCell>{item.relacao}/10</TableCell>
-            <TableCell>{item.resultados}/10</TableCell>
+            <TableCell><RelacaoBadge relacao={item.relacao} /></TableCell>
+            <TableCell><ResultadoBadge resultado={item.resultados} /></TableCell>
             <TableCell>
               <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(item)}>
                 <Pencil className="size-4" />
