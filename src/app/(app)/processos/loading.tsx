@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { ProcessosFilters } from '@/features/processos/components/processos-filters';
 
 export default function Loading() {
   return (
@@ -12,6 +13,7 @@ export default function Loading() {
           Novo processo
         </Button>
       </div>
+      <ProcessosFilters />
       <TableSkeleton columns={4} />
     </div>
   );

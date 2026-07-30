@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { ColaboradoresFilters } from '@/features/colaboradores/components/colaboradores-filters';
 
 export default function Loading() {
   return (
@@ -12,6 +13,7 @@ export default function Loading() {
           Novo colaborador
         </Button>
       </div>
+      <ColaboradoresFilters />
       <TableSkeleton columns={5} />
     </div>
   );
