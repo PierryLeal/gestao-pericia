@@ -77,9 +77,12 @@ export function Sidebar({ role }: { role: Role }) {
         collapsed ? 'w-16 items-center' : 'w-56'
       )}
     >
-      {!collapsed && (
-        <span className="mb-4 px-2 font-heading text-lg font-semibold">Gestão de Perícias</span>
-      )}
+      <div className={cn('mb-4 flex items-center gap-2 px-2', collapsed && 'justify-center px-0')}>
+        <img src="/logo-mark.png" alt="" className="size-8 shrink-0" />
+        {!collapsed && (
+          <span className="font-heading text-lg font-semibold">Gestão de Perícias</span>
+        )}
+      </div>
       {items.map((item) => (
         <NavLink
           key={item.href}

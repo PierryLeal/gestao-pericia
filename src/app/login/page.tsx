@@ -6,14 +6,20 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       <div className="hidden flex-1 flex-col justify-between bg-gradient-to-br from-[#0A1614] via-[#123330] to-[#1F5C52] p-12 lg:flex">
-        <span className="font-heading text-2xl font-semibold text-white">Gestão de Perícias</span>
+        <div className="flex items-center gap-3">
+          <img src="/logo-mark.png" alt="" className="size-10" />
+          <span className="font-heading text-2xl font-semibold text-white">Gestão de Perícias</span>
+        </div>
         <p className="max-w-sm text-sm text-white/70">
           Cadastro e acompanhamento de perícias, processos, peritos e colaboradores em um só lugar.
         </p>
       </div>
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="w-full max-w-sm space-y-6 rounded-lg border bg-card p-8 shadow-sm">
-          <h1 className="font-heading text-xl font-semibold lg:hidden">Gestão de Perícias</h1>
+          <div className="flex items-center gap-2 lg:hidden">
+            <img src="/logo-mark.png" alt="" className="size-8" />
+            <h1 className="font-heading text-xl font-semibold">Gestão de Perícias</h1>
+          </div>
           <form action={signInWithGoogle}>
             <Button type="submit" variant="outline" className="w-full">
               Entrar com Google
