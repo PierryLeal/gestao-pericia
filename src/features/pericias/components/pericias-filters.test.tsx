@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PericiasFilters } from './pericias-filters';
 
 const push = vi.fn();
@@ -20,6 +20,10 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
 }));
 
 describe('PericiasFilters', () => {
+  beforeEach(() => {
+    push.mockClear();
+  });
+
   it('does not push a navigation on mount when nothing changed', async () => {
     params = new URLSearchParams();
     render(<PericiasFilters peritos={[]} colaboradores={[]} />);
@@ -69,5 +73,22 @@ describe('PericiasFilters', () => {
     await user.type(screen.getByLabelText('Data'), '2026-08-01');
 
     expect(push).toHaveBeenCalledWith(expect.stringContaining('data=2026-08-01'));
+  });
+
+  it('clears data, municipioId, peritoId and colaboradorId when "Limpar filtros" is clicked', async () => {
+    params = new URLSearchParams(
+      'busca=P-1&situacao=Em+andamento&data=2026-08-01&municipioId=3550308&peritoId=1&colaboradorId=2'
+    );
+    const user = userEvent.setup();
+    render(<PericiasFilters peritos={[]} colaboradores={[]} />);
+
+    await user.click(screen.getByRole('button', { name: /limpar filtros/i }));
+
+    expect(push).toHaveBeenCalledTimes(1);
+    const pushedUrl = push.mock.calls[0][0] as string;
+    expect(pushedUrl).not.toContain('data=');
+    expect(pushedUrl).not.toContain('municipioId=');
+    expect(pushedUrl).not.toContain('peritoId=');
+    expect(pushedUrl).not.toContain('colaboradorId=');
   });
 });

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
 import { OptionCombobox } from '@/components/shared/option-combobox';
@@ -40,6 +41,15 @@ export function PericiasFilters({
   const municipioId = searchParams.get('municipioId');
   const peritoId = searchParams.get('peritoId');
   const colaboradorId = searchParams.get('colaboradorId');
+
+  function handleClearFilters() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('data');
+    params.delete('municipioId');
+    params.delete('peritoId');
+    params.delete('colaboradorId');
+    router.push(`/?${params.toString()}`);
+  }
 
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -94,6 +104,9 @@ export function PericiasFilters({
           placeholder="Colaborador"
         />
       </div>
+      <Button type="button" variant="outline" onClick={handleClearFilters}>
+        Limpar filtros
+      </Button>
     </div>
   );
 }
