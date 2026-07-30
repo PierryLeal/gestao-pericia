@@ -52,4 +52,32 @@ describe('PeritoForm', () => {
 
     expect(screen.getByLabelText('Documento')).toHaveValue('123.456.789-00');
   });
+
+  it('does not truncate an over-length existing contato value on mount', () => {
+    render(
+      <PeritoForm
+        perito={{
+          id: 1, nome: 'Carlos', contato: '5511999998888888', formacao: 'Eng.', crea: '123',
+          documento: '000', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+        }}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Contato')).toHaveValue('5511999998888888');
+  });
+
+  it('does not truncate an over-length existing documento value on mount', () => {
+    render(
+      <PeritoForm
+        perito={{
+          id: 1, nome: 'Carlos', contato: '11999998888', formacao: 'Eng.', crea: '123',
+          documento: '12345678901234', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+        }}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Documento')).toHaveValue('12345678901234');
+  });
 });

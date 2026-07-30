@@ -28,10 +28,18 @@ export function PeritoForm({
   onError: (message: string) => void;
 }) {
   const [nome, setNome] = useState(perito?.nome ?? '');
-  const [contato, setContato] = useState(formatPhone(perito?.contato ?? ''));
+  const [contato, setContato] = useState(
+    (perito?.contato ?? '').replace(/\D/g, '').length <= 11
+      ? formatPhone(perito?.contato ?? '')
+      : (perito?.contato ?? '')
+  );
   const [formacao, setFormacao] = useState(perito?.formacao ?? '');
   const [crea, setCrea] = useState(perito?.crea ?? '');
-  const [documento, setDocumento] = useState(formatCPF(perito?.documento ?? ''));
+  const [documento, setDocumento] = useState(
+    (perito?.documento ?? '').replace(/\D/g, '').length <= 11
+      ? formatCPF(perito?.documento ?? '')
+      : (perito?.documento ?? '')
+  );
   const [jaTrabalhamos, setJaTrabalhamos] = useState(perito?.jaTrabalhamos ?? false);
   const [relacao, setRelacao] = useState<PeritoInput['relacao']>(perito?.relacao ?? 'neutra');
   const [resultados, setResultados] = useState<PeritoInput['resultados']>(perito?.resultados ?? 'parcial');

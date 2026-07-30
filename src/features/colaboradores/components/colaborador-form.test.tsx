@@ -38,4 +38,15 @@ describe('ColaboradorForm', () => {
 
     expect(screen.getByLabelText('Contato')).toHaveValue('(11) 99999-8888');
   });
+
+  it('does not truncate an over-length existing contato value on mount', () => {
+    render(
+      <ColaboradorForm
+        colaborador={{ id: 1, nome: 'Bruna', contato: '5511999998888888', formacao: 'Direito', interno: false }}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Contato')).toHaveValue('5511999998888888');
+  });
 });

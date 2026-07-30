@@ -20,7 +20,11 @@ export function ColaboradorForm({
   onError: (message: string) => void;
 }) {
   const [nome, setNome] = useState(colaborador?.nome ?? '');
-  const [contato, setContato] = useState(formatPhone(colaborador?.contato ?? ''));
+  const [contato, setContato] = useState(
+    (colaborador?.contato ?? '').replace(/\D/g, '').length <= 11
+      ? formatPhone(colaborador?.contato ?? '')
+      : (colaborador?.contato ?? '')
+  );
   const [formacao, setFormacao] = useState(colaborador?.formacao ?? '');
   const [interno, setInterno] = useState(colaborador?.interno ?? true);
   const [saving, setSaving] = useState(false);
