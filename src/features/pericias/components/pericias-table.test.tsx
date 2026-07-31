@@ -20,6 +20,13 @@ const items: PericiaListItem[] = [
   },
 ];
 
+const itemSemData: PericiaListItem = {
+  ...items[0],
+  id: 2,
+  dataAgendada: null,
+  horaAgendada: null,
+};
+
 describe('PericiasTable', () => {
   it('renders the required columns without the detail row initially', () => {
     render(<PericiasTable items={items} onEdit={vi.fn()} />);
@@ -68,5 +75,10 @@ describe('PericiasTable', () => {
   it('shows a message when there are no items', () => {
     render(<PericiasTable items={[]} onEdit={vi.fn()} />);
     expect(screen.getByText('Nenhuma perícia encontrada.')).toBeInTheDocument();
+  });
+
+  it('shows "Não agendado" when dataAgendada and horaAgendada are both null', () => {
+    render(<PericiasTable items={[itemSemData]} onEdit={vi.fn()} />);
+    expect(screen.getByText('Não agendado')).toBeInTheDocument();
   });
 });

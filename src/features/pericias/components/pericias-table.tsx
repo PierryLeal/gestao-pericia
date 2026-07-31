@@ -66,10 +66,26 @@ export function PericiasTable({ items, onEdit }: { items: PericiaListItem[]; onE
                 </TableCell>
                 <TableCell>{item.processo.numero}</TableCell>
                 <TableCell>
-                  {new Date(`${item.dataAgendada}T${item.horaAgendada}`).toLocaleString('pt-BR', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })}
+                  {item.dataAgendada && item.horaAgendada ? (
+                    new Date(`${item.dataAgendada}T${item.horaAgendada}`).toLocaleString('pt-BR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })
+                  ) : item.dataAgendada ? (
+                    <>
+                      {new Date(`${item.dataAgendada}T00:00`).toLocaleDateString('pt-BR')}
+                      {' · '}
+                      <span className="text-muted-foreground">Hora não definida</span>
+                    </>
+                  ) : item.horaAgendada ? (
+                    <>
+                      <span className="text-muted-foreground">Data não definida</span>
+                      {' · '}
+                      {item.horaAgendada}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Não agendado</span>
+                  )}
                 </TableCell>
                 <TableCell>{item.municipio.nome}/{item.municipio.uf}</TableCell>
                 <TableCell>{item.perito.nome}</TableCell>
