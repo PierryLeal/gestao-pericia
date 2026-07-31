@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('../actions', () => ({
   createPericia: vi.fn(async () => ({ success: true, data: { id: 9 } })),
   updatePericia: vi.fn(async () => ({ success: true, data: { id: 1 } })),
+  deletePericia: vi.fn(async () => ({ success: true, data: null })),
 }));
 
 vi.mock('@/features/processos/components/processo-combobox', () => ({

@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createPericia, listPericias, updatePericia } from './actions';
+import { createPericia, listPericias, updatePericia, deletePericia } from './actions';
 
 const mockSingle = vi.fn();
 const mockSelect = vi.fn(() => ({ single: mockSingle }));
 const mockInsert = vi.fn(() => ({ select: mockSelect }));
 const mockEq = vi.fn(() => ({ error: null }));
 const mockUpdate = vi.fn(() => ({ eq: mockEq }));
+const mockDeleteEq = vi.fn();
+const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }));
 const mockOrder = vi.fn<(...args: unknown[]) => unknown>(() => undefined);
 
 // Captures every string passed to `.select()` on the `pericias` query
@@ -51,7 +53,7 @@ vi.mock('@/features/auth/guards', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    from: () => ({ insert: mockInsert, update: mockUpdate, ...periciasQueryBuilder() }),
+    from: () => ({ insert: mockInsert, update: mockUpdate, delete: mockDelete, ...periciasQueryBuilder() }),
   })),
 }));
 
@@ -104,6 +106,25 @@ describe('updatePericia', () => {
     const result = await updatePericia(10, validInput);
     expect(result).toEqual({ success: true, data: { id: 10 } });
     expect(mockUpdate).toHaveBeenCalled();
+  });
+});
+
+describe('deletePericia', () => {
+  beforeEach(() => {
+    mockDeleteEq.mockReset();
+    mockDeleteEq.mockReturnValue({ error: null });
+  });
+
+  it('deletes the pericia', async () => {
+    const result = await deletePericia(1);
+    expect(result).toEqual({ success: true, data: null });
+    expect(mockDeleteEq).toHaveBeenCalledWith('id', 1);
+  });
+
+  it('returns the raw message on a database error', async () => {
+    mockDeleteEq.mockReturnValue({ error: { message: 'boom' } });
+    const result = await deletePericia(1);
+    expect(result).toEqual({ success: false, error: 'boom' });
   });
 });
 

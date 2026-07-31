@@ -163,3 +163,11 @@ export async function getPericiaForEdit(
     municipio: row.municipio,
   };
 }
+
+export async function deletePericia(id: number): Promise<ActionResult<null>> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { error } = await supabase.from('pericias').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: null };
+}

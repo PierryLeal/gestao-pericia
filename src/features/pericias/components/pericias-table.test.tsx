@@ -29,7 +29,7 @@ const itemSemData: PericiaListItem = {
 
 describe('PericiasTable', () => {
   it('renders the required columns without the detail row initially', () => {
-    render(<PericiasTable items={items} onEdit={vi.fn()} />);
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('0001234-56.2026.8.26.0100')).toBeInTheDocument();
     expect(screen.getByText('São Paulo/SP')).toBeInTheDocument();
     expect(screen.getByText('Carlos Lima')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('PericiasTable', () => {
 
   it('expands the detail row with processo/perito/colaborador blocks when the chevron is clicked', async () => {
     const user = userEvent.setup();
-    render(<PericiasTable items={items} onEdit={vi.fn()} />);
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: /detalhes da perícia/i }));
 
@@ -52,7 +52,7 @@ describe('PericiasTable', () => {
 
   it('collapses the detail row when the chevron is clicked again', async () => {
     const user = userEvent.setup();
-    render(<PericiasTable items={items} onEdit={vi.fn()} />);
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
     const toggle = screen.getByRole('button', { name: /detalhes da perícia/i });
     await user.click(toggle);
@@ -65,7 +65,7 @@ describe('PericiasTable', () => {
   it('calls onEdit when the edit icon is clicked', async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
-    render(<PericiasTable items={items} onEdit={onEdit} />);
+    render(<PericiasTable items={items} onEdit={onEdit} onDelete={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: /editar perícia/i }));
 
@@ -73,12 +73,36 @@ describe('PericiasTable', () => {
   });
 
   it('shows a message when there are no items', () => {
-    render(<PericiasTable items={[]} onEdit={vi.fn()} />);
+    render(<PericiasTable items={[]} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Nenhuma perícia encontrada.')).toBeInTheDocument();
   });
 
   it('shows "Não agendado" when dataAgendada and horaAgendada are both null', () => {
-    render(<PericiasTable items={[itemSemData]} onEdit={vi.fn()} />);
+    render(<PericiasTable items={[itemSemData]} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Não agendado')).toBeInTheDocument();
+  });
+
+  it('opens a confirmation dialog and calls onDelete when confirmed', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn(async () => {});
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={onDelete} />);
+
+    await user.click(screen.getByRole('button', { name: /excluir perícia/i }));
+    expect(screen.getByText(/excluir a perícia do processo "0001234-56\.2026\.8\.26\.0100"/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Excluir' }));
+
+    expect(onDelete).toHaveBeenCalledWith(items[0]);
+  });
+
+  it('does not call onDelete when the confirmation is cancelled', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn(async () => {});
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={onDelete} />);
+
+    await user.click(screen.getByRole('button', { name: /excluir perícia/i }));
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(onDelete).not.toHaveBeenCalled();
   });
 });

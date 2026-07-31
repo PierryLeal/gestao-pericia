@@ -10,7 +10,7 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { PericiasTableAsync } from './pericias-table';
 import { PericiasFilters } from './pericias-filters';
 import { PericiaForm } from './pericia-form';
-import type { PericiaListItem } from '../actions';
+import { deletePericia, type PericiaListItem } from '../actions';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 import type { PericiaInput } from '../schemas';
@@ -63,6 +63,16 @@ export function PericiasScreen({
     router.refresh();
   }
 
+  async function handleDelete(item: PericiaListItem) {
+    const result = await deletePericia(item.id);
+    if (result.success) {
+      toast.success('Perícia excluída');
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -82,7 +92,7 @@ export function PericiasScreen({
         <TableSkeleton headers={PERICIAS_HEADERS} />
       ) : (
         <Suspense fallback={<TableSkeleton headers={PERICIAS_HEADERS} />}>
-          <PericiasTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+          <PericiasTableAsync itemsPromise={itemsPromise} onEdit={openEdit} onDelete={handleDelete} />
         </Suspense>
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
