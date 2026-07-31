@@ -30,6 +30,14 @@ function periciasQueryBuilder() {
       return builder;
     }),
     filter: vi.fn(() => builder),
+    gte: vi.fn((column: string, value: unknown) => {
+      periciasEqCalls.push([`gte:${column}`, value]);
+      return builder;
+    }),
+    lte: vi.fn((column: string, value: unknown) => {
+      periciasEqCalls.push([`lte:${column}`, value]);
+      return builder;
+    }),
     then: (resolve: (v: typeof periciasQueryResult) => void, reject?: (e: unknown) => void) =>
       Promise.resolve(periciasQueryResult).then(resolve, reject),
   };
@@ -173,9 +181,20 @@ describe('listPericias', () => {
     ]);
   });
 
-  it('filters by data when provided', async () => {
-    await listPericias({ data: '2026-08-01' });
-    expect(periciasEqCalls).toContainEqual(['data_agendada', '2026-08-01']);
+  it('filters by dataInicio using gte on data_agendada', async () => {
+    await listPericias({ dataInicio: '2026-08-01' });
+    expect(periciasEqCalls).toContainEqual(['gte:data_agendada', '2026-08-01']);
+  });
+
+  it('filters by dataFim using lte on data_agendada', async () => {
+    await listPericias({ dataFim: '2026-08-10' });
+    expect(periciasEqCalls).toContainEqual(['lte:data_agendada', '2026-08-10']);
+  });
+
+  it('filters an exact day when dataInicio equals dataFim', async () => {
+    await listPericias({ dataInicio: '2026-08-05', dataFim: '2026-08-05' });
+    expect(periciasEqCalls).toContainEqual(['gte:data_agendada', '2026-08-05']);
+    expect(periciasEqCalls).toContainEqual(['lte:data_agendada', '2026-08-05']);
   });
 
   it('filters by municipioId when provided', async () => {

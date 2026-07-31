@@ -8,15 +8,16 @@ export default async function PericiasPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    situacao?: string; busca?: string; data?: string;
+    situacao?: string; busca?: string; dataInicio?: string; dataFim?: string;
     municipioId?: string; peritoId?: string; colaboradorId?: string;
   }>;
 }) {
-  const { situacao, busca, data, municipioId, peritoId, colaboradorId } = await searchParams;
+  const { situacao, busca, dataInicio, dataFim, municipioId, peritoId, colaboradorId } = await searchParams;
   const itemsPromise = listPericias({
     situacao,
     busca,
-    data,
+    dataInicio,
+    dataFim,
     municipioId: municipioId ? Number(municipioId) : undefined,
     peritoId: peritoId ? Number(peritoId) : undefined,
     colaboradorId: colaboradorId ? Number(colaboradorId) : undefined,

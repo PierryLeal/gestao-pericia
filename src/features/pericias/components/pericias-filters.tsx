@@ -70,7 +70,8 @@ export function PericiasFilters({
   const hasActiveFilters = Boolean(
     searchParams.get('busca') ||
       searchParams.get('situacao') ||
-      searchParams.get('data') ||
+      searchParams.get('dataInicio') ||
+      searchParams.get('dataFim') ||
       municipioId ||
       peritoId ||
       colaboradorId
@@ -126,12 +127,20 @@ export function PericiasFilters({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="data-filtro">Data</Label>
-            <Input
-              id="data-filtro" type="date"
-              value={searchParams.get('data') ?? ''}
-              onChange={(e) => updateParam('data', e.target.value)}
-            />
+            <Label>Data</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                type="date" aria-label="Data inicial"
+                value={searchParams.get('dataInicio') ?? ''}
+                onChange={(e) => updateParam('dataInicio', e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input
+                type="date" aria-label="Data final"
+                value={searchParams.get('dataFim') ?? ''}
+                onChange={(e) => updateParam('dataFim', e.target.value)}
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Local</Label>

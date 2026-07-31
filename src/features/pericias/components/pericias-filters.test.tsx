@@ -65,19 +65,29 @@ describe('PericiasFilters', () => {
     expect(push).toHaveBeenCalledWith(expect.stringContaining('peritoId=1'));
   });
 
-  it('pushes data when a date is picked', async () => {
+  it('pushes dataInicio when the start date is picked', async () => {
     params = new URLSearchParams();
     const user = userEvent.setup();
     render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
-    await user.type(screen.getByLabelText('Data'), '2026-08-01');
+    await user.type(screen.getByLabelText('Data inicial'), '2026-08-01');
 
-    expect(push).toHaveBeenCalledWith(expect.stringContaining('data=2026-08-01'));
+    expect(push).toHaveBeenCalledWith(expect.stringContaining('dataInicio=2026-08-01'));
+  });
+
+  it('pushes dataFim when the end date is picked', async () => {
+    params = new URLSearchParams();
+    const user = userEvent.setup();
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
+
+    await user.type(screen.getByLabelText('Data final'), '2026-08-10');
+
+    expect(push).toHaveBeenCalledWith(expect.stringContaining('dataFim=2026-08-10'));
   });
 
   it('clears data, municipioId, peritoId and colaboradorId when "Limpar filtros" is clicked', async () => {
     params = new URLSearchParams(
-      'busca=P-1&situacao=Em+andamento&data=2026-08-01&municipioId=3550308&peritoId=1&colaboradorId=2'
+      'busca=P-1&situacao=Em+andamento&dataInicio=2026-08-01&dataFim=2026-08-05&municipioId=3550308&peritoId=1&colaboradorId=2'
     );
     const user = userEvent.setup();
     render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
@@ -86,7 +96,8 @@ describe('PericiasFilters', () => {
 
     expect(push).toHaveBeenCalledTimes(1);
     const pushedUrl = push.mock.calls[0][0] as string;
-    expect(pushedUrl).not.toContain('data=');
+    expect(pushedUrl).not.toContain('dataInicio=');
+    expect(pushedUrl).not.toContain('dataFim=');
     expect(pushedUrl).not.toContain('municipioId=');
     expect(pushedUrl).not.toContain('peritoId=');
     expect(pushedUrl).not.toContain('colaboradorId=');

@@ -36,7 +36,7 @@ function toRow(input: PericiaInput) {
 
 export async function listPericias(
   filters: {
-    situacao?: string; busca?: string; data?: string;
+    situacao?: string; busca?: string; dataInicio?: string; dataFim?: string;
     municipioId?: number; peritoId?: number; colaboradorId?: number;
   } = {}
 ): Promise<PericiaListItem[]> {
@@ -63,8 +63,11 @@ export async function listPericias(
   if (filters.busca) {
     query = query.filter('processo.numero', 'ilike', `%${filters.busca}%`);
   }
-  if (filters.data) {
-    query = query.eq('data_agendada', filters.data);
+  if (filters.dataInicio) {
+    query = query.gte('data_agendada', filters.dataInicio);
+  }
+  if (filters.dataFim) {
+    query = query.lte('data_agendada', filters.dataFim);
   }
   if (filters.municipioId) {
     query = query.eq('municipio_id', filters.municipioId);
