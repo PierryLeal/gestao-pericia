@@ -65,4 +65,10 @@ describe('resolveRedirect', () => {
   it('allows approved users on /redefinir-senha too', () => {
     expect(resolveRedirect({ path: '/redefinir-senha', isAuthenticated: true, role: 'admin' })).toBeNull();
   });
+
+  it('does not treat an unrelated path with the same prefix as the recovery bypass', () => {
+    expect(
+      resolveRedirect({ path: '/redefinir-senha-outra-coisa', isAuthenticated: false, role: null })
+    ).toBe('/login');
+  });
 });

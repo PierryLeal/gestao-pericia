@@ -25,13 +25,16 @@ export function CreateUserForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const result = await createUser({ nome, email, password, role });
-    setSaving(false);
-    if (!result.success) {
-      onError(result.error);
-      return;
+    try {
+      const result = await createUser({ nome, email, password, role });
+      if (!result.success) {
+        onError(result.error);
+        return;
+      }
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-    onSaved();
   }
 
   return (

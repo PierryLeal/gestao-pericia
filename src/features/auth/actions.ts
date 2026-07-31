@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import type { ActionResult } from '@/lib/action-result';
 
 const credentialsSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -45,8 +46,16 @@ export async function signInWithGoogle() {
 export async function requestPasswordReset(email: string): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/redefinir-senha`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/redefinir-senha`,
   });
+}
+
+export async function updateRecoveryPassword(password: string): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { success: false, error: error.message };
+  await supabase.auth.signOut();
+  return { success: true, data: null };
 }
 
 export async function signOut() {

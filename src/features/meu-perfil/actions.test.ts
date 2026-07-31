@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { updateOwnNome, updateOwnPassword } from './actions';
+import { requireRole } from '@/features/auth/guards';
 
 const mockRpc = vi.fn();
 const mockUpdateUser = vi.fn();
@@ -24,6 +25,7 @@ describe('updateOwnNome', () => {
     mockRpc.mockResolvedValue({ error: null });
     const result = await updateOwnNome('Novo Nome');
     expect(result).toEqual({ success: true, data: null });
+    expect(requireRole).toHaveBeenCalledWith(['admin', 'gerencia']);
     expect(mockRpc).toHaveBeenCalledWith('update_own_nome', { new_nome: 'Novo Nome' });
   });
 
@@ -47,6 +49,7 @@ describe('updateOwnPassword', () => {
     mockUpdateUser.mockResolvedValue({ error: null });
     const result = await updateOwnPassword('novaSenha123');
     expect(result).toEqual({ success: true, data: null });
+    expect(requireRole).toHaveBeenCalledWith(['admin', 'gerencia']);
     expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'novaSenha123' });
   });
 

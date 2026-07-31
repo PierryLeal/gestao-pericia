@@ -14,7 +14,7 @@ export function resolveRedirect({ path, isAuthenticated, role }: RouteGuardInput
   // their account already has (including 'pendente' or a missing profile).
   // This page must stay reachable regardless, or they can never actually
   // set the new password.
-  if (path.startsWith(RECOVERY_PATH)) return null;
+  if (path === RECOVERY_PATH || path.startsWith(`${RECOVERY_PATH}/`)) return null;
 
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 

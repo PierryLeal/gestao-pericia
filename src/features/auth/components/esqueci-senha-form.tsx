@@ -14,9 +14,12 @@ export function EsqueciSenhaForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPending(true);
-    await requestPasswordReset(email);
-    setPending(false);
-    setSent(true);
+    try {
+      await requestPasswordReset(email);
+      setSent(true);
+    } finally {
+      setPending(false);
+    }
   }
 
   if (sent) {

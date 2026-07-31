@@ -7,21 +7,29 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateOwnNome, updateOwnPassword } from '../actions';
 
+type FormMessage = { text: string; isError: boolean };
+
 export function MeuPerfilScreen({ profile }: { profile: CurrentProfile }) {
   const [nome, setNome] = useState(profile.nome);
   const [nomePending, startNomeTransition] = useTransition();
-  const [nomeMessage, setNomeMessage] = useState<string | null>(null);
+  const [nomeMessage, setNomeMessage] = useState<FormMessage | null>(null);
 
   const [password, setPassword] = useState('');
   const [passwordPending, startPasswordTransition] = useTransition();
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<FormMessage | null>(null);
 
   function handleNomeSubmit(e: React.FormEvent) {
     e.preventDefault();
     setNomeMessage(null);
     startNomeTransition(async () => {
-      const result = await updateOwnNome(nome);
-      setNomeMessage(result.success ? 'Nome atualizado' : result.error);
+      try {
+        const result = await updateOwnNome(nome);
+        setNomeMessage(
+          result.success ? { text: 'Nome atualizado', isError: false } : { text: result.error, isError: true }
+        );
+      } catch {
+        setNomeMessage({ text: 'Erro ao salvar nome', isError: true });
+      }
     });
   }
 
@@ -29,9 +37,15 @@ export function MeuPerfilScreen({ profile }: { profile: CurrentProfile }) {
     e.preventDefault();
     setPasswordMessage(null);
     startPasswordTransition(async () => {
-      const result = await updateOwnPassword(password);
-      setPasswordMessage(result.success ? 'Senha atualizada' : result.error);
-      if (result.success) setPassword('');
+      try {
+        const result = await updateOwnPassword(password);
+        setPasswordMessage(
+          result.success ? { text: 'Senha atualizada', isError: false } : { text: result.error, isError: true }
+        );
+        if (result.success) setPassword('');
+      } catch {
+        setPasswordMessage({ text: 'Erro ao salvar senha', isError: true });
+      }
     });
   }
 
@@ -43,7 +57,9 @@ export function MeuPerfilScreen({ profile }: { profile: CurrentProfile }) {
           <Label htmlFor="nome">Nome</Label>
           <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} />
         </div>
-        {nomeMessage && <p className="text-sm">{nomeMessage}</p>}
+        {nomeMessage && (
+          <p className={`text-sm ${nomeMessage.isError ? 'text-destructive' : ''}`}>{nomeMessage.text}</p>
+        )}
         <Button type="submit" disabled={nomePending}>
           {nomePending ? 'Salvando...' : 'Salvar nome'}
         </Button>
@@ -56,7 +72,9 @@ export function MeuPerfilScreen({ profile }: { profile: CurrentProfile }) {
             value={password} onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {passwordMessage && <p className="text-sm">{passwordMessage}</p>}
+        {passwordMessage && (
+          <p className={`text-sm ${passwordMessage.isError ? 'text-destructive' : ''}`}>{passwordMessage.text}</p>
+        )}
         <Button type="submit" disabled={passwordPending}>
           {passwordPending ? 'Salvando...' : 'Salvar senha'}
         </Button>

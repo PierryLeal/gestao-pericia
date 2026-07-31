@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createUser } from './actions';
+import { requireRole } from '@/features/auth/guards';
 
 const mockCreateAuthUser = vi.fn();
 const mockProfileUpdateEq = vi.fn();
@@ -32,6 +33,7 @@ describe('createUser', () => {
     const result = await createUser(validInput);
 
     expect(result).toEqual({ success: true, data: null });
+    expect(requireRole).toHaveBeenCalledWith(['admin']);
     expect(mockCreateAuthUser).toHaveBeenCalledWith({
       email: 'novo@x.com',
       password: 'senha123',

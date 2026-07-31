@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { updateRecoveryPassword } from '../actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,14 +16,16 @@ export function RedefinirSenhaForm() {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setPending(false);
-    if (updateError) {
-      setError(updateError.message);
-      return;
+    try {
+      const result = await updateRecoveryPassword(password);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setDone(true);
+    } finally {
+      setPending(false);
     }
-    setDone(true);
   }
 
   if (done) {
