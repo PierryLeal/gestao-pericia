@@ -45,12 +45,12 @@ export type Database = {
       };
       pericias: {
         Row: {
-          id: number; processo_id: number; data_agendada: string; hora_agendada: string;
+          id: number; processo_id: number; data_agendada: string | null; hora_agendada: string | null;
           municipio_id: number; perito_id: number; colaborador_id: number | null;
           situacao: PericiaSituacao; created_at: string;
         };
         Insert: {
-          processo_id: number; data_agendada: string; hora_agendada: string; municipio_id: number;
+          processo_id: number; data_agendada?: string | null; hora_agendada?: string | null; municipio_id: number;
           perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao;
         };
         Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
