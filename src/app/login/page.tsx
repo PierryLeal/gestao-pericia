@@ -2,7 +2,13 @@ import { signInWithGoogle } from '@/features/auth/actions';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { Button } from '@/components/ui/button';
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+
   return (
     <div className="flex min-h-screen">
       <div className="hidden flex-1 flex-col justify-between bg-gradient-to-br from-[#0A1614] via-[#123330] to-[#1F5C52] p-12 lg:flex">
@@ -20,6 +26,11 @@ export default function LoginPage() {
             <img src="/logo-mark.png" alt="" className="size-8" />
             <h1 className="font-heading text-xl font-semibold">Gestão de Perícias</h1>
           </div>
+          {error === 'auth' && (
+            <p className="text-sm text-destructive">
+              Não foi possível concluir o login com Google. Tente novamente.
+            </p>
+          )}
           <form action={signInWithGoogle}>
             <Button type="submit" variant="outline" className="w-full">
               Entrar com Google
