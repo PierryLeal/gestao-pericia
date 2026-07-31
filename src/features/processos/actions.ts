@@ -87,3 +87,16 @@ export async function updateProcesso(id: number, input: ProcessoInput): Promise<
   }
   return { success: true, data };
 }
+
+export async function deleteProcesso(id: number): Promise<ActionResult<null>> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { error } = await supabase.from('processos').delete().eq('id', id);
+  if (error) {
+    if (error.code === '23503') {
+      return { success: false, error: 'Não é possível excluir: há perícias vinculadas a este processo.' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data: null };
+}

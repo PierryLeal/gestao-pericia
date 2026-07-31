@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listProcessos, getProcesso, updateProcesso } from './actions';
+import { listProcessos, getProcesso, updateProcesso, deleteProcesso } from './actions';
 
 const mockSingle = vi.fn();
 const mockEq = vi.fn(() => ({ single: mockSingle }));
@@ -8,6 +8,8 @@ const mockOr = vi.fn(() => ({ order: mockOrder }));
 const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockEq, or: mockOr }));
 const mockUpdateEq = vi.fn(() => ({ select: () => ({ single: mockSingle }) }));
 const mockUpdate = vi.fn(() => ({ eq: mockUpdateEq }));
+const mockDeleteEq = vi.fn();
+const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }));
 
 vi.mock('@/features/auth/guards', () => ({
   requireRole: vi.fn(async () => ({ id: 'u1', nome: 'Ana', email: 'a@x.com', role: 'admin' })),
@@ -15,7 +17,7 @@ vi.mock('@/features/auth/guards', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    from: () => ({ select: mockSelect, update: mockUpdate }),
+    from: () => ({ select: mockSelect, update: mockUpdate, delete: mockDelete }),
   })),
 }));
 
@@ -85,5 +87,27 @@ describe('updateProcesso', () => {
     mockSingle.mockResolvedValue({ data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B' }, error: null });
     const result = await updateProcesso(1, { numero: 'P-2', autor: 'A', reu: 'B' });
     expect(result).toEqual({ success: true, data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B' } });
+  });
+});
+
+describe('deleteProcesso', () => {
+  beforeEach(() => {
+    mockDeleteEq.mockReset();
+    mockDeleteEq.mockReturnValue({ error: null });
+  });
+
+  it('deletes the processo', async () => {
+    const result = await deleteProcesso(1);
+    expect(result).toEqual({ success: true, data: null });
+    expect(mockDeleteEq).toHaveBeenCalledWith('id', 1);
+  });
+
+  it('returns a friendly error when the processo has linked pericias', async () => {
+    mockDeleteEq.mockReturnValue({ error: { code: '23503', message: 'foreign key violation' } });
+    const result = await deleteProcesso(1);
+    expect(result).toEqual({
+      success: false,
+      error: 'Não é possível excluir: há perícias vinculadas a este processo.',
+    });
   });
 });

@@ -18,6 +18,7 @@ vi.mock('../actions', () => ({
     success: true,
     data: { id, ...input },
   })),
+  deleteProcesso: vi.fn(),
 }));
 
 const items = [{ id: 1, numero: 'P-1', autor: 'Ana', reu: 'Bia' }];
