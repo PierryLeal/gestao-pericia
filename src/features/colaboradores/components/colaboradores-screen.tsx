@@ -10,7 +10,7 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { ColaboradoresTableAsync } from './colaboradores-table';
 import { ColaboradorForm } from './colaborador-form';
 import { ColaboradoresFilters } from './colaboradores-filters';
-import type { Colaborador } from '../actions';
+import { deleteColaborador, type Colaborador } from '../actions';
 
 const COLABORADORES_HEADERS = ['Nome', 'Contato', 'Formação', 'Tipo', ''];
 
@@ -36,6 +36,16 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
     router.refresh();
   }
 
+  async function handleDelete(colaborador: Colaborador) {
+    const result = await deleteColaborador(colaborador.id);
+    if (result.success) {
+      toast.success('Colaborador excluído');
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -50,7 +60,7 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
         <TableSkeleton headers={COLABORADORES_HEADERS} />
       ) : (
         <Suspense fallback={<TableSkeleton headers={COLABORADORES_HEADERS} />}>
-          <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+          <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} onDelete={handleDelete} />
         </Suspense>
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

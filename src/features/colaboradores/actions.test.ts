@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listColaboradores } from './actions';
+import { listColaboradores, deleteColaborador } from './actions';
 
 const mockOrder = vi.fn();
 const mockSelect = vi.fn(() => ({ order: mockOrder }));
+const mockDeleteEq = vi.fn();
+const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }));
 
 vi.mock('@/features/auth/guards', () => ({
   requireRole: vi.fn(async () => ({ id: 'u1', nome: 'Ana', email: 'a@x.com', role: 'admin' })),
@@ -10,7 +12,7 @@ vi.mock('@/features/auth/guards', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    from: () => ({ select: mockSelect }),
+    from: () => ({ select: mockSelect, delete: mockDelete }),
   })),
 }));
 
@@ -38,5 +40,24 @@ describe('listColaboradores', () => {
     mockOrder.mockResolvedValue({ data: rows, error: null });
     const result = await listColaboradores();
     expect(result).toEqual(rows);
+  });
+});
+
+describe('deleteColaborador', () => {
+  beforeEach(() => {
+    mockDeleteEq.mockReset();
+    mockDeleteEq.mockReturnValue({ error: null });
+  });
+
+  it('deletes the colaborador', async () => {
+    const result = await deleteColaborador(1);
+    expect(result).toEqual({ success: true, data: null });
+    expect(mockDeleteEq).toHaveBeenCalledWith('id', 1);
+  });
+
+  it('returns the raw message on any database error', async () => {
+    mockDeleteEq.mockReturnValue({ error: { code: '99999', message: 'boom' } });
+    const result = await deleteColaborador(1);
+    expect(result).toEqual({ success: false, error: 'boom' });
   });
 });

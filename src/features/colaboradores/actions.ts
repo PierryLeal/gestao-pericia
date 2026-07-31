@@ -61,3 +61,11 @@ export async function updateColaborador(
   if (error) return { success: false, error: error.message };
   return { success: true, data };
 }
+
+export async function deleteColaborador(id: number): Promise<ActionResult<null>> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { error } = await supabase.from('colaboradores').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: null };
+}
