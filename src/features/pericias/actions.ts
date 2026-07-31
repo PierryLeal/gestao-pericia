@@ -10,8 +10,8 @@ import { periciaSchema, situacaoOptions, type PericiaInput } from './schemas';
 
 export type PericiaListItem = {
   id: number;
-  dataAgendada: string;
-  horaAgendada: string;
+  dataAgendada: string | null;
+  horaAgendada: string | null;
   situacao: PericiaInput['situacao'];
   processo: { id: number; numero: string; autor: string; reu: string };
   municipio: { id: number; nome: string; uf: string };
@@ -51,7 +51,7 @@ export async function listPericias(
       perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
       colaborador:colaboradores ( id, nome, contato, formacao, interno )
     `)
-    .order('data_agendada', { ascending: false });
+    .order('data_agendada', { ascending: false, nullsFirst: false });
 
   if (filters.situacao && situacaoOptions.includes(filters.situacao as (typeof situacaoOptions)[number])) {
     // filters.situacao is a caller-supplied string (e.g. a URL search param); it is

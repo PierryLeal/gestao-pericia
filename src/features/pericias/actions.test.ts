@@ -6,6 +6,7 @@ const mockSelect = vi.fn(() => ({ single: mockSingle }));
 const mockInsert = vi.fn(() => ({ select: mockSelect }));
 const mockEq = vi.fn(() => ({ error: null }));
 const mockUpdate = vi.fn(() => ({ eq: mockEq }));
+const mockOrder = vi.fn<(...args: unknown[]) => unknown>(() => undefined);
 
 // Captures every string passed to `.select()` on the `pericias` query
 // builder, so tests can assert the embedded-resource join syntax actually
@@ -23,7 +24,7 @@ function periciasQueryBuilder() {
       periciasSelectCalls.push(arg);
       return builder;
     }),
-    order: vi.fn(() => builder),
+    order: mockOrder,
     eq: vi.fn((column: string, value: unknown) => {
       periciasEqCalls.push([column, value]);
       return builder;
@@ -32,6 +33,7 @@ function periciasQueryBuilder() {
     then: (resolve: (v: typeof periciasQueryResult) => void, reject?: (e: unknown) => void) =>
       Promise.resolve(periciasQueryResult).then(resolve, reject),
   };
+  mockOrder.mockImplementation(() => builder);
   return builder;
 }
 
@@ -59,6 +61,7 @@ beforeEach(() => {
   periciasSelectCalls.length = 0;
   periciasEqCalls.length = 0;
   periciasQueryResult = { data: [], error: null };
+  mockOrder.mockClear();
 });
 
 describe('createPericia', () => {
@@ -188,5 +191,11 @@ describe('listPericias', () => {
   it('filters by colaboradorId when provided', async () => {
     await listPericias({ colaboradorId: 3 });
     expect(periciasEqCalls).toContainEqual(['colaborador_id', 3]);
+  });
+
+  it('orders by data_agendada with nulls last', async () => {
+    periciasQueryResult = { data: [], error: null };
+    await listPericias();
+    expect(mockOrder).toHaveBeenCalledWith('data_agendada', { ascending: false, nullsFirst: false });
   });
 });

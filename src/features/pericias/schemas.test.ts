@@ -37,4 +37,17 @@ describe('periciaSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts null dataAgendada and horaAgendada', () => {
+    const result = periciaSchema.safeParse({
+      processoId: 1,
+      dataAgendada: null,
+      horaAgendada: null,
+      municipioId: 1,
+      peritoId: 1,
+      colaboradorId: null,
+      situacao: 'marcada',
+    });
+    expect(result.success).toBe(true);
+  });
 });
