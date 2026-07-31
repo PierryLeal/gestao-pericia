@@ -55,8 +55,8 @@ export function PericiaForm({
       municipioId: municipio.id,
       peritoId: Number(peritoId),
       colaboradorId: colaboradorId ? Number(colaboradorId) : null,
-      dataAgendada,
-      horaAgendada,
+      dataAgendada: dataAgendada || null,
+      horaAgendada: horaAgendada || null,
       situacao,
     };
     const result = pericia ? await updatePericia(pericia.id, input) : await createPericia(input);
@@ -105,9 +105,14 @@ export function PericiaForm({
 
       <div className="space-y-2">
         <Label htmlFor="colaborador">Colaborador (opcional)</Label>
-        <Select items={colaboradorItems} value={colaboradorId} onValueChange={(v) => setColaboradorId(v ?? '')}>
+        <Select
+          items={{ none: 'Nenhum', ...colaboradorItems }}
+          value={colaboradorId || 'none'}
+          onValueChange={(v) => setColaboradorId(!v || v === 'none' ? '' : v)}
+        >
           <SelectTrigger id="colaborador"><SelectValue placeholder="Selecione um colaborador" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">Nenhum</SelectItem>
             {colaboradores.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
             ))}

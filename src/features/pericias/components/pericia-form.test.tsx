@@ -52,4 +52,47 @@ describe('PericiaForm', () => {
 
     expect(onSaved).toHaveBeenCalledWith(5);
   });
+
+  it('lets the user clear a selected colaborador back to none', async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    render(
+      <PericiaForm
+        peritos={[{ id: 1, nome: 'Carlos' }]}
+        colaboradores={[{ id: 2, nome: 'Bruna' }]}
+        onSaved={onSaved}
+        onError={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
+    await user.click(await screen.findByText('Bruna'));
+
+    await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
+    await user.click(await screen.findByText('Nenhum'));
+
+    await user.click(screen.getByText('selecionar processo'));
+    await user.click(screen.getByText('selecionar município'));
+    await user.click(screen.getByRole('combobox', { name: /perito/i }));
+    await user.click(await screen.findByText('Carlos'));
+    await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+    expect(onSaved).toHaveBeenCalledWith(5);
+  });
+
+  it('saves successfully when dataAgendada and horaAgendada are left empty', async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    render(
+      <PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={onSaved} onError={vi.fn()} />
+    );
+
+    await user.click(screen.getByText('selecionar processo'));
+    await user.click(screen.getByText('selecionar município'));
+    await user.click(screen.getByRole('combobox', { name: /perito/i }));
+    await user.click(await screen.findByText('Carlos'));
+    await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+    expect(onSaved).toHaveBeenCalledWith(5);
+  });
 });
