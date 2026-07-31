@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ClipboardList, Folder, UserCheck, Users, ShieldCheck,
+  ClipboardList, Folder, UserCheck, Users, ShieldCheck, UserCog,
   PanelLeftClose, PanelLeftOpen, LogOut, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ export const NAV_ITEMS: { href: string; label: string; roles: Role[]; icon: Luci
   { href: '/peritos', label: 'Peritos', roles: ['admin', 'gerencia'], icon: UserCheck },
   { href: '/colaboradores', label: 'Colaboradores', roles: ['admin', 'gerencia'], icon: Users },
   { href: '/perfis', label: 'Perfis', roles: ['admin'], icon: ShieldCheck },
+  { href: '/meu-perfil', label: 'Meu perfil', roles: ['admin', 'gerencia'], icon: UserCog },
 ];
 
 const STORAGE_KEY = 'sidebar-collapsed';
