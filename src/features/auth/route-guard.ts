@@ -6,9 +6,16 @@ export type RouteGuardInput = {
   role: Role | null;
 };
 
-const PUBLIC_PATHS = ['/login', '/auth/callback'];
+const PUBLIC_PATHS = ['/login', '/auth/callback', '/esqueci-senha'];
+const RECOVERY_PATH = '/redefinir-senha';
 
 export function resolveRedirect({ path, isAuthenticated, role }: RouteGuardInput): string | null {
+  // The Supabase recovery link authenticates the user with whatever role
+  // their account already has (including 'pendente' or a missing profile).
+  // This page must stay reachable regardless, or they can never actually
+  // set the new password.
+  if (path.startsWith(RECOVERY_PATH)) return null;
+
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
   if (!isAuthenticated) {

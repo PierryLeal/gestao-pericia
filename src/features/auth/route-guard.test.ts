@@ -45,4 +45,24 @@ describe('resolveRedirect', () => {
   it('allows approved users on ordinary pages', () => {
     expect(resolveRedirect({ path: '/peritos', isAuthenticated: true, role: 'gerencia' })).toBeNull();
   });
+
+  it('allows unauthenticated users on /esqueci-senha', () => {
+    expect(resolveRedirect({ path: '/esqueci-senha', isAuthenticated: false, role: null })).toBeNull();
+  });
+
+  it('allows unauthenticated users on /redefinir-senha', () => {
+    expect(resolveRedirect({ path: '/redefinir-senha', isAuthenticated: false, role: null })).toBeNull();
+  });
+
+  it('allows authenticated pendente users on /redefinir-senha (recovery must always be reachable)', () => {
+    expect(resolveRedirect({ path: '/redefinir-senha', isAuthenticated: true, role: 'pendente' })).toBeNull();
+  });
+
+  it('allows authenticated users with a missing role on /redefinir-senha', () => {
+    expect(resolveRedirect({ path: '/redefinir-senha', isAuthenticated: true, role: null })).toBeNull();
+  });
+
+  it('allows approved users on /redefinir-senha too', () => {
+    expect(resolveRedirect({ path: '/redefinir-senha', isAuthenticated: true, role: 'admin' })).toBeNull();
+  });
 });
