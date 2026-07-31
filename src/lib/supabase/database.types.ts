@@ -87,6 +87,8 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      update_own_nome: { Args: { new_nome: string }; Returns: void };
+    };
   };
 };
