@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('../actions', () => ({
   createColaborador: vi.fn(async (input: unknown) => ({ success: true, data: { id: 9, ...(input as object) } })),
   updateColaborador: vi.fn(async (id: number, input: unknown) => ({ success: true, data: { id, ...(input as object) } })),
+  deleteColaborador: vi.fn(async () => ({ success: true, data: null })),
 }));
 
 const items = [{ id: 1, nome: 'Bruna', contato: '', formacao: '', interno: true }];
