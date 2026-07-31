@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('../actions', () => ({
   createPerito: vi.fn(async (input: unknown) => ({ success: true, data: { id: 9, ...(input as object) } })),
   updatePerito: vi.fn(async (id: number, input: unknown) => ({ success: true, data: { id, ...(input as object) } })),
+  deletePerito: vi.fn(),
 }));
 
 const items = [{

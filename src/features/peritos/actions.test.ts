@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listPeritos } from './actions';
+import { listPeritos, deletePerito } from './actions';
 
 const mockOrder = vi.fn();
 const mockSelect = vi.fn(() => ({ order: mockOrder }));
+const mockDeleteEq = vi.fn();
+const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }));
 
 vi.mock('@/features/auth/guards', () => ({
   requireRole: vi.fn(async () => ({ id: 'u1', nome: 'Ana', email: 'a@x.com', role: 'admin' })),
@@ -10,7 +12,7 @@ vi.mock('@/features/auth/guards', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    from: () => ({ select: mockSelect }),
+    from: () => ({ select: mockSelect, delete: mockDelete }),
   })),
 }));
 
@@ -44,5 +46,34 @@ describe('listPeritos', () => {
     mockOrder.mockResolvedValue({ data: rows, error: null });
     const result = await listPeritos();
     expect(result.map((p) => p.id)).toEqual([1, 2]);
+  });
+});
+
+describe('deletePerito', () => {
+  beforeEach(() => {
+    mockDeleteEq.mockReset();
+    mockDeleteEq.mockReturnValue({ error: null });
+  });
+
+  it('deletes the perito', async () => {
+    const result = await deletePerito(1);
+    expect(result).toEqual({ success: true, data: null });
+    expect(mockDelete).toHaveBeenCalled();
+    expect(mockDeleteEq).toHaveBeenCalledWith('id', 1);
+  });
+
+  it('returns a friendly error when the perito has linked pericias', async () => {
+    mockDeleteEq.mockReturnValue({ error: { code: '23503', message: 'foreign key violation' } });
+    const result = await deletePerito(1);
+    expect(result).toEqual({
+      success: false,
+      error: 'Não é possível excluir: há perícias vinculadas a este perito.',
+    });
+  });
+
+  it('returns the raw message for any other error', async () => {
+    mockDeleteEq.mockReturnValue({ error: { code: '99999', message: 'boom' } });
+    const result = await deletePerito(1);
+    expect(result).toEqual({ success: false, error: 'boom' });
   });
 });

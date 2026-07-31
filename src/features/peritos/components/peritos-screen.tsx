@@ -10,7 +10,7 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { PeritosTableAsync } from './peritos-table';
 import { PeritosFilters } from './peritos-filters';
 import { PeritoForm } from './perito-form';
-import type { Perito } from '../actions';
+import { deletePerito, type Perito } from '../actions';
 
 const PERITOS_HEADERS = ['Nome', 'Contato', 'Formação', 'CREA', 'Relação', 'Resultados', ''];
 
@@ -36,6 +36,16 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
     router.refresh();
   }
 
+  async function handleDelete(perito: Perito) {
+    const result = await deletePerito(perito.id);
+    if (result.success) {
+      toast.success('Perito excluído');
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -50,7 +60,7 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
         <TableSkeleton headers={PERITOS_HEADERS} />
       ) : (
         <Suspense fallback={<TableSkeleton headers={PERITOS_HEADERS} />}>
-          <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} />
+          <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} onDelete={handleDelete} />
         </Suspense>
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

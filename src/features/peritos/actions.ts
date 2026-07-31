@@ -77,3 +77,16 @@ export async function updatePerito(id: number, input: PeritoInput): Promise<Acti
   if (error) return { success: false, error: error.message };
   return { success: true, data: fromRow(data) };
 }
+
+export async function deletePerito(id: number): Promise<ActionResult<null>> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { error } = await supabase.from('peritos').delete().eq('id', id);
+  if (error) {
+    if (error.code === '23503') {
+      return { success: false, error: 'Não é possível excluir: há perícias vinculadas a este perito.' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data: null };
+}
