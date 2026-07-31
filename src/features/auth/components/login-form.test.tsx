@@ -18,4 +18,9 @@ describe('LoginForm', () => {
 
     expect(await screen.findByText('E-mail ou senha inválidos')).toBeInTheDocument();
   });
+
+  it('links to the esqueci-senha page', () => {
+    render(<LoginForm />);
+    expect(screen.getByRole('link', { name: /esqueci minha senha/i })).toHaveAttribute('href', '/esqueci-senha');
+  });
 });
