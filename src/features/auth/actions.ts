@@ -42,6 +42,13 @@ export async function signInWithGoogle() {
   redirect(data.url);
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/redefinir-senha`,
+  });
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
