@@ -45,9 +45,12 @@ export function PericiasTable({
   async function handleConfirmDelete() {
     if (!confirmTarget) return;
     setDeleting(true);
-    await onDelete(confirmTarget);
-    setDeleting(false);
-    setConfirmTarget(null);
+    try {
+      await onDelete(confirmTarget);
+    } finally {
+      setDeleting(false);
+      setConfirmTarget(null);
+    }
   }
 
   function toggle(id: number) {
@@ -71,7 +74,7 @@ export function PericiasTable({
             <TableHead>Perito</TableHead>
             <TableHead>Colaborador</TableHead>
             <TableHead>Situação</TableHead>
-            <TableHead className="w-12" />
+            <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -40,9 +40,12 @@ export function ColaboradoresTable({
   async function handleConfirmDelete() {
     if (!confirmTarget) return;
     setDeleting(true);
-    await onDelete(confirmTarget);
-    setDeleting(false);
-    setConfirmTarget(null);
+    try {
+      await onDelete(confirmTarget);
+    } finally {
+      setDeleting(false);
+      setConfirmTarget(null);
+    }
   }
 
   return (
