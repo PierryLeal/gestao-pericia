@@ -10,6 +10,7 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { PericiasTableAsync } from './pericias-table';
 import { PericiasFilters } from './pericias-filters';
 import { PericiaForm } from './pericia-form';
+import { ExportPericiasButton } from './export-pericias-button';
 import { deletePericia, type PericiaListItem } from '../actions';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
@@ -77,10 +78,13 @@ export function PericiasScreen({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Perícias</h1>
-        <Button type="button" onClick={openCreate} disabled={loadingEdit}>
-          <Plus className="size-4" />
-          Nova perícia
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportPericiasButton />
+          <Button type="button" onClick={openCreate} disabled={loadingEdit}>
+            <Plus className="size-4" />
+            Nova perícia
+          </Button>
+        </div>
       </div>
       <PericiasFilters
         peritos={peritos}
