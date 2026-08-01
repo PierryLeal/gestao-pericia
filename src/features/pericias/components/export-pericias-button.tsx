@@ -48,27 +48,27 @@ export function ExportPericiasButton() {
       const worksheet = workbook.addWorksheet('Perícias');
       worksheet.columns = [
         { header: 'Nº Processo', key: 'numero', width: 20 },
+        { header: 'Autor', key: 'autor', width: 22 },
+        { header: 'Réu', key: 'reu', width: 22 },
         { header: 'Data', key: 'data', width: 14 },
         { header: 'Hora', key: 'hora', width: 10 },
         { header: 'Local', key: 'local', width: 22 },
         { header: 'Perito', key: 'perito', width: 22 },
         { header: 'Colaborador', key: 'colaborador', width: 22 },
         { header: 'Situação', key: 'situacao', width: 14 },
-        { header: 'Autor', key: 'autor', width: 22 },
-        { header: 'Réu', key: 'reu', width: 22 },
       ];
       worksheet.getRow(1).font = { bold: true };
       worksheet.addRows(
         items.map((item) => ({
           numero: item.processo.numero,
+          autor: item.processo.autor,
+          reu: item.processo.reu,
           data: item.dataAgendada ? new Date(item.dataAgendada) : '',
           hora: item.horaAgendada ?? '',
           local: `${item.municipio.nome}/${item.municipio.uf}`,
           perito: item.perito.nome,
           colaborador: item.colaborador?.nome ?? '',
           situacao: SITUACAO_LABELS[item.situacao] ?? item.situacao,
-          autor: item.processo.autor,
-          reu: item.processo.reu,
         }))
       );
 

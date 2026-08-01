@@ -120,19 +120,19 @@ describe('ExportPericiasButton', () => {
     expect(mockAddWorksheet).toHaveBeenCalledWith('Perícias');
     const worksheet = mockAddWorksheet.mock.results[0].value;
     expect(worksheet.columns.map((c: { header: string }) => c.header)).toEqual([
-      'Nº Processo', 'Data', 'Hora', 'Local', 'Perito', 'Colaborador', 'Situação', 'Autor', 'Réu',
+      'Nº Processo', 'Autor', 'Réu', 'Data', 'Hora', 'Local', 'Perito', 'Colaborador', 'Situação',
     ]);
     expect(mockAddRows).toHaveBeenCalledWith([
       {
         numero: '0001234-56.2026',
+        autor: 'Autor X',
+        reu: 'Réu Y',
         data: new Date('2026-09-16'),
         hora: '10:00',
         local: 'Belo Horizonte/MG',
         perito: 'Cleber',
         colaborador: '',
         situacao: 'Pendente',
-        autor: 'Autor X',
-        reu: 'Réu Y',
       },
     ]);
     expect(window.URL.createObjectURL).toHaveBeenCalled();
