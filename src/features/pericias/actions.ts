@@ -171,3 +171,24 @@ export async function deletePericia(id: number): Promise<ActionResult<null>> {
   if (error) return { success: false, error: error.message };
   return { success: true, data: null };
 }
+
+export async function getColaboradoresIndisponiveis(
+  dataAgendada: string,
+  horaAgendada: string,
+  excludePericiaId?: number
+): Promise<number[]> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  let query = supabase
+    .from('pericias')
+    .select('colaborador_id')
+    .eq('data_agendada', dataAgendada)
+    .eq('hora_agendada', horaAgendada)
+    .not('colaborador_id', 'is', null);
+  if (excludePericiaId) {
+    query = query.neq('id', excludePericiaId);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => row.colaborador_id as number);
+}

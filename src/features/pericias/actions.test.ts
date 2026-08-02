@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createPericia, listPericias, updatePericia, deletePericia } from './actions';
+import { createPericia, listPericias, updatePericia, deletePericia, getColaboradoresIndisponiveis } from './actions';
 
 const mockSingle = vi.fn();
 const mockSelect = vi.fn(() => ({ single: mockSingle }));
@@ -38,6 +38,14 @@ function periciasQueryBuilder() {
     }),
     lte: vi.fn((column: string, value: unknown) => {
       periciasEqCalls.push([`lte:${column}`, value]);
+      return builder;
+    }),
+    not: vi.fn((column: string, operator: string, value: unknown) => {
+      periciasEqCalls.push([`not:${column}:${operator}`, value]);
+      return builder;
+    }),
+    neq: vi.fn((column: string, value: unknown) => {
+      periciasEqCalls.push([`neq:${column}`, value]);
       return builder;
     }),
     then: (resolve: (v: typeof periciasQueryResult) => void, reject?: (e: unknown) => void) =>
@@ -237,5 +245,42 @@ describe('listPericias', () => {
     periciasQueryResult = { data: [], error: null };
     await listPericias();
     expect(mockOrder).toHaveBeenCalledWith('data_agendada', { ascending: false, nullsFirst: false });
+  });
+});
+
+describe('getColaboradoresIndisponiveis', () => {
+  it('returns the colaborador ids already booked at that exact date and time', async () => {
+    periciasQueryResult = { data: [{ colaborador_id: 2 }, { colaborador_id: 5 }], error: null };
+
+    const result = await getColaboradoresIndisponiveis('2026-08-10', '14:00');
+
+    expect(result).toEqual([2, 5]);
+    expect(periciasEqCalls).toContainEqual(['data_agendada', '2026-08-10']);
+    expect(periciasEqCalls).toContainEqual(['hora_agendada', '14:00']);
+    expect(periciasEqCalls).toContainEqual(['not:colaborador_id:is', null]);
+  });
+
+  it('excludes the given pericia id when editing', async () => {
+    periciasQueryResult = { data: [], error: null };
+
+    await getColaboradoresIndisponiveis('2026-08-10', '14:00', 7);
+
+    expect(periciasEqCalls).toContainEqual(['neq:id', 7]);
+  });
+
+  it('does not filter by id when no exclude id is given', async () => {
+    periciasQueryResult = { data: [], error: null };
+
+    await getColaboradoresIndisponiveis('2026-08-10', '14:00');
+
+    expect(periciasEqCalls.some(([col]) => col === 'neq:id')).toBe(false);
+  });
+
+  it('returns an empty array when nobody is booked', async () => {
+    periciasQueryResult = { data: [], error: null };
+
+    const result = await getColaboradoresIndisponiveis('2026-08-10', '14:00');
+
+    expect(result).toEqual([]);
   });
 });
