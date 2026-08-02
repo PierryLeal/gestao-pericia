@@ -4,7 +4,7 @@ import { createPericia, listPericias, updatePericia, deletePericia, getColaborad
 const mockSingle = vi.fn();
 const mockSelect = vi.fn(() => ({ single: mockSingle }));
 const mockInsert = vi.fn(() => ({ select: mockSelect }));
-const mockEq = vi.fn(() => ({ error: null }));
+const mockEq = vi.fn<() => { error: { code: string; message: string } | null }>(() => ({ error: null }));
 const mockUpdate = vi.fn(() => ({ eq: mockEq }));
 const mockDeleteEq = vi.fn();
 const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }));
@@ -107,6 +107,18 @@ describe('createPericia', () => {
       situacao: 'marcada',
     });
   });
+
+  it('returns a friendly error when the colaborador is already booked at that date/time', async () => {
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: { code: '23505', message: 'duplicate key value violates unique constraint "pericias_colaborador_unico_por_horario"' },
+    });
+    const result = await createPericia(validInput);
+    expect(result).toEqual({
+      success: false,
+      error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
+    });
+  });
 });
 
 describe('updatePericia', () => {
@@ -114,6 +126,17 @@ describe('updatePericia', () => {
     const result = await updatePericia(10, validInput);
     expect(result).toEqual({ success: true, data: { id: 10 } });
     expect(mockUpdate).toHaveBeenCalled();
+  });
+
+  it('returns a friendly error when the colaborador is already booked at that date/time', async () => {
+    mockEq.mockReturnValueOnce({
+      error: { code: '23505', message: 'duplicate key value violates unique constraint "pericias_colaborador_unico_por_horario"' },
+    });
+    const result = await updatePericia(10, validInput);
+    expect(result).toEqual({
+      success: false,
+      error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
+    });
   });
 });
 

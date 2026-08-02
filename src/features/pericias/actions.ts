@@ -117,7 +117,12 @@ export async function createPericia(input: PericiaInput): Promise<ActionResult<{
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
   const supabase = await createClient();
   const { data, error } = await supabase.from('pericias').insert(toRow(parsed.data)).select('id').single();
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.' };
+    }
+    return { success: false, error: error.message };
+  }
   return { success: true, data };
 }
 
@@ -130,7 +135,12 @@ export async function updatePericia(
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
   const supabase = await createClient();
   const { error } = await supabase.from('pericias').update(toRow(parsed.data)).eq('id', id);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.' };
+    }
+    return { success: false, error: error.message };
+  }
   return { success: true, data: { id } };
 }
 
