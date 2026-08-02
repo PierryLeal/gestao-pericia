@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProcessoCombobox } from '@/features/processos/components/processo-combobox';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
-import { createPericia, updatePericia } from '../actions';
+import { createPericia, updatePericia, getColaboradoresIndisponiveis } from '../actions';
 import { situacaoOptions, type PericiaInput } from '../schemas';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
@@ -39,6 +39,20 @@ export function PericiaForm({
   const [horaAgendada, setHoraAgendada] = useState(pericia?.horaAgendada ?? '');
   const [situacao, setSituacao] = useState<PericiaInput['situacao']>(pericia?.situacao ?? 'pendente');
   const [saving, setSaving] = useState(false);
+  const [busyColaboradorIds, setBusyColaboradorIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!dataAgendada || !horaAgendada) {
+      setBusyColaboradorIds([]);
+      return;
+    }
+    const handle = setTimeout(() => {
+      getColaboradoresIndisponiveis(dataAgendada, horaAgendada, pericia?.id).then(setBusyColaboradorIds);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [dataAgendada, horaAgendada, pericia?.id]);
+
+  const colaboradorConflict = colaboradorId !== '' && busyColaboradorIds.includes(Number(colaboradorId));
 
   const peritoItems = Object.fromEntries(peritos.map((p) => [String(p.id), p.nome]));
   const colaboradorItems = Object.fromEntries(colaboradores.map((c) => [String(c.id), c.nome]));
@@ -47,6 +61,10 @@ export function PericiaForm({
     e.preventDefault();
     if (!processo || !municipio || !peritoId) {
       onError('Preencha processo, município e perito.');
+      return;
+    }
+    if (colaboradorConflict) {
+      onError('Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.');
       return;
     }
     setSaving(true);
@@ -114,10 +132,21 @@ export function PericiaForm({
           <SelectContent>
             <SelectItem value="none">Nenhum</SelectItem>
             {colaboradores.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
+              <SelectItem
+                key={c.id}
+                value={String(c.id)}
+                className={busyColaboradorIds.includes(c.id) ? 'opacity-40' : undefined}
+              >
+                {c.nome}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {colaboradorConflict && (
+          <p className="text-sm text-destructive">
+            Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -132,7 +161,7 @@ export function PericiaForm({
         </Select>
       </div>
 
-      <Button type="submit" disabled={saving} className="w-full">
+      <Button type="submit" disabled={saving || colaboradorConflict} className="w-full">
         {saving && <Loader2 className="size-4 animate-spin" />}
         {saving ? 'Salvando...' : 'Salvar perícia'}
       </Button>
