@@ -268,6 +268,34 @@ describe('CalendarioScreen', () => {
     });
   });
 
+  it('reduces both the calendar events and the não-agendadas list when a filter is applied', async () => {
+    const other: PericiaListItem = {
+      ...scheduled,
+      id: 2,
+      dataAgendada: null,
+      horaAgendada: null,
+      perito: { ...scheduled.perito, id: 8, nome: 'Outro Perito' },
+    };
+    const user = userEvent.setup();
+    render(
+      <CalendarioScreen
+        items={[scheduled, other]}
+        peritos={[{ id: 7, nome: 'Cleber' }, { id: 8, nome: 'Outro Perito' }]}
+        colaboradores={[]}
+        getPericiaForEdit={vi.fn()}
+      />
+    );
+
+    expect(captured.props?.events).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /Outro Perito/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: /perito/i }));
+    await user.click(await screen.findByRole('option', { name: 'Cleber' }));
+
+    expect(captured.props?.events).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /Outro Perito/ })).not.toBeInTheDocument();
+  });
+
   it('offers month/week/day view buttons in the header toolbar', () => {
     render(
       <CalendarioScreen items={[scheduled]} peritos={[]} colaboradores={[]} getPericiaForEdit={vi.fn()} />

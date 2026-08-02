@@ -9,6 +9,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PericiaForm } from './pericia-form';
+import { CalendarioFilters, type CalendarioFiltersValue } from './calendario-filters';
 import { getColaboradoresIndisponiveis, updatePericia } from '../actions';
 import type { PericiaListItem } from '../actions';
 import type { Processo } from '@/features/processos/actions';
@@ -32,7 +33,15 @@ export function CalendarioScreen({
   getPericiaForEdit: (id: number) => Promise<EditingPericia | null>;
 }) {
   const router = useRouter();
-  const { events, unscheduled } = splitAgendadasNaoAgendadas(items);
+  const [filters, setFilters] = useState<CalendarioFiltersValue>({});
+  const filteredItems = items.filter((item) => {
+    if (filters.situacao && item.situacao !== filters.situacao) return false;
+    if (filters.busca && !item.processo.numero.toLowerCase().includes(filters.busca.toLowerCase())) return false;
+    if (filters.peritoId && item.perito.id !== filters.peritoId) return false;
+    if (filters.colaboradorId && item.colaborador?.id !== filters.colaboradorId) return false;
+    return true;
+  });
+  const { events, unscheduled } = splitAgendadasNaoAgendadas(filteredItems);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EditingPericia | null>(null);
   const unscheduledContainerRef = useRef<HTMLDivElement>(null);
@@ -105,6 +114,7 @@ export function CalendarioScreen({
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Calendário</h1>
+      <CalendarioFilters peritos={peritos} colaboradores={colaboradores} onChange={setFilters} />
       <div className="flex gap-4">
         <div className="w-64 shrink-0 space-y-2">
           <h2 className="text-sm font-medium text-muted-foreground">Não agendadas</h2>
