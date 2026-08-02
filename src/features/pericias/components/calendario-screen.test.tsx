@@ -8,6 +8,7 @@ type CapturedProps = {
   events?: unknown[];
   initialView?: string;
   plugins?: unknown[];
+  headerToolbar?: { left: string; center: string; right: string };
   eventDrop?: (info: { event: { id: string; start: Date }; revert: () => void }) => void | Promise<void>;
   eventReceive?: (info: { event: { id: string; start: Date }; revert: () => void }) => void | Promise<void>;
 };
@@ -20,6 +21,7 @@ vi.mock('@fullcalendar/react', () => ({
   },
 }));
 vi.mock('@fullcalendar/daygrid', () => ({ default: {} }));
+vi.mock('@fullcalendar/timegrid', () => ({ default: {} }));
 
 const mockUpdatePericia = vi.fn();
 const mockGetColaboradoresIndisponiveis = vi.fn();
@@ -264,5 +266,20 @@ describe('CalendarioScreen', () => {
       }));
       expect(mockRefresh).toHaveBeenCalled();
     });
+  });
+
+  it('offers month/week/day view buttons in the header toolbar', () => {
+    render(
+      <CalendarioScreen items={[scheduled]} peritos={[]} colaboradores={[]} getPericiaForEdit={vi.fn()} />
+    );
+
+    expect(captured.props?.headerToolbar).toEqual({
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay',
+    });
+    expect(captured.props?.plugins).toEqual(
+      expect.arrayContaining([expect.anything(), expect.anything(), expect.anything()])
+    );
   });
 });
