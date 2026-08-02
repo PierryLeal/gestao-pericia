@@ -515,6 +515,143 @@ git commit -m "feat: block scheduling a colaborador already booked at the same d
 
 ---
 
+---
+
+### Task 3: Database-level backstop for the same conflict rule
+
+Added after the user reviewed the final whole-branch review's non-blocking note that Tasks 1-2 are client-only, with no server-side enforcement — the user asked for a DB constraint too, as a hard backstop against the rare case of two people scheduling the same colaborador at the same exact date+time simultaneously in two different tabs (a race the client-side debounced check cannot fully close on its own).
+
+**Files:**
+- Create: `supabase/migrations/20260802000001_pericia_colaborador_unico_horario.sql`
+- Modify: `src/features/pericias/actions.ts` (`createPericia` and `updatePericia`)
+- Modify: `src/features/pericias/actions.test.ts`
+
+**Interfaces:**
+- Consumes: nothing from Tasks 1-2 — this is independent (a DB constraint plus error-message mapping in the two existing write actions; does not touch `pericia-form.tsx` or `getColaboradoresIndisponiveis`).
+- Produces: nothing new consumed by other tasks — this is the last task in this plan.
+
+- [ ] **Step 1: Write the migration**
+
+Create `supabase/migrations/20260802000001_pericia_colaborador_unico_horario.sql`:
+
+```sql
+create unique index pericias_colaborador_unico_por_horario
+  on public.pericias (colaborador_id, data_agendada, hora_agendada)
+  where colaborador_id is not null and data_agendada is not null and hora_agendada is not null;
+```
+
+A **partial** unique index — only enforced when all three columns are non-null, matching exactly the scenario this feature cares about. A Perícia with no colaborador, or no date/hora, must never trigger this constraint. Verified against `supabase/migrations/20260726000001_init_schema.sql`: `pericias` currently has no unique constraint other than its primary key, so this is purely additive — no existing row can already violate it in a way that would block applying the migration to a populated database (Postgres still validates existing rows when creating the index, so if two existing rows already share the same colaborador+date+hora, this migration will fail to apply — treat that as a real data problem to resolve manually if it happens, not a plan defect).
+
+- [ ] **Step 2: Apply to the dev Supabase project**
+
+Run: `npx supabase link --project-ref wpssipdxpfmvcamldpum && npx supabase db push`
+Expected: `20260802000001_pericia_colaborador_unico_horario.sql` applied. Verify with `npx supabase migration list` — the new migration shows under both `local` and `remote`.
+
+Do NOT touch the production project (`ralyhgneesqpfijpvxii`) in this task — that happens only after this task is reviewed, with live user confirmation, matching how every other production migration this session was handled.
+
+- [ ] **Step 3: Write the failing tests**
+
+In `src/features/pericias/actions.test.ts`, add this test inside the existing `describe('createPericia', ...)` block (after its last existing `it`):
+
+```ts
+  it('returns a friendly error when the colaborador is already booked at that date/time', async () => {
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: { code: '23505', message: 'duplicate key value violates unique constraint "pericias_colaborador_unico_por_horario"' },
+    });
+    const result = await createPericia(validInput);
+    expect(result).toEqual({
+      success: false,
+      error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
+    });
+  });
+```
+
+And add this test inside the existing `describe('updatePericia', ...)` block (after its last existing `it`):
+
+```ts
+  it('returns a friendly error when the colaborador is already booked at that date/time', async () => {
+    mockEq.mockReturnValueOnce({
+      error: { code: '23505', message: 'duplicate key value violates unique constraint "pericias_colaborador_unico_por_horario"' },
+    });
+    const result = await updatePericia(10, validInput);
+    expect(result).toEqual({
+      success: false,
+      error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
+    });
+  });
+```
+
+- [ ] **Step 4: Run tests to verify they fail**
+
+Run: `npx vitest run src/features/pericias/actions.test.ts`
+Expected: FAIL — both new tests currently get the raw Postgres message instead of the friendly one, since neither `createPericia` nor `updatePericia` maps `23505` yet.
+
+- [ ] **Step 5: Add the error mapping**
+
+In `src/features/pericias/actions.ts`, change `createPericia`'s error handling from:
+
+```ts
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+```
+
+(the two lines immediately after `const { data, error } = await supabase.from('pericias').insert(toRow(parsed.data)).select('id').single();`) to:
+
+```ts
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data };
+}
+```
+
+Change `updatePericia`'s error handling the same way — from:
+
+```ts
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: { id } };
+}
+```
+
+to:
+
+```ts
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data: { id } };
+}
+```
+
+This matches the exact `error.code === '23505'` pattern already used in `src/features/processos/actions.ts` (`createProcesso`/`updateProcesso`, mapping a different unique constraint to "Já existe um processo com esse número") — same shape, no disambiguation by constraint name needed since `pericias` has exactly one unique constraint beyond its primary key (the one this task just added).
+
+- [ ] **Step 6: Run tests to verify they pass**
+
+Run: `npx vitest run src/features/pericias/actions.test.ts`
+Expected: PASS, all tests (previous + 2 new).
+
+- [ ] **Step 7: Full suite, typecheck, and lint**
+
+Run: `npx vitest run && npx tsc --noEmit && npx eslint src`
+Expected: all tests pass, no new type errors, zero eslint errors.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add supabase/migrations/20260802000001_pericia_colaborador_unico_horario.sql src/features/pericias/actions.ts src/features/pericias/actions.test.ts
+git commit -m "feat: add DB-level backstop against colaborador double-booking"
+```
+
+---
+
 ## Manual verification (after both tasks)
 
 Automated tests exercise the logic against mocks. After Task 2 is committed:
