@@ -230,4 +230,78 @@ describe('PericiaForm', () => {
 
     expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 9);
   });
+
+  it('surfaces an error via onError when the conflict check fails', async () => {
+    vi.mocked(getColaboradoresIndisponiveis).mockRejectedValue(new Error('boom'));
+    const user = userEvent.setup();
+    const onError = vi.fn();
+    render(
+      <PericiaForm
+        peritos={[{ id: 1, nome: 'Carlos' }]}
+        colaboradores={[{ id: 2, nome: 'Bruna' }]}
+        onSaved={vi.fn()}
+        onError={onError}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Data agendada'), '2026-08-10');
+    await user.type(screen.getByLabelText('Hora agendada'), '14:00');
+    await new Promise((r) => setTimeout(r, 350));
+
+    expect(onError).toHaveBeenCalledWith('Não foi possível verificar conflitos de horário.');
+  });
+
+  it('ignores a stale response from an earlier, now-abandoned request when a later request resolves first', async () => {
+    // First call (triggered by the initial Data/Hora fill) is slow and would report
+    // colaborador 2 as busy. Second call (triggered by changing Hora again before the
+    // first request settles) is fast and reports colaborador 3 as busy instead. The
+    // UI must end up reflecting only the second, later-triggered request.
+    vi.mocked(getColaboradoresIndisponiveis)
+      .mockImplementationOnce(async () => {
+        await new Promise((r) => setTimeout(r, 700));
+        return [2];
+      })
+      .mockImplementationOnce(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+        return [3];
+      });
+
+    const user = userEvent.setup();
+    render(
+      <PericiaForm
+        peritos={[{ id: 1, nome: 'Carlos' }]}
+        colaboradores={[
+          { id: 2, nome: 'Bruna' },
+          { id: 3, nome: 'Duda' },
+        ]}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Data agendada'), '2026-08-10');
+    await user.type(screen.getByLabelText('Hora agendada'), '14:00');
+    // Let the debounce fire and the first (slow) request start.
+    await new Promise((r) => setTimeout(r, 400));
+
+    await user.clear(screen.getByLabelText('Hora agendada'));
+    await user.type(screen.getByLabelText('Hora agendada'), '15:00');
+    // Let the debounce fire, the second (fast) request start and resolve, and give
+    // the first (slow, now-abandoned) request enough time to resolve as well —
+    // its result must be discarded because the effect that issued it was cancelled.
+    await new Promise((r) => setTimeout(r, 900));
+
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledTimes(2);
+    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(1, '2026-08-10', '14:00', undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(2, '2026-08-10', '15:00', undefined);
+
+    await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
+    const brunaOption = await screen.findByRole('option', { name: 'Bruna' });
+    const dudaOption = await screen.findByRole('option', { name: 'Duda' });
+
+    // Stale response from the abandoned first request (colaborador 2) must not apply.
+    expect(brunaOption.className ?? '').not.toMatch(/opacity-40/);
+    // Result of the latest request (colaborador 3) must apply.
+    expect(dudaOption.className).toMatch(/opacity-40/);
+  }, 10000);
 });

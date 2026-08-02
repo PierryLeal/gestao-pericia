@@ -43,16 +43,26 @@ export function PericiaForm({
 
   useEffect(() => {
     if (!dataAgendada || !horaAgendada) {
-      setBusyColaboradorIds([]);
       return;
     }
+    let cancelled = false;
     const handle = setTimeout(() => {
-      getColaboradoresIndisponiveis(dataAgendada, horaAgendada, pericia?.id).then(setBusyColaboradorIds);
+      getColaboradoresIndisponiveis(dataAgendada, horaAgendada, pericia?.id)
+        .then((ids) => {
+          if (!cancelled) setBusyColaboradorIds(ids);
+        })
+        .catch(() => {
+          if (!cancelled) onError('Não foi possível verificar conflitos de horário.');
+        });
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [dataAgendada, horaAgendada, pericia?.id]);
 
-  const colaboradorConflict = colaboradorId !== '' && busyColaboradorIds.includes(Number(colaboradorId));
+  const effectiveBusyIds = dataAgendada && horaAgendada ? busyColaboradorIds : [];
+  const colaboradorConflict = colaboradorId !== '' && effectiveBusyIds.includes(Number(colaboradorId));
 
   const peritoItems = Object.fromEntries(peritos.map((p) => [String(p.id), p.nome]));
   const colaboradorItems = Object.fromEntries(colaboradores.map((c) => [String(c.id), c.nome]));
@@ -135,7 +145,7 @@ export function PericiaForm({
               <SelectItem
                 key={c.id}
                 value={String(c.id)}
-                className={busyColaboradorIds.includes(c.id) ? 'opacity-40' : undefined}
+                className={effectiveBusyIds.includes(c.id) ? 'opacity-40' : undefined}
               >
                 {c.nome}
               </SelectItem>
