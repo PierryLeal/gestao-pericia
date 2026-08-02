@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ClipboardList, Folder, UserCheck, Users, ShieldCheck, UserCog,
+  ClipboardList, CalendarDays, Folder, UserCheck, Users, ShieldCheck, UserCog,
   PanelLeftClose, PanelLeftOpen, LogOut, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { NavProgressReporter } from '@/components/shared/nav-progress';
 
 export const NAV_ITEMS: { href: string; label: string; roles: Role[]; icon: LucideIcon }[] = [
   { href: '/', label: 'Perícias', roles: ['admin', 'gerencia'], icon: ClipboardList },
+  { href: '/calendario', label: 'Calendário', roles: ['admin', 'gerencia'], icon: CalendarDays },
   { href: '/processos', label: 'Processos', roles: ['admin', 'gerencia'], icon: Folder },
   { href: '/peritos', label: 'Peritos', roles: ['admin', 'gerencia'], icon: UserCheck },
   { href: '/colaboradores', label: 'Colaboradores', roles: ['admin', 'gerencia'], icon: Users },
