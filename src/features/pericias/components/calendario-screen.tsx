@@ -8,6 +8,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PericiaForm } from './pericia-form';
 import { CalendarioFilters, type CalendarioFiltersValue } from './calendario-filters';
@@ -121,25 +122,32 @@ export function CalendarioScreen({
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Calendário</h1>
       <CalendarioFilters peritos={peritos} colaboradores={colaboradores} onChange={setFilters} />
-      <div className="flex gap-4">
-        <div className="w-64 shrink-0 space-y-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Não agendadas</h2>
-          <div ref={unscheduledContainerRef} className="space-y-2">
-            {unscheduled.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                data-pericia-id={item.id}
-                data-title={`${item.processo.numero} — ${item.perito.nome}`}
-                onClick={() => openEdit(item.id)}
-                className="calendario-nao-agendada-item w-full rounded-md border p-2 text-left text-sm hover:bg-accent"
-              >
-                {item.processo.numero} — {item.perito.nome}
-              </button>
-            ))}
-          </div>
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="w-full shrink-0 lg:w-64">
+          <Card size="sm">
+            <CardContent className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Não agendadas</h2>
+              <div ref={unscheduledContainerRef} className="max-h-[70vh] space-y-2 overflow-y-auto">
+                {unscheduled.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhuma perícia sem data.</p>
+                )}
+                {unscheduled.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-pericia-id={item.id}
+                    data-title={`${item.processo.numero} — ${item.perito.nome}`}
+                    onClick={() => openEdit(item.id)}
+                    className="calendario-nao-agendada-item w-full rounded-md border p-2 text-left text-sm hover:bg-accent"
+                  >
+                    {item.processo.numero} — {item.perito.nome}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             locale={ptBrLocale}
