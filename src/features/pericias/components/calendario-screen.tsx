@@ -7,6 +7,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
+import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PericiaForm } from './pericia-form';
 import { CalendarioFilters, type CalendarioFiltersValue } from './calendario-filters';
@@ -47,40 +48,45 @@ export function CalendarioScreen({
   const unscheduledContainerRef = useRef<HTMLDivElement>(null);
 
   async function handleReschedule(event: { id: string; start: Date | null }, revert: () => void) {
-    const id = Number(event.id);
-    const item = items.find((i) => i.id === id);
-    if (!item || !event.start) {
-      revert();
-      return;
-    }
-    const novaData = formatDateLocal(event.start);
-    const novaHora = formatTimeLocal(event.start);
-
-    if (item.colaborador) {
-      const busyIds = await getColaboradoresIndisponiveis(novaData, novaHora, item.id);
-      if (busyIds.includes(item.colaborador.id)) {
+    try {
+      const id = Number(event.id);
+      const item = items.find((i) => i.id === id);
+      if (!item || !event.start) {
         revert();
-        toast.error('Não é possível mover: o colaborador já está em outra perícia nesse dia e horário.');
         return;
       }
-    }
+      const novaData = formatDateLocal(event.start);
+      const novaHora = formatTimeLocal(event.start);
 
-    const result = await updatePericia(id, {
-      processoId: item.processo.id,
-      municipioId: item.municipio.id,
-      peritoId: item.perito.id,
-      colaboradorId: item.colaborador?.id ?? null,
-      dataAgendada: novaData,
-      horaAgendada: novaHora,
-      situacao: item.situacao,
-    });
-    if (!result.success) {
+      if (item.colaborador) {
+        const busyIds = await getColaboradoresIndisponiveis(novaData, novaHora, item.id);
+        if (busyIds.includes(item.colaborador.id)) {
+          revert();
+          toast.error('Não é possível mover: o colaborador já está em outra perícia nesse dia e horário.');
+          return;
+        }
+      }
+
+      const result = await updatePericia(id, {
+        processoId: item.processo.id,
+        municipioId: item.municipio.id,
+        peritoId: item.perito.id,
+        colaboradorId: item.colaborador?.id ?? null,
+        dataAgendada: novaData,
+        horaAgendada: novaHora,
+        situacao: item.situacao,
+      });
+      if (!result.success) {
+        revert();
+        toast.error(result.error);
+        return;
+      }
+      toast.success('Perícia reagendada');
+      router.refresh();
+    } catch {
       revert();
-      toast.error(result.error);
-      return;
+      toast.error('Não foi possível reagendar a perícia.');
     }
-    toast.success('Perícia reagendada');
-    router.refresh();
   }
 
   useEffect(() => {
@@ -136,6 +142,7 @@ export function CalendarioScreen({
         <div className="flex-1">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            locale={ptBrLocale}
             initialView="dayGridMonth"
             headerToolbar={{
               left: 'prev,next today',

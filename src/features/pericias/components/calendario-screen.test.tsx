@@ -4,11 +4,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CalendarioScreen } from './calendario-screen';
 import type { PericiaListItem } from '../actions';
 
+const mockToastSuccess = vi.fn();
+const mockToastError = vi.fn();
+vi.mock('sonner', () => ({
+  toast: {
+    success: (...args: unknown[]) => mockToastSuccess(...args),
+    error: (...args: unknown[]) => mockToastError(...args),
+  },
+}));
+
 type CapturedProps = {
   events?: unknown[];
   initialView?: string;
   plugins?: unknown[];
+  locale?: unknown;
   headerToolbar?: { left: string; center: string; right: string };
+  eventClick?: (info: { event: { id: string } }) => void | Promise<void>;
   eventDrop?: (info: { event: { id: string; start: Date }; revert: () => void }) => void | Promise<void>;
   eventReceive?: (info: { event: { id: string; start: Date }; revert: () => void }) => void | Promise<void>;
 };
@@ -161,6 +172,48 @@ describe('CalendarioScreen', () => {
       expect(mockDraggableConstructor).toHaveBeenCalledTimes(1);
       const [, settings] = mockDraggableConstructor.mock.calls[0];
       expect(settings.itemSelector).toBe('.calendario-nao-agendada-item');
+
+      const el = document.createElement('div');
+      el.dataset.periciaId = '7';
+      el.dataset.title = 'X';
+      expect(settings.eventData(el)).toEqual({ id: '7', title: 'X' });
+    });
+
+    it('reverts and shows an error toast when getColaboradoresIndisponiveis throws', async () => {
+      mockGetColaboradoresIndisponiveis.mockRejectedValue(new Error('boom'));
+      render(
+        <CalendarioScreen
+          items={[withColaborador]}
+          peritos={[]}
+          colaboradores={[]}
+          getPericiaForEdit={vi.fn()}
+        />
+      );
+
+      const revert = vi.fn();
+      await captured.props?.eventDrop?.({
+        event: { id: '1', start: new Date(2026, 9, 5, 11, 0) },
+        revert,
+      });
+
+      expect(revert).toHaveBeenCalled();
+      expect(mockToastError).toHaveBeenCalledWith('Não foi possível reagendar a perícia.');
+    });
+
+    it('reverts and shows an error toast when updatePericia throws', async () => {
+      mockUpdatePericia.mockRejectedValue(new Error('boom'));
+      render(
+        <CalendarioScreen items={[scheduled]} peritos={[]} colaboradores={[]} getPericiaForEdit={vi.fn()} />
+      );
+
+      const revert = vi.fn();
+      await captured.props?.eventDrop?.({
+        event: { id: '1', start: new Date(2026, 9, 5, 11, 0) },
+        revert,
+      });
+
+      expect(revert).toHaveBeenCalled();
+      expect(mockToastError).toHaveBeenCalledWith('Não foi possível reagendar a perícia.');
     });
 
     it('reverts and shows an error toast when moving an existing event would create a colaborador conflict', async () => {
@@ -296,6 +349,79 @@ describe('CalendarioScreen', () => {
     expect(screen.queryByRole('button', { name: /Outro Perito/ })).not.toBeInTheDocument();
   });
 
+  it('reduces both the calendar events and the não-agendadas list when filtering by situação', async () => {
+    const pendenteAgendada: PericiaListItem = {
+      ...scheduled,
+      id: 2,
+      situacao: 'pendente',
+      processo: { ...scheduled.processo, id: 6, numero: '0009999-99.2026' },
+    };
+    const pendenteNaoAgendada: PericiaListItem = {
+      ...scheduled,
+      id: 3,
+      situacao: 'pendente',
+      dataAgendada: null,
+      horaAgendada: null,
+      processo: { ...scheduled.processo, id: 10, numero: '0005555-55.2026' },
+    };
+    const user = userEvent.setup();
+    render(
+      <CalendarioScreen
+        items={[scheduled, pendenteAgendada, pendenteNaoAgendada]}
+        peritos={[{ id: 7, nome: 'Cleber' }]}
+        colaboradores={[]}
+        getPericiaForEdit={vi.fn()}
+      />
+    );
+
+    expect(captured.props?.events).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /0005555-55.2026/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: /situação/i }));
+    await user.click(await screen.findByRole('option', { name: 'marcada' }));
+
+    expect(captured.props?.events).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /0005555-55.2026/ })).not.toBeInTheDocument();
+  });
+
+  it('reduces both the calendar events and the não-agendadas list when filtering by colaborador', async () => {
+    const colaboradorA = { id: 9, nome: 'Ana', contato: '', formacao: '', interno: true };
+    const colaboradorB = { id: 10, nome: 'Bruno', contato: '', formacao: '', interno: true };
+    const comColaboradorA: PericiaListItem = { ...scheduled, colaborador: colaboradorA };
+    const comColaboradorB: PericiaListItem = {
+      ...scheduled,
+      id: 2,
+      colaborador: colaboradorB,
+      processo: { ...scheduled.processo, id: 6, numero: '0009999-99.2026' },
+    };
+    const naoAgendadaColaboradorB: PericiaListItem = {
+      ...scheduled,
+      id: 3,
+      colaborador: colaboradorB,
+      dataAgendada: null,
+      horaAgendada: null,
+      processo: { ...scheduled.processo, id: 10, numero: '0005555-55.2026' },
+    };
+    const user = userEvent.setup();
+    render(
+      <CalendarioScreen
+        items={[comColaboradorA, comColaboradorB, naoAgendadaColaboradorB]}
+        peritos={[]}
+        colaboradores={[colaboradorA, colaboradorB]}
+        getPericiaForEdit={vi.fn()}
+      />
+    );
+
+    expect(captured.props?.events).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /0005555-55.2026/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
+    await user.click(await screen.findByRole('option', { name: 'Ana' }));
+
+    expect(captured.props?.events).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /0005555-55.2026/ })).not.toBeInTheDocument();
+  });
+
   it('offers month/week/day view buttons in the header toolbar', () => {
     render(
       <CalendarioScreen items={[scheduled]} peritos={[]} colaboradores={[]} getPericiaForEdit={vi.fn()} />
@@ -309,5 +435,41 @@ describe('CalendarioScreen', () => {
     expect(captured.props?.plugins).toEqual(
       expect.arrayContaining([expect.anything(), expect.anything(), expect.anything()])
     );
+  });
+
+  it('renders with a Portuguese (pt-BR) locale', () => {
+    render(
+      <CalendarioScreen items={[scheduled]} peritos={[]} colaboradores={[]} getPericiaForEdit={vi.fn()} />
+    );
+
+    expect(captured.props?.locale).toBeDefined();
+  });
+
+  it('opens the edit dialog with the right pericia when a calendar event is clicked', async () => {
+    const getPericiaForEdit = vi.fn(async () => ({
+      id: 1,
+      processoId: 5,
+      municipioId: 3,
+      peritoId: 7,
+      colaboradorId: null,
+      dataAgendada: '2026-09-20',
+      horaAgendada: '10:00',
+      situacao: 'marcada' as const,
+      processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
+      municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
+    }));
+    render(
+      <CalendarioScreen
+        items={[scheduled]}
+        peritos={[{ id: 7, nome: 'Cleber' }]}
+        colaboradores={[]}
+        getPericiaForEdit={getPericiaForEdit}
+      />
+    );
+
+    await captured.props?.eventClick?.({ event: { id: '1' } });
+
+    expect(getPericiaForEdit).toHaveBeenCalledWith(1);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
 });
