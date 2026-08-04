@@ -14,7 +14,10 @@ vi.mock('../actions', () => ({
 
 vi.mock('@/features/processos/components/processo-combobox', () => ({
   ProcessoCombobox: ({ onChange }: { onChange: (p: Processo) => void }) => (
-    <button type="button" onClick={() => onChange({ id: 1, numero: 'P-1', autor: 'A', reu: 'B' })}>
+    <button
+      type="button"
+      onClick={() => onChange({ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' })}
+    >
       selecionar processo
     </button>
   ),

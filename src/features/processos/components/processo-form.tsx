@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createProcesso, updateProcesso, type Processo } from '../actions';
+import { EscritorioCombobox } from './escritorio-combobox';
 
 export function ProcessoForm({
   processo,
@@ -21,12 +22,13 @@ export function ProcessoForm({
   const [numero, setNumero] = useState(processo?.numero ?? '');
   const [autor, setAutor] = useState(processo?.autor ?? '');
   const [reu, setReu] = useState(processo?.reu ?? '');
+  const [escritorio, setEscritorio] = useState(processo?.escritorio ?? '');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const input = { numero, autor, reu };
+    const input = { numero, autor, reu, escritorio };
     const result = processo ? await updateProcesso(processo.id, input) : await createProcesso(input);
     setSaving(false);
     if (!result.success) {
@@ -41,6 +43,10 @@ export function ProcessoForm({
       <div className="space-y-2">
         <Label htmlFor="numero">Número do processo</Label>
         <Input id="numero" value={numero} onChange={(e) => setNumero(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Escritório</Label>
+        <EscritorioCombobox value={escritorio} onChange={setEscritorio} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="autor">Autor</Label>

@@ -7,12 +7,12 @@ import { postgrestQuoted } from '@/lib/postgrest';
 import { matchesSearch } from '@/lib/search';
 import { processoSchema, type ProcessoInput } from './schemas';
 
-export type Processo = { id: number; numero: string; autor: string; reu: string };
+export type Processo = { id: number; numero: string; autor: string; reu: string; escritorio: string };
 
 export async function searchProcessos(query: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let request = supabase.from('processos').select('id, numero, autor, reu').order('numero').limit(20);
+  let request = supabase.from('processos').select('id, numero, autor, reu, escritorio').order('numero').limit(20);
   if (query.trim()) {
     const pattern = postgrestQuoted(`%${query}%`);
     request = request.or(`numero.ilike.${pattern},autor.ilike.${pattern},reu.ilike.${pattern}`);
@@ -32,7 +32,7 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
   const { data, error } = await supabase
     .from('processos')
     .insert(parsed.data)
-    .select('id, numero, autor, reu')
+    .select('id, numero, autor, reu, escritorio')
     .single();
   if (error) {
     if (error.code === '23505') {
@@ -46,7 +46,10 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
 export async function listProcessos(busca?: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('processos').select('id, numero, autor, reu').order('numero');
+  const { data, error } = await supabase
+    .from('processos')
+    .select('id, numero, autor, reu, escritorio')
+    .order('numero');
   if (error) throw new Error(error.message);
   const processos = data ?? [];
   if (!busca?.trim()) return processos;
@@ -61,7 +64,11 @@ export async function listProcessos(busca?: string): Promise<Processo[]> {
 export async function getProcesso(id: number): Promise<Processo | null> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('processos').select('id, numero, autor, reu').eq('id', id).single();
+  const { data, error } = await supabase
+    .from('processos')
+    .select('id, numero, autor, reu, escritorio')
+    .eq('id', id)
+    .single();
   if (error || !data) return null;
   return data;
 }
@@ -77,7 +84,7 @@ export async function updateProcesso(id: number, input: ProcessoInput): Promise<
     .from('processos')
     .update(parsed.data)
     .eq('id', id)
-    .select('id, numero, autor, reu')
+    .select('id, numero, autor, reu, escritorio')
     .single();
   if (error) {
     if (error.code === '23505') {
@@ -99,4 +106,13 @@ export async function deleteProcesso(id: number): Promise<ActionResult<null>> {
     return { success: false, error: error.message };
   }
   return { success: true, data: null };
+}
+
+export async function listEscritoriosDistintos(): Promise<string[]> {
+  await requireRole(['admin', 'gerencia']);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('processos').select('escritorio').order('escritorio');
+  if (error) throw new Error(error.message);
+  const values = (data ?? []).map((row) => row.escritorio).filter((v): v is string => Boolean(v));
+  return [...new Set(values)];
 }

@@ -78,15 +78,27 @@ describe('updateProcesso', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns an error for invalid input without touching the database', async () => {
-    const result = await updateProcesso(1, { numero: '', autor: 'A', reu: 'B' });
+    const result = await updateProcesso(1, { numero: '', autor: 'A', reu: 'B', escritorio: 'PMRA' });
     expect(result).toEqual({ success: false, error: 'Número do processo é obrigatório' });
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
+  it('returns an error when escritorio is missing', async () => {
+    const result = await updateProcesso(1, { numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' });
+    expect(result).toEqual({ success: false, error: 'Escritório é obrigatório' });
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
   it('updates a valid processo', async () => {
-    mockSingle.mockResolvedValue({ data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B' }, error: null });
-    const result = await updateProcesso(1, { numero: 'P-2', autor: 'A', reu: 'B' });
-    expect(result).toEqual({ success: true, data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B' } });
+    mockSingle.mockResolvedValue({
+      data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B', escritorio: 'PMRA' },
+      error: null,
+    });
+    const result = await updateProcesso(1, { numero: 'P-2', autor: 'A', reu: 'B', escritorio: 'PMRA' });
+    expect(result).toEqual({
+      success: true,
+      data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B', escritorio: 'PMRA' },
+    });
   });
 });
 

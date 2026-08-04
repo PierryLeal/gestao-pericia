@@ -11,7 +11,9 @@ const items: PericiaListItem[] = [
     horaAgendada: '14:30',
     situacao: 'marcada',
     observacoes: 'Levar equipamento de medição extra para esta perícia específica',
-    processo: { id: 1, numero: '0001234-56.2026.8.26.0100', autor: 'Maria Souza', reu: 'João Pereira' },
+    processo: {
+      id: 1, numero: '0001234-56.2026.8.26.0100', autor: 'Maria Souza', reu: 'João Pereira', escritorio: 'PMRA',
+    },
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     perito: {
       id: 1, nome: 'Carlos Lima', contato: '(11) 90000-0000', formacao: 'Eng. Civil', crea: '123456',
@@ -121,5 +123,10 @@ describe('PericiasTable', () => {
     const row = screen.getByText('0001234-56.2026.8.26.0100').closest('tr');
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  it('shows the processo escritorio', () => {
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    expect(screen.getByText('PMRA')).toBeInTheDocument();
   });
 });

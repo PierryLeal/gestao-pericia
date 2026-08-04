@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { ProcessosTable } from './processos-table';
 import type { Processo } from '../actions';
 
-const items: Processo[] = [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }];
+const items: Processo[] = [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' }];
 
 describe('ProcessosTable', () => {
   it('calls onEdit when the edit icon is clicked', async () => {
@@ -39,5 +39,10 @@ describe('ProcessosTable', () => {
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('shows the escritorio column', () => {
+    render(<ProcessosTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    expect(screen.getByText('PMRA')).toBeInTheDocument();
   });
 });

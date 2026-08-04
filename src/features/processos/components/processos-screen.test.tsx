@@ -10,18 +10,21 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../actions', () => ({
-  createProcesso: vi.fn(async (input: { numero: string; autor: string; reu: string }) => ({
+  createProcesso: vi.fn(async (input: { numero: string; autor: string; reu: string; escritorio: string }) => ({
     success: true,
     data: { id: 9, ...input },
   })),
-  updateProcesso: vi.fn(async (id: number, input: { numero: string; autor: string; reu: string }) => ({
-    success: true,
-    data: { id, ...input },
-  })),
+  updateProcesso: vi.fn(
+    async (id: number, input: { numero: string; autor: string; reu: string; escritorio: string }) => ({
+      success: true,
+      data: { id, ...input },
+    })
+  ),
   deleteProcesso: vi.fn(),
+  listEscritoriosDistintos: vi.fn(async () => []),
 }));
 
-const items = [{ id: 1, numero: 'P-1', autor: 'Ana', reu: 'Bia' }];
+const items = [{ id: 1, numero: 'P-1', autor: 'Ana', reu: 'Bia', escritorio: 'PMRA' }];
 
 describe('ProcessosScreen', () => {
   it('opens the create dialog and saves a new processo', async () => {

@@ -14,7 +14,7 @@ export type PericiaListItem = {
   horaAgendada: string | null;
   situacao: PericiaInput['situacao'];
   observacoes: string | null;
-  processo: { id: number; numero: string; autor: string; reu: string };
+  processo: { id: number; numero: string; autor: string; reu: string; escritorio: string };
   municipio: { id: number; nome: string; uf: string };
   perito: {
     id: number; nome: string; contato: string; formacao: string; crea: string;
@@ -48,7 +48,7 @@ export async function listPericias(
     .from('pericias')
     .select(`
       id, data_agendada, hora_agendada, situacao, observacoes,
-      processo:processos!inner ( id, numero, autor, reu ),
+      processo:processos!inner ( id, numero, autor, reu, escritorio ),
       municipio:municipios!inner ( id, nome, uf ),
       perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
       colaborador:colaboradores ( id, nome, contato, formacao, interno )
@@ -156,7 +156,7 @@ export async function getPericiaForEdit(
     .from('pericias')
     .select(`
       id, data_agendada, hora_agendada, situacao, observacoes, perito_id, colaborador_id,
-      processo:processos ( id, numero, autor, reu ),
+      processo:processos ( id, numero, autor, reu, escritorio ),
       municipio:municipios ( id, nome, uf )
     `)
     .eq('id', id)

@@ -70,6 +70,7 @@ export function PericiasTable({
           <TableRow>
             <TableHead className="w-8" />
             <TableHead>Nº Processo</TableHead>
+            <TableHead>Escritório</TableHead>
             <TableHead>Data - Hora</TableHead>
             <TableHead>Local</TableHead>
             <TableHead>Perito</TableHead>
@@ -92,6 +93,12 @@ export function PericiasTable({
                     </Button>
                   </TableCell>
                   <TableCell>{item.processo.numero}</TableCell>
+                  <TableCell>
+                    <TooltipCell
+                      label={<span className="block max-w-32 truncate">{item.processo.escritorio}</span>}
+                      detail={item.processo.escritorio}
+                    />
+                  </TableCell>
                   <TableCell>
                     {item.dataAgendada && item.horaAgendada ? (
                       new Date(`${item.dataAgendada}T${item.horaAgendada}`).toLocaleString('pt-BR', {
@@ -145,7 +152,7 @@ export function PericiasTable({
                 </TableRow>
                 {isExpanded && (
                   <TableRow>
-                    <TableCell colSpan={9} className="whitespace-normal bg-muted/30">
+                    <TableCell colSpan={10} className="whitespace-normal bg-muted/30">
                       <div className="grid gap-4 py-2 md:grid-cols-3">
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">Processo</p>

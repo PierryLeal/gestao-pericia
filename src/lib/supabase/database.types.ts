@@ -19,9 +19,9 @@ export type Database = {
         Relationships: [];
       };
       processos: {
-        Row: { id: number; numero: string; autor: string; reu: string; created_at: string };
-        Insert: { numero: string; autor: string; reu: string };
-        Update: Partial<{ numero: string; autor: string; reu: string }>;
+        Row: { id: number; numero: string; autor: string; reu: string; escritorio: string; created_at: string };
+        Insert: { numero: string; autor: string; reu: string; escritorio: string };
+        Update: Partial<{ numero: string; autor: string; reu: string; escritorio: string }>;
         Relationships: [];
       };
       peritos: {

@@ -55,6 +55,7 @@ export function ProcessosTable({
             <TableHead>Número</TableHead>
             <TableHead>Autor</TableHead>
             <TableHead>Réu</TableHead>
+            <TableHead>Escritório</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -64,6 +65,7 @@ export function ProcessosTable({
               <TableCell>{item.numero}</TableCell>
               <TableCell>{item.autor}</TableCell>
               <TableCell>{item.reu}</TableCell>
+              <TableCell>{item.escritorio}</TableCell>
               <TableCell>
                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(item)}>
                   <Pencil className="size-4" />
