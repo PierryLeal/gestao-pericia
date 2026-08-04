@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { ProcessoCombobox } from '@/features/processos/components/processo-combobox';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
 import { createPericia, updatePericia, getColaboradoresIndisponiveis } from '../actions';
@@ -38,6 +39,7 @@ export function PericiaForm({
   const [dataAgendada, setDataAgendada] = useState(pericia?.dataAgendada ?? '');
   const [horaAgendada, setHoraAgendada] = useState(pericia?.horaAgendada ?? '');
   const [situacao, setSituacao] = useState<PericiaInput['situacao']>(pericia?.situacao ?? 'pendente');
+  const [observacoes, setObservacoes] = useState(pericia?.observacoes ?? '');
   const [saving, setSaving] = useState(false);
   const [busyColaboradorIds, setBusyColaboradorIds] = useState<number[]>([]);
 
@@ -86,6 +88,7 @@ export function PericiaForm({
       dataAgendada: dataAgendada || null,
       horaAgendada: horaAgendada || null,
       situacao,
+      observacoes: observacoes.trim() || null,
     };
     const result = pericia ? await updatePericia(pericia.id, input) : await createPericia(input);
     setSaving(false);
@@ -169,6 +172,11 @@ export function PericiaForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="observacoes">Observações</Label>
+        <Textarea id="observacoes" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} />
       </div>
 
       <Button type="submit" disabled={saving || colaboradorConflict} className="w-full">

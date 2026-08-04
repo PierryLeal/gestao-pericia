@@ -13,6 +13,7 @@ export type PericiaListItem = {
   dataAgendada: string | null;
   horaAgendada: string | null;
   situacao: PericiaInput['situacao'];
+  observacoes: string | null;
   processo: { id: number; numero: string; autor: string; reu: string };
   municipio: { id: number; nome: string; uf: string };
   perito: {
@@ -31,6 +32,7 @@ function toRow(input: PericiaInput) {
     perito_id: input.peritoId,
     colaborador_id: input.colaboradorId,
     situacao: input.situacao,
+    observacoes: input.observacoes,
   };
 }
 
@@ -45,7 +47,7 @@ export async function listPericias(
   let query = supabase
     .from('pericias')
     .select(`
-      id, data_agendada, hora_agendada, situacao,
+      id, data_agendada, hora_agendada, situacao, observacoes,
       processo:processos!inner ( id, numero, autor, reu ),
       municipio:municipios!inner ( id, nome, uf ),
       perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
@@ -87,6 +89,7 @@ export async function listPericias(
     dataAgendada: row.data_agendada,
     horaAgendada: row.hora_agendada,
     situacao: row.situacao,
+    observacoes: row.observacoes,
     processo: row.processo,
     municipio: row.municipio,
     perito: {
@@ -152,7 +155,7 @@ export async function getPericiaForEdit(
   const { data, error } = await supabase
     .from('pericias')
     .select(`
-      id, data_agendada, hora_agendada, situacao, perito_id, colaborador_id,
+      id, data_agendada, hora_agendada, situacao, observacoes, perito_id, colaborador_id,
       processo:processos ( id, numero, autor, reu ),
       municipio:municipios ( id, nome, uf )
     `)
@@ -169,6 +172,7 @@ export async function getPericiaForEdit(
     peritoId: row.perito_id,
     colaboradorId: row.colaborador_id,
     situacao: row.situacao,
+    observacoes: row.observacoes,
     processo: row.processo,
     municipio: row.municipio,
   };

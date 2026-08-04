@@ -10,6 +10,7 @@ export const periciaSchema = z.object({
   peritoId: z.number().int().positive('Selecione um perito'),
   colaboradorId: z.number().int().positive().nullable().default(null),
   situacao: z.enum(situacaoOptions).default('pendente'),
+  observacoes: z.string().trim().nullable().default(null),
 });
 
 export type PericiaInput = z.infer<typeof periciaSchema>;

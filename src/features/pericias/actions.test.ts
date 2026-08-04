@@ -73,6 +73,7 @@ const validInput = {
   peritoId: 1,
   colaboradorId: null,
   situacao: 'marcada' as const,
+  observacoes: null,
 };
 
 beforeEach(() => {
@@ -105,6 +106,7 @@ describe('createPericia', () => {
       perito_id: 1,
       colaborador_id: null,
       situacao: 'marcada',
+      observacoes: null,
     });
   });
 
@@ -165,6 +167,7 @@ describe('listPericias', () => {
     data_agendada: '2026-08-01',
     hora_agendada: '14:30',
     situacao: 'marcada',
+    observacoes: 'Levar equipamento extra',
     processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     perito: {
@@ -210,6 +213,7 @@ describe('listPericias', () => {
         dataAgendada: '2026-08-01',
         horaAgendada: '14:30',
         situacao: 'marcada',
+        observacoes: 'Levar equipamento extra',
         processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
         municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
         perito: {

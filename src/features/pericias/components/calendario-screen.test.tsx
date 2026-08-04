@@ -81,6 +81,7 @@ const scheduled: PericiaListItem = {
   dataAgendada: '2026-09-20',
   horaAgendada: '10:00',
   situacao: 'marcada',
+  observacoes: null,
   processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
   municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
   perito: {
@@ -143,6 +144,7 @@ describe('CalendarioScreen', () => {
       dataAgendada: null,
       horaAgendada: null,
       situacao: 'pendente' as const,
+      observacoes: null,
       processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
       municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
     }));
@@ -273,6 +275,7 @@ describe('CalendarioScreen', () => {
         dataAgendada: '2026-10-05',
         horaAgendada: '11:00',
         situacao: 'marcada',
+        observacoes: null,
       });
       expect(revert).not.toHaveBeenCalled();
       expect(mockRefresh).toHaveBeenCalled();
@@ -464,6 +467,7 @@ describe('CalendarioScreen', () => {
       dataAgendada: '2026-09-20',
       horaAgendada: '10:00',
       situacao: 'marcada' as const,
+      observacoes: null,
       processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
       municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
     }));

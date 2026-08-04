@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { PericiasTable } from './pericias-table';
@@ -10,6 +10,7 @@ const items: PericiaListItem[] = [
     dataAgendada: '2026-08-01',
     horaAgendada: '14:30',
     situacao: 'marcada',
+    observacoes: 'Levar equipamento de medição extra para esta perícia específica',
     processo: { id: 1, numero: '0001234-56.2026.8.26.0100', autor: 'Maria Souza', reu: 'João Pereira' },
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     perito: {
@@ -26,6 +27,8 @@ const itemSemData: PericiaListItem = {
   dataAgendada: null,
   horaAgendada: null,
 };
+
+const itemSemObservacoes: PericiaListItem = { ...items[0], id: 3, observacoes: null };
 
 describe('PericiasTable', () => {
   it('renders the required columns without the detail row initially', () => {
@@ -104,5 +107,19 @@ describe('PericiasTable', () => {
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('shows the full Observações text (visually truncated by CSS, not shortened in the DOM)', () => {
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    expect(
+      screen.getByText('Levar equipamento de medição extra para esta perícia específica')
+    ).toBeInTheDocument();
+  });
+
+  it('shows a dash in the Obs. column when observacoes is null', () => {
+    render(<PericiasTable items={[itemSemObservacoes]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    const row = screen.getByText('0001234-56.2026.8.26.0100').closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getAllByText('—').length).toBeGreaterThan(0);
   });
 });

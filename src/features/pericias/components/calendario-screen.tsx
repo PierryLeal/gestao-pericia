@@ -78,6 +78,7 @@ export function CalendarioScreen({
         dataAgendada: novaData,
         horaAgendada: novaHora,
         situacao: item.situacao,
+        observacoes: item.observacoes,
       });
       if (!result.success) {
         revert();

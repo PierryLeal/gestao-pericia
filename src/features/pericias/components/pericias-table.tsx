@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { RelacaoBadge } from '@/components/shared/relacao-badge';
 import { ResultadoBadge } from '@/components/shared/resultado-badge';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { TooltipCell } from '@/components/shared/tooltip-cell';
 import { cn } from '@/lib/utils';
 import { formatPhone } from '@/lib/masks';
 import type { PericiaListItem } from '../actions';
@@ -74,6 +75,7 @@ export function PericiasTable({
             <TableHead>Perito</TableHead>
             <TableHead>Colaborador</TableHead>
             <TableHead>Situação</TableHead>
+            <TableHead>Obs.</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -121,6 +123,16 @@ export function PericiasTable({
                     <StatusBadge situacao={item.situacao} />
                   </TableCell>
                   <TableCell>
+                    {item.observacoes ? (
+                      <TooltipCell
+                        label={<span className="block max-w-40 truncate">{item.observacoes}</span>}
+                        detail={item.observacoes}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(item)}>
                       <Pencil className="size-4" />
                       <span className="sr-only">Editar perícia {item.processo.numero}</span>
@@ -133,7 +145,7 @@ export function PericiasTable({
                 </TableRow>
                 {isExpanded && (
                   <TableRow>
-                    <TableCell colSpan={8} className="whitespace-normal bg-muted/30">
+                    <TableCell colSpan={9} className="whitespace-normal bg-muted/30">
                       <div className="grid gap-4 py-2 md:grid-cols-3">
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">Processo</p>

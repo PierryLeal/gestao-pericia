@@ -50,4 +50,31 @@ describe('periciaSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('accepts a string observacoes and defaults it to null when omitted', () => {
+    const withNote = periciaSchema.safeParse({
+      processoId: 1,
+      dataAgendada: '2026-08-01',
+      horaAgendada: '14:30',
+      municipioId: 1,
+      peritoId: 1,
+      colaboradorId: null,
+      situacao: 'marcada',
+      observacoes: 'Perícia remarcada a pedido do perito',
+    });
+    expect(withNote.success).toBe(true);
+    expect(withNote.success && withNote.data.observacoes).toBe('Perícia remarcada a pedido do perito');
+
+    const withoutNote = periciaSchema.safeParse({
+      processoId: 1,
+      dataAgendada: '2026-08-01',
+      horaAgendada: '14:30',
+      municipioId: 1,
+      peritoId: 1,
+      colaboradorId: null,
+      situacao: 'marcada',
+    });
+    expect(withoutNote.success).toBe(true);
+    expect(withoutNote.success && withoutNote.data.observacoes).toBeNull();
+  });
 });

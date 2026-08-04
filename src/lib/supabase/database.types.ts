@@ -47,11 +47,11 @@ export type Database = {
         Row: {
           id: number; processo_id: number; data_agendada: string | null; hora_agendada: string | null;
           municipio_id: number; perito_id: number; colaborador_id: number | null;
-          situacao: PericiaSituacao; created_at: string;
+          situacao: PericiaSituacao; observacoes: string | null; created_at: string;
         };
         Insert: {
           processo_id: number; data_agendada?: string | null; hora_agendada?: string | null; municipio_id: number;
-          perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao;
+          perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao; observacoes?: string | null;
         };
         Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
         Relationships: [

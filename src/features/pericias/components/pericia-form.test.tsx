@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PericiaForm } from './pericia-form';
-import { getColaboradoresIndisponiveis } from '../actions';
+import { createPericia, getColaboradoresIndisponiveis } from '../actions';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 
@@ -216,7 +216,8 @@ describe('PericiaForm', () => {
           dataAgendada: '2026-08-10',
           horaAgendada: '14:00',
           situacao: 'marcada',
-          processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B' },
+          observacoes: null,
+          processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' },
           municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
         }}
         peritos={[{ id: 1, nome: 'Carlos' }]}
@@ -304,4 +305,37 @@ describe('PericiaForm', () => {
     // Result of the latest request (colaborador 3) must apply.
     expect(dudaOption.className).toMatch(/opacity-40/);
   }, 10000);
+
+  it('sends a trimmed observacoes value, or null when left blank', async () => {
+    const user = userEvent.setup();
+    render(
+      <PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />
+    );
+
+    await user.click(screen.getByText('selecionar processo'));
+    await user.click(screen.getByText('selecionar município'));
+    await user.click(screen.getByRole('combobox', { name: /perito/i }));
+    await user.click(await screen.findByText('Carlos'));
+    await user.type(screen.getByLabelText('Observações'), '  Levar EPI extra  ');
+    await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+    expect(vi.mocked(createPericia)).toHaveBeenCalledWith(
+      expect.objectContaining({ observacoes: 'Levar EPI extra' })
+    );
+  });
+
+  it('sends observacoes as null when left blank', async () => {
+    const user = userEvent.setup();
+    render(
+      <PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />
+    );
+
+    await user.click(screen.getByText('selecionar processo'));
+    await user.click(screen.getByText('selecionar município'));
+    await user.click(screen.getByRole('combobox', { name: /perito/i }));
+    await user.click(await screen.findByText('Carlos'));
+    await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+    expect(vi.mocked(createPericia)).toHaveBeenCalledWith(expect.objectContaining({ observacoes: null }));
+  });
 });
