@@ -10,8 +10,10 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PericiaForm } from './pericia-form';
 import { CalendarioFilters, type CalendarioFiltersValue } from './calendario-filters';
+import { renderCalendarEventContent } from './calendario-event-content';
 import { getColaboradoresIndisponiveis, updatePericia } from '../actions';
 import type { PericiaListItem } from '../actions';
 import type { Processo } from '@/features/processos/actions';
@@ -132,16 +134,24 @@ export function CalendarioScreen({
                   <p className="text-sm text-muted-foreground">Nenhuma perícia sem data.</p>
                 )}
                 {unscheduled.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    data-pericia-id={item.id}
-                    data-title={`${item.processo.numero} — ${item.perito.nome}`}
-                    onClick={() => openEdit(item.id)}
-                    className="calendario-nao-agendada-item w-full rounded-md border p-2 text-left text-sm hover:bg-accent"
-                  >
-                    {item.processo.numero} — {item.perito.nome}
-                  </button>
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          data-pericia-id={item.id}
+                          data-title={`${item.processo.numero} — ${item.perito.nome}`}
+                          onClick={() => openEdit(item.id)}
+                          className="calendario-nao-agendada-item block w-full truncate rounded-md border p-2 text-left text-sm hover:bg-accent"
+                        />
+                      }
+                    >
+                      {item.processo.numero} — {item.perito.nome}
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {item.processo.numero} — {item.perito.nome}
+                    </TooltipContent>
+                  </Tooltip>
                 ))}
               </div>
             </CardContent>
@@ -158,6 +168,7 @@ export function CalendarioScreen({
               right: 'dayGridMonth,timeGridWeek,timeGridDay',
             }}
             events={events}
+            eventContent={renderCalendarEventContent}
             editable
             eventClick={(info) => openEdit(Number(info.event.id))}
             eventDrop={(info) => handleReschedule(info.event, info.revert)}

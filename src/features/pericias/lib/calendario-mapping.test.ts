@@ -24,6 +24,15 @@ describe('periciaToEvent', () => {
       start: '2026-09-20T10:00',
       backgroundColor: 'var(--status-marcada)',
       borderColor: 'var(--status-marcada)',
+      extendedProps: {
+        processoNumero: '0001234-56.2026',
+        peritoNome: 'Cleber',
+        colaboradorNome: null,
+        municipioNome: 'Belo Horizonte',
+        municipioUf: 'MG',
+        horaAgendada: '10:00',
+        situacao: 'marcada',
+      },
     });
   });
 

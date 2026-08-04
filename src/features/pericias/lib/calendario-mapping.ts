@@ -7,12 +7,23 @@ const SITUACAO_COLORS: Record<PericiaListItem['situacao'], string> = {
   cancelada: 'var(--status-cancelada)',
 };
 
+export type CalendarEventDetails = {
+  processoNumero: string;
+  peritoNome: string;
+  colaboradorNome: string | null;
+  municipioNome: string;
+  municipioUf: string;
+  horaAgendada: string;
+  situacao: PericiaListItem['situacao'];
+};
+
 export type CalendarEvent = {
   id: string;
   title: string;
   start: string;
   backgroundColor: string;
   borderColor: string;
+  extendedProps: CalendarEventDetails;
 };
 
 export function periciaToEvent(item: PericiaListItem): CalendarEvent {
@@ -23,6 +34,15 @@ export function periciaToEvent(item: PericiaListItem): CalendarEvent {
     start: `${item.dataAgendada}T${item.horaAgendada}`,
     backgroundColor: color,
     borderColor: color,
+    extendedProps: {
+      processoNumero: item.processo.numero,
+      peritoNome: item.perito.nome,
+      colaboradorNome: item.colaborador?.nome ?? null,
+      municipioNome: item.municipio.nome,
+      municipioUf: item.municipio.uf,
+      horaAgendada: item.horaAgendada ?? '',
+      situacao: item.situacao,
+    },
   };
 }
 
