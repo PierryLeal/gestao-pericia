@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExportPericiasButton } from './export-pericias-button';
+import type { PericiaListItem } from '../actions';
 
 const mockListPericias = vi.fn();
 vi.mock('../actions', () => ({
@@ -43,13 +44,14 @@ vi.mock('exceljs', () => ({
   },
 }));
 
-const items = [
+const items: PericiaListItem[] = [
   {
     id: 1,
     dataAgendada: '2026-09-16',
     horaAgendada: '10:00',
     situacao: 'pendente' as const,
-    processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y' },
+    observacoes: null,
+    processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y', escritorio: 'PMRA' },
     municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
     perito: {
       id: 7, nome: 'Cleber', contato: '', formacao: '', crea: '',

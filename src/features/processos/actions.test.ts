@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listProcessos, getProcesso, updateProcesso, deleteProcesso } from './actions';
+import { listProcessos, getProcesso, updateProcesso, deleteProcesso, listEscritoriosDistintos } from './actions';
 
 const mockSingle = vi.fn();
 const mockEq = vi.fn(() => ({ single: mockSingle }));
@@ -99,6 +99,30 @@ describe('updateProcesso', () => {
       success: true,
       data: { id: 1, numero: 'P-2', autor: 'A', reu: 'B', escritorio: 'PMRA' },
     });
+  });
+});
+
+describe('listEscritoriosDistintos', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns the deduped, ordered list of escritorios', async () => {
+    mockOrder.mockResolvedValue({
+      data: [{ escritorio: 'PMRA' }, { escritorio: 'CESCON' }, { escritorio: 'PMRA' }],
+      error: null,
+    });
+    const result = await listEscritoriosDistintos();
+    expect(result).toEqual(['PMRA', 'CESCON']);
+  });
+
+  it('filters out empty-string values', async () => {
+    mockOrder.mockResolvedValue({ data: [{ escritorio: '' }, { escritorio: 'PMRA' }], error: null });
+    const result = await listEscritoriosDistintos();
+    expect(result).toEqual(['PMRA']);
+  });
+
+  it('throws when the query returns an error', async () => {
+    mockOrder.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    await expect(listEscritoriosDistintos()).rejects.toThrow('boom');
   });
 });
 

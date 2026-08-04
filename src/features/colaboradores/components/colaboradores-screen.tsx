@@ -12,7 +12,7 @@ import { ColaboradorForm } from './colaborador-form';
 import { ColaboradoresFilters } from './colaboradores-filters';
 import { deleteColaborador, type Colaborador } from '../actions';
 
-const COLABORADORES_HEADERS = ['Nome', 'Contato', 'Formação', 'Tipo', ''];
+const COLABORADORES_HEADERS = ['Nome', 'Contato', 'Formação', ''];
 
 export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Colaborador[]> }) {
   const router = useRouter();

@@ -12,7 +12,7 @@ import { ProcessoForm } from './processo-form';
 import { ProcessosFilters } from './processos-filters';
 import { deleteProcesso, type Processo } from '../actions';
 
-const PROCESSOS_HEADERS = ['Número', 'Autor', 'Réu', ''];
+const PROCESSOS_HEADERS = ['Número', 'Autor', 'Réu', 'Escritório', ''];
 
 export function ProcessosScreen({ itemsPromise }: { itemsPromise: Promise<Processo[]> }) {
   const router = useRouter();

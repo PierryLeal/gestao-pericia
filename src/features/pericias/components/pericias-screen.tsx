@@ -20,7 +20,7 @@ type PeritoOption = { id: number; nome: string };
 type ColaboradorOption = { id: number; nome: string };
 type EditingPericia = PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
 
-const PERICIAS_HEADERS = ['', 'Nº Processo', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', ''];
+const PERICIAS_HEADERS = ['', 'Nº Processo', 'Escritório', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', 'Obs.', ''];
 
 export function PericiasScreen({
   itemsPromise,

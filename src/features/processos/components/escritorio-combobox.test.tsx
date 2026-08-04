@@ -35,4 +35,26 @@ describe('EscritorioCombobox', () => {
     render(<EscritorioCombobox value="PMRA" onChange={vi.fn()} />);
     expect(screen.getByRole('combobox')).toHaveTextContent('PMRA');
   });
+
+  it('does not offer to create a duplicate when typed text matches an existing suggestion case-insensitively', async () => {
+    const user = userEvent.setup();
+    render(<EscritorioCombobox value="" onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('combobox'));
+    await user.type(screen.getByPlaceholderText('Buscar ou digitar escritório...'), 'pmra');
+
+    expect(await screen.findByText('PMRA')).toBeInTheDocument();
+    expect(screen.queryByText('Usar "pmra"')).not.toBeInTheDocument();
+  });
+
+  it('filters suggestions client-side as the user types', async () => {
+    const user = userEvent.setup();
+    render(<EscritorioCombobox value="" onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('combobox'));
+    await user.type(screen.getByPlaceholderText('Buscar ou digitar escritório...'), 'PM');
+
+    expect(await screen.findByText('PMRA')).toBeInTheDocument();
+    expect(screen.queryByText('CESCON')).not.toBeInTheDocument();
+  });
 });
