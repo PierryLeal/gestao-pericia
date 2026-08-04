@@ -14,7 +14,7 @@ export default function Loading() {
         </Button>
       </div>
       <ProcessosFilters />
-      <TableSkeleton headers={['Número', 'Autor', 'Réu', '']} />
+      <TableSkeleton headers={['Número', 'Autor', 'Réu', 'Escritório', '']} />
     </div>
   );
 }

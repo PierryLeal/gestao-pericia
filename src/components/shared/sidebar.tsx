@@ -36,7 +36,7 @@ function NavLink({
       href={href}
       className={cn(
         'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-sidebar-accent',
-        collapsed && 'justify-center px-0',
+        collapsed && 'size-9 justify-center rounded-full px-0 py-0',
         active && 'bg-sidebar-accent text-sidebar-accent-foreground'
       )}
     >
@@ -101,7 +101,7 @@ export function Sidebar({ role }: { role: Role }) {
             type="submit"
             variant="ghost"
             aria-label={collapsed ? 'Sair' : undefined}
-            className={cn('w-full justify-start gap-2', collapsed && 'justify-center px-0')}
+            className={cn('w-full justify-start gap-2', collapsed && 'size-9 justify-center rounded-full px-0')}
           >
             <LogOut className="size-4 shrink-0" />
             {!collapsed && 'Sair'}
@@ -111,7 +111,7 @@ export function Sidebar({ role }: { role: Role }) {
           type="button"
           variant="ghost"
           aria-label={collapsed ? 'Expandir menu' : undefined}
-          className={cn('w-full justify-start gap-2', collapsed && 'justify-center px-0')}
+          className={cn('w-full justify-start gap-2', collapsed && 'size-9 justify-center rounded-full px-0')}
           onClick={toggleCollapsed}
         >
           {collapsed ? <PanelLeftOpen className="size-4 shrink-0" /> : <PanelLeftClose className="size-4 shrink-0" />}

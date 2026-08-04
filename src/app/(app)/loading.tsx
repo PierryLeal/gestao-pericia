@@ -14,7 +14,9 @@ export default function Loading() {
         </Button>
       </div>
       <PericiasFilters peritos={[]} colaboradores={[]} municipio={null} />
-      <TableSkeleton headers={['', 'Nº Processo', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', '']} />
+      <TableSkeleton
+        headers={['', 'Nº Processo', 'Escritório', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', 'Obs.', '']}
+      />
     </div>
   );
 }
