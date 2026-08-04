@@ -38,8 +38,8 @@ export type Database = {
         Relationships: [];
       };
       colaboradores: {
-        Row: { id: number; nome: string; contato: string; formacao: string; interno: boolean; created_at: string };
-        Insert: { nome: string; contato?: string; formacao?: string; interno?: boolean };
+        Row: { id: number; nome: string; contato: string; formacao: string; created_at: string };
+        Insert: { nome: string; contato?: string; formacao?: string };
         Update: Partial<Database['public']['Tables']['colaboradores']['Insert']>;
         Relationships: [];
       };

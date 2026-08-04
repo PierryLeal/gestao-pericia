@@ -20,7 +20,7 @@ export type PericiaListItem = {
     id: number; nome: string; contato: string; formacao: string; crea: string;
     jaTrabalhamos: boolean; relacao: PeritoRelacao; resultados: PeritoResultado;
   };
-  colaborador: { id: number; nome: string; contato: string; formacao: string; interno: boolean } | null;
+  colaborador: { id: number; nome: string; contato: string; formacao: string } | null;
 };
 
 function toRow(input: PericiaInput) {
@@ -51,7 +51,7 @@ export async function listPericias(
       processo:processos!inner ( id, numero, autor, reu, escritorio ),
       municipio:municipios!inner ( id, nome, uf ),
       perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
-      colaborador:colaboradores ( id, nome, contato, formacao, interno )
+      colaborador:colaboradores ( id, nome, contato, formacao )
     `)
     .order('data_agendada', { ascending: false, nullsFirst: false });
 
@@ -108,7 +108,6 @@ export async function listPericias(
           nome: row.colaborador.nome,
           contato: row.colaborador.contato,
           formacao: row.colaborador.formacao,
-          interno: row.colaborador.interno,
         }
       : null,
   }));

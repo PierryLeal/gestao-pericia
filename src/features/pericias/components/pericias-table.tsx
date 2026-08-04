@@ -182,8 +182,7 @@ export function PericiasTable({
                           <p className="text-xs font-medium text-muted-foreground">Colaborador</p>
                           {item.colaborador ? (
                             <p className="text-sm">
-                              Contato: {formatPhone(item.colaborador.contato)} · Formação: {item.colaborador.formacao} ·{' '}
-                              {item.colaborador.interno ? 'Interno' : 'Externo'}
+                              Contato: {formatPhone(item.colaborador.contato)} · Formação: {item.colaborador.formacao}
                             </p>
                           ) : (
                             <p className="text-sm text-muted-foreground">Nenhum colaborador vinculado.</p>

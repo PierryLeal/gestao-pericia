@@ -6,10 +6,10 @@ import type { ActionResult } from '@/lib/action-result';
 import { matchesSearch } from '@/lib/search';
 import { colaboradorSchema, type ColaboradorInput } from './schemas';
 
-export type Colaborador = { id: number; nome: string; contato: string; formacao: string; interno: boolean };
+export type Colaborador = { id: number; nome: string; contato: string; formacao: string };
 
 function toRow(input: ColaboradorInput) {
-  return { nome: input.nome, contato: input.contato, formacao: input.formacao, interno: input.interno };
+  return { nome: input.nome, contato: input.contato, formacao: input.formacao };
 }
 
 export async function listColaboradores(busca?: string): Promise<Colaborador[]> {

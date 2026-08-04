@@ -22,7 +22,7 @@ describe('ColaboradorForm', () => {
   it('pre-fills fields when editing an existing colaborador', () => {
     render(
       <ColaboradorForm
-        colaborador={{ id: 1, nome: 'Bruna', contato: '11988887777', formacao: 'Direito', interno: false }}
+        colaborador={{ id: 1, nome: 'Bruna', contato: '11988887777', formacao: 'Direito' }}
         onSaved={vi.fn()}
         onError={vi.fn()}
       />
@@ -42,7 +42,7 @@ describe('ColaboradorForm', () => {
   it('does not truncate an over-length existing contato value on mount', () => {
     render(
       <ColaboradorForm
-        colaborador={{ id: 1, nome: 'Bruna', contato: '5511999998888888', formacao: 'Direito', interno: false }}
+        colaborador={{ id: 1, nome: 'Bruna', contato: '5511999998888888', formacao: 'Direito' }}
         onSaved={vi.fn()}
         onError={vi.fn()}
       />

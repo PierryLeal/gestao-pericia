@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { ColaboradoresTable } from './colaboradores-table';
 import type { Colaborador } from '../actions';
 
-const items: Colaborador[] = [{ id: 1, nome: 'Bruna Souza', contato: '', formacao: '', interno: true }];
+const items: Colaborador[] = [{ id: 1, nome: 'Bruna Souza', contato: '', formacao: '' }];
 
 describe('ColaboradoresTable', () => {
   it('calls onEdit when the edit icon is clicked', async () => {

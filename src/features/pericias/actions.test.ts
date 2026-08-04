@@ -185,7 +185,6 @@ describe('listPericias', () => {
       nome: 'Colaborador W',
       contato: '(11) 98888-0000',
       formacao: 'Direito',
-      interno: true,
     },
   };
 
@@ -231,7 +230,6 @@ describe('listPericias', () => {
           nome: 'Colaborador W',
           contato: '(11) 98888-0000',
           formacao: 'Direito',
-          interno: true,
         },
       },
     ]);

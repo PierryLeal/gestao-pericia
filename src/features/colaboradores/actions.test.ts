@@ -17,8 +17,8 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 const rows = [
-  { id: 1, nome: 'Bruna Souza', contato: '', formacao: '', interno: true },
-  { id: 2, nome: 'José André', contato: '', formacao: '', interno: false },
+  { id: 1, nome: 'Bruna Souza', contato: '', formacao: '' },
+  { id: 2, nome: 'José André', contato: '', formacao: '' },
 ];
 
 describe('listColaboradores', () => {

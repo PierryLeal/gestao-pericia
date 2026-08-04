@@ -16,7 +16,7 @@ vi.mock('../actions', () => ({
   deleteColaborador: vi.fn(async () => ({ success: true, data: null })),
 }));
 
-const items = [{ id: 1, nome: 'Bruna', contato: '', formacao: '', interno: true }];
+const items = [{ id: 1, nome: 'Bruna', contato: '', formacao: '' }];
 
 describe('ColaboradoresScreen', () => {
   it('opens the edit dialog pre-filled with the selected colaborador', async () => {

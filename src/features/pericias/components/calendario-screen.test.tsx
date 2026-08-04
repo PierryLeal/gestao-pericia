@@ -168,7 +168,7 @@ describe('CalendarioScreen', () => {
   describe('drag-to-reschedule', () => {
     const withColaborador: PericiaListItem = {
       ...scheduled,
-      colaborador: { id: 9, nome: 'Ana', contato: '', formacao: '', interno: true },
+      colaborador: { id: 9, nome: 'Ana', contato: '', formacao: '' },
     };
 
     beforeEach(() => {
@@ -397,8 +397,8 @@ describe('CalendarioScreen', () => {
   });
 
   it('reduces both the calendar events and the não-agendadas list when filtering by colaborador', async () => {
-    const colaboradorA = { id: 9, nome: 'Ana', contato: '', formacao: '', interno: true };
-    const colaboradorB = { id: 10, nome: 'Bruno', contato: '', formacao: '', interno: true };
+    const colaboradorA = { id: 9, nome: 'Ana', contato: '', formacao: '' };
+    const colaboradorB = { id: 10, nome: 'Bruno', contato: '', formacao: '' };
     const comColaboradorA: PericiaListItem = { ...scheduled, colaborador: colaboradorA };
     const comColaboradorB: PericiaListItem = {
       ...scheduled,

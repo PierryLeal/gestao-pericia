@@ -56,7 +56,6 @@ export function ColaboradoresTable({
             <TableHead>Nome</TableHead>
             <TableHead>Contato</TableHead>
             <TableHead>Formação</TableHead>
-            <TableHead>Tipo</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -66,7 +65,6 @@ export function ColaboradoresTable({
               <TableCell>{item.nome}</TableCell>
               <TableCell>{formatPhone(item.contato)}</TableCell>
               <TableCell>{item.formacao}</TableCell>
-              <TableCell>{item.interno ? 'Interno' : 'Externo'}</TableCell>
               <TableCell>
                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(item)}>
                   <Pencil className="size-4" />
