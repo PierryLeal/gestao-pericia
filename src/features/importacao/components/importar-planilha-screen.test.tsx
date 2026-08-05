@@ -119,6 +119,6 @@ describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
       [expect.objectContaining({ nome: 'Ana' })],
       []
     ));
-    expect(await screen.findByText(/1 colaborador\(es\) criado/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 colaborador criado/i)).toBeInTheDocument();
   });
 });

@@ -188,7 +188,7 @@ export function ImportarPlanilhaScreen() {
                 {relatorioPeritos.peritosAtualizados} {pluralizar(relatorioPeritos.peritosAtualizados, 'atualizado', 'atualizados')}.
               </p>
               <p>
-                {relatorioPeritos.colaboradoresCriados} {pluralizar(relatorioPeritos.colaboradoresCriados, 'colaborador(es) criado', 'colaboradores criados')},{' '}
+                {relatorioPeritos.colaboradoresCriados} {pluralizar(relatorioPeritos.colaboradoresCriados, 'colaborador criado', 'colaboradores criados')},{' '}
                 {relatorioPeritos.colaboradoresAtualizados} {pluralizar(relatorioPeritos.colaboradoresAtualizados, 'atualizado', 'atualizados')}.
               </p>
             </div>
