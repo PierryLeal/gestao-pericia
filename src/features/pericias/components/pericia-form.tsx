@@ -49,7 +49,7 @@ export function PericiaForm({
     }
     let cancelled = false;
     const handle = setTimeout(() => {
-      getColaboradoresIndisponiveis(dataAgendada, horaAgendada, pericia?.id)
+      getColaboradoresIndisponiveis(dataAgendada, horaAgendada, processo?.id, pericia?.id)
         .then((ids) => {
           if (!cancelled) setBusyColaboradorIds(ids);
         })
@@ -61,7 +61,7 @@ export function PericiaForm({
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [dataAgendada, horaAgendada, pericia?.id]);
+  }, [dataAgendada, horaAgendada, processo?.id, pericia?.id]);
 
   const effectiveBusyIds = dataAgendada && horaAgendada ? busyColaboradorIds : [];
   const colaboradorConflict = colaboradorId !== '' && effectiveBusyIds.includes(Number(colaboradorId));

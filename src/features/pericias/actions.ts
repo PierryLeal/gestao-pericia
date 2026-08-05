@@ -188,6 +188,7 @@ export async function deletePericia(id: number): Promise<ActionResult<null>> {
 export async function getColaboradoresIndisponiveis(
   dataAgendada: string,
   horaAgendada: string,
+  processoId?: number,
   excludePericiaId?: number
 ): Promise<number[]> {
   await requireRole(['admin', 'gerencia']);
@@ -198,6 +199,12 @@ export async function getColaboradoresIndisponiveis(
     .eq('data_agendada', dataAgendada)
     .eq('hora_agendada', horaAgendada)
     .not('colaborador_id', 'is', null);
+  if (processoId) {
+    // A colaborador on another pericia for the SAME processo at this date/time is not
+    // a real conflict (e.g. two specialists examining the same case together) — only
+    // a different processo at the same date/time is a genuine double-booking.
+    query = query.neq('processo_id', processoId);
+  }
   if (excludePericiaId) {
     query = query.neq('id', excludePericiaId);
   }

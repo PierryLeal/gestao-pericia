@@ -288,7 +288,7 @@ describe('getColaboradoresIndisponiveis', () => {
   it('excludes the given pericia id when editing', async () => {
     periciasQueryResult = { data: [], error: null };
 
-    await getColaboradoresIndisponiveis('2026-08-10', '14:00', 7);
+    await getColaboradoresIndisponiveis('2026-08-10', '14:00', undefined, 7);
 
     expect(periciasEqCalls).toContainEqual(['neq:id', 7]);
   });
@@ -299,6 +299,22 @@ describe('getColaboradoresIndisponiveis', () => {
     await getColaboradoresIndisponiveis('2026-08-10', '14:00');
 
     expect(periciasEqCalls.some(([col]) => col === 'neq:id')).toBe(false);
+  });
+
+  it('excludes pericias for the same processo when a processoId is given', async () => {
+    periciasQueryResult = { data: [], error: null };
+
+    await getColaboradoresIndisponiveis('2026-08-10', '14:00', 5);
+
+    expect(periciasEqCalls).toContainEqual(['neq:processo_id', 5]);
+  });
+
+  it('does not filter by processo when no processoId is given', async () => {
+    periciasQueryResult = { data: [], error: null };
+
+    await getColaboradoresIndisponiveis('2026-08-10', '14:00');
+
+    expect(periciasEqCalls.some(([col]) => col === 'neq:processo_id')).toBe(false);
   });
 
   it('returns an empty array when nobody is booked', async () => {

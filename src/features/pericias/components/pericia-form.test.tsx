@@ -120,7 +120,7 @@ describe('PericiaForm', () => {
     await user.type(screen.getByLabelText('Hora agendada'), '14:00');
     await new Promise((r) => setTimeout(r, 350));
 
-    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', undefined, undefined);
 
     await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
     const busyOption = await screen.findByRole('option', { name: 'Bruna' });
@@ -132,6 +132,25 @@ describe('PericiaForm', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar perícia/i })).toBeDisabled();
     expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it('includes the selected processo id in the conflict check once a processo is chosen', async () => {
+    const user = userEvent.setup();
+    render(
+      <PericiaForm
+        peritos={[{ id: 1, nome: 'Carlos' }]}
+        colaboradores={[{ id: 2, nome: 'Bruna' }]}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByText('selecionar processo'));
+    await user.type(screen.getByLabelText('Data agendada'), '2026-08-10');
+    await user.type(screen.getByLabelText('Hora agendada'), '14:00');
+    await new Promise((r) => setTimeout(r, 350));
+
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 1, undefined);
   });
 
   it('does not restrict the colaborador select when no date/time is set', async () => {
@@ -232,7 +251,7 @@ describe('PericiaForm', () => {
 
     await new Promise((r) => setTimeout(r, 350));
 
-    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 9);
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 1, 9);
   });
 
   it('surfaces an error via onError when the conflict check fails', async () => {
@@ -296,8 +315,8 @@ describe('PericiaForm', () => {
     await new Promise((r) => setTimeout(r, 900));
 
     expect(getColaboradoresIndisponiveis).toHaveBeenCalledTimes(2);
-    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(1, '2026-08-10', '14:00', undefined);
-    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(2, '2026-08-10', '15:00', undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(1, '2026-08-10', '14:00', undefined, undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(2, '2026-08-10', '15:00', undefined, undefined);
 
     await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
     const brunaOption = await screen.findByRole('option', { name: 'Bruna' });
