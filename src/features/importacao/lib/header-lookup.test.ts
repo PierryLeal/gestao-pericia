@@ -22,6 +22,18 @@ describe('encontrarIndiceColuna', () => {
     const headerRow = worksheet.getRow(1);
     expect(encontrarIndiceColuna(headerRow, ['LOCAL'])).toBeNull();
   });
+
+  it('matches a header cell whose text is split into richText runs', async () => {
+    const worksheet = await criarPlanilha([['PERÍCIA', '']]);
+    worksheet.getRow(1).getCell(2).value = { richText: [{ text: 'DA' }, { text: 'TA' }] };
+    expect(encontrarIndiceColuna(worksheet.getRow(1), ['DATA'])).toBe(2);
+  });
+
+  it('matches a header cell produced by a formula, using its result', async () => {
+    const worksheet = await criarPlanilha([['PERÍCIA', '']]);
+    worksheet.getRow(1).getCell(2).value = { formula: 'Z1', result: 'LOCAL', date1904: false };
+    expect(encontrarIndiceColuna(worksheet.getRow(1), ['LOCAL'])).toBe(2);
+  });
 });
 
 describe('encontrarLinhaComTexto', () => {

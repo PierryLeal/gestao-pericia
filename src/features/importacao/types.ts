@@ -36,6 +36,12 @@ export type PreviewImportacaoPericiasResult = {
   naoProcessadas: NaoProcessada[];
 };
 
+/** A row that could not be written, with the reason, so the report can surface it. */
+export type LinhaComErro = {
+  linhaOriginal: number;
+  erro: string;
+};
+
 export type RelatorioImportacaoPericias = {
   processosCriados: number;
   processosAtualizados: number;
@@ -43,6 +49,7 @@ export type RelatorioImportacaoPericias = {
   peritosCriados: number;
   colaboradoresCriados: number;
   puladasPorDuplicidade: number;
+  linhasComErro: LinhaComErro[];
 };
 
 export type ColaboradorPreviewRow = {
@@ -80,4 +87,5 @@ export type RelatorioImportacaoPeritosColaboradores = {
   peritosAtualizados: number;
   colaboradoresCriados: number;
   colaboradoresAtualizados: number;
+  linhasComErro: LinhaComErro[];
 };

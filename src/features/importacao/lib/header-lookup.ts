@@ -1,8 +1,8 @@
 import type { Row, Worksheet } from 'exceljs';
+import { textoDaCelula } from './cell-text';
 
 function normalizarTextoCelula(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  return String(value).trim().toLowerCase();
+  return textoDaCelula(value).trim().toLowerCase();
 }
 
 /** Returns the 1-based column index of the first cell in `row` whose text

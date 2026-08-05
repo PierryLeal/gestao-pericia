@@ -12,7 +12,8 @@ const mockListPeritos = vi.fn();
 const mockListColaboradores = vi.fn();
 const mockListProcessos = vi.fn();
 const mockListPericias = vi.fn();
-const mockSearchMunicipios = vi.fn();
+const mockFindMunicipiosPorNomeExato = vi.fn();
+const mockUpsertMunicipio = vi.fn();
 const mockCreateProcesso = vi.fn();
 const mockUpdateProcesso = vi.fn();
 const mockCreatePerito = vi.fn();
@@ -40,7 +41,12 @@ vi.mock('@/features/pericias/actions', () => ({
   listPericias: (...args: unknown[]) => mockListPericias(...args),
   createPericia: (...args: unknown[]) => mockCreatePericia(...args),
 }));
-vi.mock('@/lib/ibge/client', () => ({ searchMunicipios: (...args: unknown[]) => mockSearchMunicipios(...args) }));
+vi.mock('@/lib/ibge/client', () => ({
+  findMunicipiosPorNomeExato: (...args: unknown[]) => mockFindMunicipiosPorNomeExato(...args),
+}));
+vi.mock('@/features/municipios/actions', () => ({
+  upsertMunicipio: (...args: unknown[]) => mockUpsertMunicipio(...args),
+}));
 
 async function criarBuffer(linhas: (string | number)[][]): Promise<ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
@@ -58,7 +64,7 @@ beforeEach(() => {
   mockListColaboradores.mockResolvedValue([{ id: 2, nome: 'João', contato: '', formacao: '' }]);
   mockListProcessos.mockResolvedValue([]);
   mockListPericias.mockResolvedValue([]);
-  mockSearchMunicipios.mockResolvedValue([{ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' }]);
+  mockFindMunicipiosPorNomeExato.mockResolvedValue([{ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' }]);
 });
 
 describe('previewImportacaoPericias', () => {
@@ -105,7 +111,7 @@ describe('previewImportacaoPericias', () => {
   });
 
   it('flags a row as atencao with a município combobox target when the city has no match', async () => {
-    mockSearchMunicipios.mockResolvedValue([]);
+    mockFindMunicipiosPorNomeExato.mockResolvedValue([]);
     const buffer = await criarBuffer([
       HEADER,
       ['Maria x João - 0001234-56.2026', '', '', 'Cidade Inexistente', 'Cleber', '', '', '', 'PMRA'],
@@ -119,7 +125,7 @@ describe('previewImportacaoPericias', () => {
   });
 
   it('prefers the MG match when a city name is ambiguous across states', async () => {
-    mockSearchMunicipios.mockResolvedValue([
+    mockFindMunicipiosPorNomeExato.mockResolvedValue([
       { id: 1, nome: 'Bom Jesus', uf: 'RS' },
       { id: 2, nome: 'Bom Jesus', uf: 'MG' },
       { id: 3, nome: 'Bom Jesus', uf: 'PI' },
@@ -230,6 +236,52 @@ describe('previewImportacaoPericias', () => {
 
     expect(result.linhas[0].status).toBe('ok');
   });
+
+  it('explains itself via naoProcessadas when the PERÍCIA header column is missing (e.g. a title row on top)', async () => {
+    const buffer = await criarBuffer([
+      ['RELATÓRIO DE PERÍCIAS 2026'],
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '', '', 'Belo Horizonte', 'Cleber', '', '', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas).toEqual([]);
+    expect(result.naoProcessadas).toEqual([
+      {
+        linhaOriginal: 1,
+        texto: '',
+        motivo: 'não foi possível encontrar a coluna "PERÍCIA" na primeira linha da planilha',
+      },
+    ]);
+  });
+
+  it('reads a richText PERITO cell as plain text instead of "[object Object]"', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Perícias');
+    worksheet.addRow(HEADER);
+    worksheet.addRow(['Maria x João - 0001234-56.2026', '', '', 'Belo Horizonte', '', '', '', '', 'PMRA']);
+    worksheet.getRow(2).getCell(5).value = { richText: [{ text: 'Cleber' }, { text: ' Silva' }] };
+    const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].peritoNome).toBe('Cleber Silva');
+  });
+
+  it('reads a formula PERÍCIA cell via its computed result', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Perícias');
+    worksheet.addRow(HEADER);
+    worksheet.addRow(['', '', '', 'Belo Horizonte', 'Cleber', '', '', '', 'PMRA']);
+    worksheet.getRow(2).getCell(1).value = { formula: 'Z1', result: 'Maria x João - 0001234-56.2026', date1904: false };
+    const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.naoProcessadas).toEqual([]);
+    expect(result.linhas[0].processoNumero).toBe('0001234-56.2026');
+  });
 });
 
 function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRow {
@@ -265,7 +317,10 @@ describe('confirmarImportacaoPericias', () => {
     mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 70, nome: 'Novo Colaborador' } });
     mockCreatePericia.mockResolvedValue({ success: true, data: { id: 100 } });
     mockListPericias.mockResolvedValue([]);
+    mockUpsertMunicipio.mockResolvedValue({ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' });
   });
+
+  const PROCESSO_EXISTENTE = { id: 9, numero: '0001234-56.2026', autor: 'Antigo', reu: 'Antigo', escritorio: 'ANTIGO' };
 
   it('creates a new processo when processoIdExistente is null, then creates the pericia', async () => {
     const relatorio = await confirmarImportacaoPericias([linhaBase()]);
@@ -282,7 +337,9 @@ describe('confirmarImportacaoPericias', () => {
     expect(relatorio.periciasCriadas).toBe(1);
   });
 
-  it('updates the existing processo (overwriting autor/reu/escritorio) when processoIdExistente is set', async () => {
+  it('updates the existing processo (overwriting autor/reu/escritorio) when the fresh list has that número', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
     const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9 })]);
 
     expect(mockUpdateProcesso).toHaveBeenCalledWith(9, {
@@ -353,11 +410,15 @@ describe('confirmarImportacaoPericias', () => {
       linhaBase({ linhaOriginal: 3, processoIdExistente: null, horaAgendada: '11:00' }),
     ];
 
-    await confirmarImportacaoPericias(linhas);
+    const relatorio = await confirmarImportacaoPericias(linhas);
 
     expect(mockCreateProcesso).toHaveBeenCalledTimes(1);
     expect(mockCreatePericia).toHaveBeenNthCalledWith(1, expect.objectContaining({ processoId: 50 }));
     expect(mockCreatePericia).toHaveBeenNthCalledWith(2, expect.objectContaining({ processoId: 50 }));
+    // The second row reuses the batch-created processo without rewriting it.
+    expect(mockUpdateProcesso).not.toHaveBeenCalled();
+    expect(relatorio.processosCriados).toBe(1);
+    expect(relatorio.processosAtualizados).toBe(0);
   });
 
   it('skips the second of two rows in the same batch that are identical on the full duplicate-detection key', async () => {
@@ -371,6 +432,182 @@ describe('confirmarImportacaoPericias', () => {
     expect(mockCreatePericia).toHaveBeenCalledTimes(1);
     expect(relatorio.periciasCriadas).toBe(1);
     expect(relatorio.puladasPorDuplicidade).toBe(1);
+  });
+
+  // --- C1: municípios resolved from the IBGE API must land in the local table
+  // that pericias.municipio_id has its FK to, or every insert fails.
+
+  it('upserts the row município into the local table before creating the perícia', async () => {
+    const ordem: string[] = [];
+    mockUpsertMunicipio.mockImplementation(async () => { ordem.push('upsertMunicipio'); });
+    mockCreatePericia.mockImplementation(async () => { ordem.push('createPericia'); return { success: true, data: { id: 100 } }; });
+
+    await confirmarImportacaoPericias([linhaBase()]);
+
+    expect(mockUpsertMunicipio).toHaveBeenCalledWith({ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' });
+    expect(ordem).toEqual(['upsertMunicipio', 'createPericia']);
+  });
+
+  it('upserts each distinct município once per batch, not once per row', async () => {
+    const linhas = [
+      linhaBase({ linhaOriginal: 2, horaAgendada: '10:00' }),
+      linhaBase({ linhaOriginal: 3, horaAgendada: '11:00' }),
+      linhaBase({ linhaOriginal: 4, horaAgendada: '12:00', municipioId: 3131307, municipioNome: 'Ipatinga', municipioUf: 'MG' }),
+    ];
+
+    await confirmarImportacaoPericias(linhas);
+
+    expect(mockUpsertMunicipio).toHaveBeenCalledTimes(2);
+    expect(mockUpsertMunicipio).toHaveBeenCalledWith({ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' });
+    expect(mockUpsertMunicipio).toHaveBeenCalledWith({ id: 3131307, nome: 'Ipatinga', uf: 'MG' });
+    expect(mockCreatePericia).toHaveBeenCalledTimes(3);
+  });
+
+  it('records the row as an error and skips it when the município upsert throws', async () => {
+    mockUpsertMunicipio.mockRejectedValue(new Error('permission denied for table municipios'));
+
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ linhaOriginal: 4 })]);
+
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(relatorio.periciasCriadas).toBe(0);
+    expect(relatorio.linhasComErro).toEqual([
+      { linhaOriginal: 4, erro: 'falha ao salvar município: permission denied for table municipios' },
+    ]);
+  });
+
+  // --- C2: ids are always re-resolved against a fresh DB read.
+
+  it('ignores a stale processoIdExistente and creates a new processo when the fresh list has no such número', async () => {
+    mockListProcessos.mockResolvedValue([]);
+
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9 })]);
+
+    expect(mockUpdateProcesso).not.toHaveBeenCalled();
+    expect(mockCreateProcesso).toHaveBeenCalledWith({
+      numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA',
+    });
+    expect(relatorio.processosCriados).toBe(1);
+    expect(relatorio.processosAtualizados).toBe(0);
+  });
+
+  it('does not rewrite an unrelated processo when the user corrected a typo in the número (stale id + edited número)', async () => {
+    // The preview table lets the user edit processoNumero without clearing
+    // processoIdExistente, so a stale id must never drive the update target.
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
+    await confirmarImportacaoPericias([
+      linhaBase({ processoIdExistente: 9, processoNumero: '0009999-99.2026' }),
+    ]);
+
+    expect(mockUpdateProcesso).not.toHaveBeenCalled();
+    expect(mockCreateProcesso).toHaveBeenCalledWith(expect.objectContaining({ numero: '0009999-99.2026' }));
+  });
+
+  it('resolves the processo from the fresh list even when processoIdExistente is null', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: null })]);
+
+    expect(mockCreateProcesso).not.toHaveBeenCalled();
+    expect(mockUpdateProcesso).toHaveBeenCalledWith(9, expect.objectContaining({ numero: '0001234-56.2026' }));
+    expect(relatorio.processosAtualizados).toBe(1);
+  });
+
+  it('re-resolves a corrected perito name against the fresh list instead of creating a duplicate', async () => {
+    // The preview table clears peritoIdExistente whenever the name is edited,
+    // so fixing "Cleberr" -> "Cleber" arrives with a null id but an existing name.
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
+    await confirmarImportacaoPericias([linhaBase({ peritoNome: 'Cleber', peritoIdExistente: null })]);
+
+    expect(mockCreatePerito).not.toHaveBeenCalled();
+    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 1 }));
+  });
+
+  it('re-resolves a corrected colaborador name against the fresh list instead of creating a duplicate', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
+    await confirmarImportacaoPericias([linhaBase({ colaboradorNome: 'João', colaboradorIdExistente: null })]);
+
+    expect(mockCreateColaborador).not.toHaveBeenCalled();
+    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ colaboradorId: 2 }));
+  });
+
+  it('ignores a stale peritoIdExistente and creates when the fresh list no longer has that name', async () => {
+    mockListPeritos.mockResolvedValue([]);
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
+    await confirmarImportacaoPericias([linhaBase({ peritoNome: 'Cleber', peritoIdExistente: 1 })]);
+
+    expect(mockCreatePerito).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Cleber' }));
+    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 60 }));
+  });
+
+  // --- C3 / I1: failures are reported instead of silently dropping the row.
+
+  it('records a linhaComErro with the DB message when createPericia fails', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+    mockCreatePericia.mockResolvedValue({ success: false, error: 'violates foreign key constraint "pericias_municipio_id_fkey"' });
+
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ linhaOriginal: 7 })]);
+
+    expect(relatorio.periciasCriadas).toBe(0);
+    expect(relatorio.linhasComErro).toEqual([
+      { linhaOriginal: 7, erro: 'falha ao criar perícia: violates foreign key constraint "pericias_municipio_id_fkey"' },
+    ]);
+  });
+
+  it('records a linhaComErro and skips the row when the processo cannot be created', async () => {
+    mockCreateProcesso.mockResolvedValue({ success: false, error: 'Já existe um processo com esse número' });
+
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ linhaOriginal: 3 })]);
+
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(relatorio.processosCriados).toBe(0);
+    expect(relatorio.linhasComErro).toEqual([
+      { linhaOriginal: 3, erro: 'falha ao criar processo: Já existe um processo com esse número' },
+    ]);
+  });
+
+  it('records a linhaComErro and skips the row when the perito cannot be created', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+    mockCreatePerito.mockResolvedValue({ success: false, error: 'nome é obrigatório' });
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 5, peritoNome: 'Perito Novo', peritoIdExistente: null }),
+    ]);
+
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 5, erro: 'falha ao criar perito: nome é obrigatório' }]);
+  });
+
+  it('records a linhaComErro when the row has no perito at all', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 6, peritoNome: '', peritoIdExistente: null }),
+    ]);
+
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 6, erro: 'perito não informado' }]);
+  });
+
+  it('skips an atencao row whose município was never resolved instead of sending null to createPericia', async () => {
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 8, status: 'atencao', motivo: 'município não encontrado', municipioId: null }),
+    ]);
+
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockUpsertMunicipio).not.toHaveBeenCalled();
+    expect(mockCreateProcesso).not.toHaveBeenCalled();
+    expect(relatorio.periciasCriadas).toBe(0);
+    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 8, erro: 'município não resolvido' }]);
+  });
+
+  it('reports no errors and an empty linhasComErro on a fully successful batch', async () => {
+    const relatorio = await confirmarImportacaoPericias([linhaBase()]);
+    expect(relatorio.linhasComErro).toEqual([]);
+    expect(relatorio.periciasCriadas).toBe(1);
   });
 });
 
@@ -596,5 +833,68 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
     });
     expect(relatorio.peritosCriados).toBe(1);
     expect(relatorio.peritosAtualizados).toBe(0);
+  });
+
+  // --- I3: the Tab 2 sheet has no formação column for colaboradores.
+
+  it('preserves the stored formação of an existing colaborador instead of blanking it', async () => {
+    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'Ana', contato: '31900000000', formacao: 'Engenheira Agrônoma' }]);
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
+    };
+
+    await confirmarImportacaoPeritosColaboradores([colaborador], []);
+
+    expect(mockUpdateColaborador).toHaveBeenCalledWith(5, {
+      nome: 'Ana', contato: '31999990000', formacao: 'Engenheira Agrônoma',
+    });
+  });
+
+  it('still creates a colaborador with a blank formação when there is nothing to carry through', async () => {
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: null,
+    };
+
+    await confirmarImportacaoPeritosColaboradores([colaborador], []);
+
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '' });
+  });
+
+  // --- C3: write failures surface in the report.
+
+  it('records a linhaComErro when a colaborador write fails', async () => {
+    mockCreateColaborador.mockResolvedValue({ success: false, error: 'nome é obrigatório' });
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 4, status: 'ok', motivo: null, nome: 'Ana', contato: '', idExistente: null,
+    };
+
+    const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
+
+    expect(relatorio.colaboradoresCriados).toBe(0);
+    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 4, erro: 'falha ao criar colaborador: nome é obrigatório' }]);
+  });
+
+  it('records a linhaComErro when a perito update fails', async () => {
+    mockListPeritos.mockResolvedValue([
+      { id: 6, nome: 'Carlos', contato: '', formacao: '', crea: '', documento: '', jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial' },
+    ]);
+    mockUpdatePerito.mockResolvedValue({ success: false, error: 'CPF inválido' });
+    const perito: PeritoPreviewRow = {
+      linhaOriginal: 9, status: 'ok', motivo: null, nome: 'Carlos', contato: '', formacao: '', crea: '',
+      documento: 'xxx', jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial', idExistente: 6,
+    };
+
+    const relatorio = await confirmarImportacaoPeritosColaboradores([], [perito]);
+
+    expect(relatorio.peritosAtualizados).toBe(0);
+    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 9, erro: 'falha ao atualizar perito: CPF inválido' }]);
+  });
+
+  it('reports an empty linhasComErro on a fully successful batch', async () => {
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '', idExistente: null,
+    };
+    const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
+    expect(relatorio.linhasComErro).toEqual([]);
   });
 });
