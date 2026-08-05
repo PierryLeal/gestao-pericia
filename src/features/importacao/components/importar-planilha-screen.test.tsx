@@ -5,11 +5,13 @@ import { ImportarPlanilhaScreen } from './importar-planilha-screen';
 
 const mockPreviewPericias = vi.fn();
 const mockConfirmarPericias = vi.fn();
+const mockPreviewPeritosColaboradores = vi.fn();
+const mockConfirmarPeritosColaboradores = vi.fn();
 vi.mock('../actions', () => ({
   previewImportacaoPericias: (...args: unknown[]) => mockPreviewPericias(...args),
   confirmarImportacaoPericias: (...args: unknown[]) => mockConfirmarPericias(...args),
-  previewImportacaoPeritosColaboradores: vi.fn(async () => ({ colaboradores: [], peritos: [], naoProcessadas: [] })),
-  confirmarImportacaoPeritosColaboradores: vi.fn(),
+  previewImportacaoPeritosColaboradores: (...args: unknown[]) => mockPreviewPeritosColaboradores(...args),
+  confirmarImportacaoPeritosColaboradores: (...args: unknown[]) => mockConfirmarPeritosColaboradores(...args),
 }));
 
 function arquivoFake(nome = 'planilha.xlsx') {
@@ -90,5 +92,33 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
 
     await waitFor(() => expect(screen.getByRole('button', { name: /confirmar importação/i })).toBeDisabled());
+  });
+});
+
+describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
+  it('shows the second tab, processes its upload, and confirms it independently from Tab 1', async () => {
+    mockPreviewPeritosColaboradores.mockResolvedValue({
+      colaboradores: [{ linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '', idExistente: null }],
+      peritos: [],
+      naoProcessadas: [],
+    });
+    mockConfirmarPeritosColaboradores.mockResolvedValue({
+      peritosCriados: 0, peritosAtualizados: 0, colaboradoresCriados: 1, colaboradoresAtualizados: 0,
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.click(screen.getByRole('tab', { name: /peritos e colaboradores/i }));
+    await user.upload(screen.getByLabelText(/planilha de peritos/i), arquivoFake());
+
+    await waitFor(() => expect(screen.getByDisplayValue('Ana')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    await waitFor(() => expect(mockConfirmarPeritosColaboradores).toHaveBeenCalledWith(
+      [expect.objectContaining({ nome: 'Ana' })],
+      []
+    ));
+    expect(await screen.findByText(/1 colaborador\(es\) criado/i)).toBeInTheDocument();
   });
 });

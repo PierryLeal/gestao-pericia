@@ -1,0 +1,130 @@
+'use client';
+
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { relacaoOptions, resultadoOptions, type PeritoInput } from '../../peritos/schemas';
+import { cn } from '@/lib/utils';
+import type { ColaboradorPreviewRow, PeritoPreviewRow } from '../types';
+
+export function PeritosColaboradoresPreviewTable({
+  colaboradores,
+  peritos,
+  onChangeColaboradores,
+  onChangePeritos,
+}: {
+  colaboradores: ColaboradorPreviewRow[];
+  peritos: PeritoPreviewRow[];
+  onChangeColaboradores: (linhas: ColaboradorPreviewRow[]) => void;
+  onChangePeritos: (linhas: PeritoPreviewRow[]) => void;
+}) {
+  function atualizarColaborador(index: number, patch: Partial<ColaboradorPreviewRow>) {
+    onChangeColaboradores(colaboradores.map((linha, i) => (i === index ? { ...linha, ...patch } : linha)));
+  }
+  function atualizarPerito(index: number, patch: Partial<PeritoPreviewRow>) {
+    onChangePeritos(peritos.map((linha, i) => (i === index ? { ...linha, ...patch } : linha)));
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Colaboradores</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Contato</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {colaboradores.map((linha, index) => (
+              <TableRow key={linha.linhaOriginal} className={cn(linha.status === 'atencao' && 'bg-destructive/10')}>
+                <TableCell>
+                  <Input value={linha.nome} onChange={(e) => atualizarColaborador(index, { nome: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Input value={linha.contato} onChange={(e) => atualizarColaborador(index, { contato: e.target.value })} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Peritos</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Contato</TableHead>
+              <TableHead>Formação</TableHead>
+              <TableHead>CREA</TableHead>
+              <TableHead>CPF</TableHead>
+              <TableHead>Já trabalhamos?</TableHead>
+              <TableHead>Relação</TableHead>
+              <TableHead>Resultados</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {peritos.map((linha, index) => (
+              <TableRow key={linha.linhaOriginal} className={cn(linha.status === 'atencao' && 'bg-destructive/10')}>
+                <TableCell>
+                  <Input value={linha.nome} onChange={(e) => atualizarPerito(index, { nome: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Input value={linha.contato} onChange={(e) => atualizarPerito(index, { contato: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Input value={linha.formacao} onChange={(e) => atualizarPerito(index, { formacao: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Input value={linha.crea} onChange={(e) => atualizarPerito(index, { crea: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Input value={linha.documento} onChange={(e) => atualizarPerito(index, { documento: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={linha.jaTrabalhamos}
+                    onCheckedChange={(checked) => atualizarPerito(index, { jaTrabalhamos: checked })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Select
+                    value={linha.relacao}
+                    onValueChange={(v) => atualizarPerito(index, { relacao: v as PeritoInput['relacao'] })}
+                  >
+                    <SelectTrigger aria-label="Relação"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {relacaoOptions.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Select
+                    value={linha.resultados}
+                    onValueChange={(v) => atualizarPerito(index, { resultados: v as PeritoInput['resultados'] })}
+                  >
+                    <SelectTrigger aria-label="Resultados"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {resultadoOptions.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                {linha.motivo && (
+                  <TableCell className="text-xs text-muted-foreground">{linha.motivo}</TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
