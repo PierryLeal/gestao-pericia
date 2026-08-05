@@ -5,8 +5,8 @@ import { requireRole } from '@/features/auth/guards';
 import { searchMunicipios } from '@/lib/ibge/client';
 import { normalizeForSearch } from '@/lib/search';
 import { createProcesso, updateProcesso, listProcessos } from '@/features/processos/actions';
-import { createPerito, listPeritos } from '@/features/peritos/actions';
-import { createColaborador, listColaboradores } from '@/features/colaboradores/actions';
+import { createPerito, updatePerito, listPeritos } from '@/features/peritos/actions';
+import { createColaborador, updateColaborador, listColaboradores } from '@/features/colaboradores/actions';
 import { createPericia, listPericias } from '@/features/pericias/actions';
 import { parseColunaPericia, mapSituacao } from './lib/pericia-parser';
 import { parseDataCelula, parseHoraCelula } from './lib/date-parsing';
@@ -20,6 +20,7 @@ import type {
   ColaboradorPreviewRow,
   PeritoPreviewRow,
   PreviewImportacaoPeritosColaboradoresResult,
+  RelatorioImportacaoPeritosColaboradores,
 } from './types';
 
 const COLUNAS_PERICIA_ACEITAS: Record<string, string[]> = {
@@ -357,4 +358,60 @@ export async function previewImportacaoPeritosColaboradores(
   }
 
   return { colaboradores, peritos, naoProcessadas: [] };
+}
+
+export async function confirmarImportacaoPeritosColaboradores(
+  colaboradores: ColaboradorPreviewRow[],
+  peritos: PeritoPreviewRow[]
+): Promise<RelatorioImportacaoPeritosColaboradores> {
+  await requireRole(['admin', 'gerencia']);
+
+  const [colaboradoresAtuais, peritosAtuais] = await Promise.all([listColaboradores(), listPeritos()]);
+  const colaboradoresCriadosNesteLote = new Map<string, number>();
+  const peritosCriadosNesteLote = new Map<string, number>();
+
+  const relatorio: RelatorioImportacaoPeritosColaboradores = {
+    peritosCriados: 0, peritosAtualizados: 0, colaboradoresCriados: 0, colaboradoresAtualizados: 0,
+  };
+
+  for (const linha of colaboradores) {
+    const input = { nome: linha.nome, contato: linha.contato, formacao: '' };
+    const chave = normalizeForSearch(linha.nome);
+    const existente = colaboradoresAtuais.find((c) => normalizeForSearch(c.nome) === chave);
+    const idResolvido = existente?.id ?? linha.idExistente ?? colaboradoresCriadosNesteLote.get(chave) ?? null;
+
+    if (idResolvido) {
+      const resultado = await updateColaborador(idResolvido, input);
+      if (resultado.success) relatorio.colaboradoresAtualizados++;
+    } else {
+      const resultado = await createColaborador(input);
+      if (resultado.success) {
+        colaboradoresCriadosNesteLote.set(chave, resultado.data.id);
+        relatorio.colaboradoresCriados++;
+      }
+    }
+  }
+
+  for (const linha of peritos) {
+    const input = {
+      nome: linha.nome, contato: linha.contato, formacao: linha.formacao, crea: linha.crea,
+      documento: linha.documento, jaTrabalhamos: linha.jaTrabalhamos, relacao: linha.relacao, resultados: linha.resultados,
+    };
+    const chave = normalizeForSearch(linha.nome);
+    const existente = peritosAtuais.find((p) => normalizeForSearch(p.nome) === chave);
+    const idResolvido = existente?.id ?? linha.idExistente ?? peritosCriadosNesteLote.get(chave) ?? null;
+
+    if (idResolvido) {
+      const resultado = await updatePerito(idResolvido, input);
+      if (resultado.success) relatorio.peritosAtualizados++;
+    } else {
+      const resultado = await createPerito(input);
+      if (resultado.success) {
+        peritosCriadosNesteLote.set(chave, resultado.data.id);
+        relatorio.peritosCriados++;
+      }
+    }
+  }
+
+  return relatorio;
 }

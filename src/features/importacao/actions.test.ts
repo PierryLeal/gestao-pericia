@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ExcelJS from 'exceljs';
 import { previewImportacaoPericias, confirmarImportacaoPericias } from './actions';
-import { previewImportacaoPeritosColaboradores } from './actions';
-import type { PericiaPreviewRow } from './types';
+import { previewImportacaoPeritosColaboradores, confirmarImportacaoPeritosColaboradores } from './actions';
+import type { PericiaPreviewRow, ColaboradorPreviewRow, PeritoPreviewRow } from './types';
 
 vi.mock('@/features/auth/guards', () => ({
   requireRole: vi.fn(async () => ({ id: 'u1', nome: 'Ana', email: 'a@x.com', role: 'admin' })),
@@ -16,7 +16,9 @@ const mockSearchMunicipios = vi.fn();
 const mockCreateProcesso = vi.fn();
 const mockUpdateProcesso = vi.fn();
 const mockCreatePerito = vi.fn();
+const mockUpdatePerito = vi.fn();
 const mockCreateColaborador = vi.fn();
+const mockUpdateColaborador = vi.fn();
 const mockCreatePericia = vi.fn();
 
 vi.mock('@/features/processos/actions', () => ({
@@ -27,10 +29,12 @@ vi.mock('@/features/processos/actions', () => ({
 vi.mock('@/features/peritos/actions', () => ({
   listPeritos: (...args: unknown[]) => mockListPeritos(...args),
   createPerito: (...args: unknown[]) => mockCreatePerito(...args),
+  updatePerito: (...args: unknown[]) => mockUpdatePerito(...args),
 }));
 vi.mock('@/features/colaboradores/actions', () => ({
   listColaboradores: (...args: unknown[]) => mockListColaboradores(...args),
   createColaborador: (...args: unknown[]) => mockCreateColaborador(...args),
+  updateColaborador: (...args: unknown[]) => mockUpdateColaborador(...args),
 }));
 vi.mock('@/features/pericias/actions', () => ({
   listPericias: (...args: unknown[]) => mockListPericias(...args),
@@ -458,5 +462,100 @@ describe('previewImportacaoPeritosColaboradores', () => {
     expect(result.naoProcessadas).toEqual([
       { linhaOriginal: 0, texto: '', motivo: 'não foi possível encontrar o cabeçalho "PERITO" na planilha' },
     ]);
+  });
+});
+
+describe('confirmarImportacaoPeritosColaboradores', () => {
+  beforeEach(() => {
+    mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 5, nome: 'Ana' } });
+    mockUpdateColaborador.mockResolvedValue({ success: true, data: { id: 5, nome: 'Ana' } });
+    mockCreatePerito.mockResolvedValue({ success: true, data: { id: 6, nome: 'Carlos' } });
+    mockUpdatePerito.mockResolvedValue({ success: true, data: { id: 6, nome: 'Carlos' } });
+  });
+
+  it('creates a new colaborador when idExistente is null', async () => {
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: null,
+    };
+    const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
+
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(relatorio.colaboradoresCriados).toBe(1);
+  });
+
+  it('overwrites an existing colaborador when idExistente is set', async () => {
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
+    };
+    const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
+
+    expect(mockUpdateColaborador).toHaveBeenCalledWith(5, { nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(relatorio.colaboradoresAtualizados).toBe(1);
+  });
+
+  it('creates a new perito with all fields when idExistente is null', async () => {
+    const perito: PeritoPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Carlos', contato: '31988880000',
+      formacao: 'Eng. Civil', crea: 'CREA-123', documento: '111.222.333-44',
+      jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo', idExistente: null,
+    };
+    const relatorio = await confirmarImportacaoPeritosColaboradores([], [perito]);
+
+    expect(mockCreatePerito).toHaveBeenCalledWith({
+      nome: 'Carlos', contato: '31988880000', formacao: 'Eng. Civil', crea: 'CREA-123',
+      documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+    });
+    expect(relatorio.peritosCriados).toBe(1);
+  });
+
+  it('overwrites an existing perito with all fields when idExistente is set', async () => {
+    const perito: PeritoPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Carlos', contato: '31988880000',
+      formacao: 'Eng. Civil', crea: 'CREA-123', documento: '111.222.333-44',
+      jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo', idExistente: 6,
+    };
+    const relatorio = await confirmarImportacaoPeritosColaboradores([], [perito]);
+
+    expect(mockUpdatePerito).toHaveBeenCalledWith(6, {
+      nome: 'Carlos', contato: '31988880000', formacao: 'Eng. Civil', crea: 'CREA-123',
+      documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+    });
+    expect(relatorio.peritosAtualizados).toBe(1);
+  });
+
+  it('creates the same new colaborador only once across two rows referencing it, updating it on the second row', async () => {
+    mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 8, nome: 'Zeca' } });
+    const colaboradores: ColaboradorPreviewRow[] = [
+      { linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Zeca', contato: '31900001111', idExistente: null },
+      { linhaOriginal: 3, status: 'ok', motivo: null, nome: 'Zeca', contato: '31900002222', idExistente: null },
+    ];
+
+    const relatorio = await confirmarImportacaoPeritosColaboradores(colaboradores, []);
+
+    expect(mockCreateColaborador).toHaveBeenCalledTimes(1);
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Zeca', contato: '31900001111', formacao: '' });
+    expect(mockUpdateColaborador).toHaveBeenCalledWith(8, { nome: 'Zeca', contato: '31900002222', formacao: '' });
+    expect(relatorio.colaboradoresCriados).toBe(1);
+    expect(relatorio.colaboradoresAtualizados).toBe(1);
+  });
+
+  it('resolves to an update via a fresh DB match even when idExistente was null in the stale preview snapshot', async () => {
+    mockListPeritos.mockResolvedValue([
+      { id: 9, nome: 'Carlos', contato: '', formacao: '', crea: '', documento: '', jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial' },
+    ]);
+    const perito: PeritoPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Carlos', contato: '31988880000',
+      formacao: 'Eng. Civil', crea: 'CREA-123', documento: '111.222.333-44',
+      jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo', idExistente: null,
+    };
+
+    const relatorio = await confirmarImportacaoPeritosColaboradores([], [perito]);
+
+    expect(mockCreatePerito).not.toHaveBeenCalled();
+    expect(mockUpdatePerito).toHaveBeenCalledWith(9, {
+      nome: 'Carlos', contato: '31988880000', formacao: 'Eng. Civil', crea: 'CREA-123',
+      documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+    });
+    expect(relatorio.peritosAtualizados).toBe(1);
   });
 });
