@@ -4,14 +4,19 @@ import ExcelJS from 'exceljs';
 import { requireRole } from '@/features/auth/guards';
 import { searchMunicipios } from '@/lib/ibge/client';
 import { normalizeForSearch } from '@/lib/search';
-import { listPeritos } from '@/features/peritos/actions';
-import { listColaboradores } from '@/features/colaboradores/actions';
-import { listProcessos } from '@/features/processos/actions';
-import { listPericias } from '@/features/pericias/actions';
+import { createProcesso, updateProcesso, listProcessos } from '@/features/processos/actions';
+import { createPerito, listPeritos } from '@/features/peritos/actions';
+import { createColaborador, listColaboradores } from '@/features/colaboradores/actions';
+import { createPericia, listPericias } from '@/features/pericias/actions';
 import { parseColunaPericia, mapSituacao } from './lib/pericia-parser';
 import { parseDataCelula, parseHoraCelula } from './lib/date-parsing';
 import { encontrarIndiceColuna } from './lib/header-lookup';
-import type { NaoProcessada, PericiaPreviewRow, PreviewImportacaoPericiasResult } from './types';
+import type {
+  NaoProcessada,
+  PericiaPreviewRow,
+  PreviewImportacaoPericiasResult,
+  RelatorioImportacaoPericias,
+} from './types';
 
 const COLUNAS_PERICIA_ACEITAS: Record<string, string[]> = {
   pericia: ['PERÍCIA', 'PERICIA'],
@@ -139,4 +144,99 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
   }
 
   return { linhas, naoProcessadas };
+}
+
+export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): Promise<RelatorioImportacaoPericias> {
+  await requireRole(['admin', 'gerencia']);
+
+  const periciasAtuais = await listPericias();
+
+  const peritosCriadosNesteLote = new Map<string, number>();
+  const colaboradoresCriadosNesteLote = new Map<string, number>();
+
+  const relatorio: RelatorioImportacaoPericias = {
+    processosCriados: 0, processosAtualizados: 0, periciasCriadas: 0,
+    peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0,
+  };
+
+  for (const linha of linhas) {
+    if (linha.status === 'duplicada') {
+      relatorio.puladasPorDuplicidade++;
+      continue;
+    }
+
+    const jaExiste = periciasAtuais.some((p) =>
+      normalizeForSearch(p.processo.numero) === normalizeForSearch(linha.processoNumero) &&
+      p.dataAgendada === linha.dataAgendada &&
+      p.horaAgendada === linha.horaAgendada &&
+      normalizeForSearch(p.perito.nome) === normalizeForSearch(linha.peritoNome) &&
+      normalizeForSearch(p.colaborador?.nome ?? '') === normalizeForSearch(linha.colaboradorNome) &&
+      (p.observacoes ?? '') === (linha.observacoes ?? '')
+    );
+    if (jaExiste) {
+      relatorio.puladasPorDuplicidade++;
+      continue;
+    }
+
+    let processoId = linha.processoIdExistente;
+    if (processoId) {
+      const resultado = await updateProcesso(processoId, {
+        numero: linha.processoNumero, autor: linha.processoAutor, reu: linha.processoReu, escritorio: linha.processoEscritorio,
+      });
+      if (resultado.success) relatorio.processosAtualizados++;
+    } else {
+      const resultado = await createProcesso({
+        numero: linha.processoNumero, autor: linha.processoAutor, reu: linha.processoReu, escritorio: linha.processoEscritorio,
+      });
+      if (!resultado.success) continue;
+      processoId = resultado.data.id;
+      relatorio.processosCriados++;
+    }
+
+    let peritoId = linha.peritoIdExistente;
+    if (!peritoId && linha.peritoNome.trim()) {
+      const chave = normalizeForSearch(linha.peritoNome);
+      peritoId = peritosCriadosNesteLote.get(chave) ?? null;
+      if (!peritoId) {
+        const resultado = await createPerito({
+          nome: linha.peritoNome, contato: '', formacao: '', crea: '', documento: '',
+          jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial',
+        });
+        if (resultado.success) {
+          peritoId = resultado.data.id;
+          peritosCriadosNesteLote.set(chave, peritoId);
+          relatorio.peritosCriados++;
+        }
+      }
+    }
+    if (!peritoId) continue;
+
+    let colaboradorId = linha.colaboradorIdExistente;
+    if (!colaboradorId && linha.colaboradorNome.trim()) {
+      const chave = normalizeForSearch(linha.colaboradorNome);
+      colaboradorId = colaboradoresCriadosNesteLote.get(chave) ?? null;
+      if (!colaboradorId) {
+        const resultado = await createColaborador({ nome: linha.colaboradorNome, contato: '', formacao: '' });
+        if (resultado.success) {
+          colaboradorId = resultado.data.id;
+          colaboradoresCriadosNesteLote.set(chave, colaboradorId);
+          relatorio.colaboradoresCriados++;
+        }
+      }
+    }
+
+    const resultadoPericia = await createPericia({
+      processoId,
+      municipioId: linha.municipioId as number,
+      peritoId,
+      colaboradorId: colaboradorId ?? null,
+      dataAgendada: linha.dataAgendada,
+      horaAgendada: linha.horaAgendada,
+      situacao: linha.situacao,
+      observacoes: linha.observacoes,
+    });
+    if (resultadoPericia.success) relatorio.periciasCriadas++;
+  }
+
+  return relatorio;
 }
