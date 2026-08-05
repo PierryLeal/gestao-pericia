@@ -484,6 +484,7 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
   });
 
   it('overwrites an existing colaborador when idExistente is set', async () => {
+    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'Ana', contato: '31999990000', formacao: '' }]);
     const colaborador: ColaboradorPreviewRow = {
       linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
     };
@@ -509,6 +510,9 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
   });
 
   it('overwrites an existing perito with all fields when idExistente is set', async () => {
+    mockListPeritos.mockResolvedValue([
+      { id: 6, nome: 'Carlos', contato: '31988880000', formacao: 'Eng. Civil', crea: 'CREA-123', documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+    ]);
     const perito: PeritoPreviewRow = {
       linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Carlos', contato: '31988880000',
       formacao: 'Eng. Civil', crea: 'CREA-123', documento: '111.222.333-44',
@@ -557,5 +561,40 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
       documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
     });
     expect(relatorio.peritosAtualizados).toBe(1);
+  });
+
+  it('ignores a stale idExistente and creates instead when the fresh colaborador list has no matching name (renamed/deleted since preview)', async () => {
+    mockListColaboradores.mockResolvedValue([{ id: 2, nome: 'João', contato: '', formacao: '' }]);
+    mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 9, nome: 'Ana' } });
+    const colaborador: ColaboradorPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
+    };
+
+    const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
+
+    expect(mockUpdateColaborador).not.toHaveBeenCalled();
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(relatorio.colaboradoresCriados).toBe(1);
+    expect(relatorio.colaboradoresAtualizados).toBe(0);
+  });
+
+  it('ignores a stale idExistente and creates instead when the fresh perito list has no matching name (renamed/deleted since preview)', async () => {
+    mockListPeritos.mockResolvedValue([{ id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', documento: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' }]);
+    mockCreatePerito.mockResolvedValue({ success: true, data: { id: 10, nome: 'Carlos' } });
+    const perito: PeritoPreviewRow = {
+      linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Carlos', contato: '31988880000',
+      formacao: 'Eng. Civil', crea: 'CREA-123', documento: '111.222.333-44',
+      jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo', idExistente: 6,
+    };
+
+    const relatorio = await confirmarImportacaoPeritosColaboradores([], [perito]);
+
+    expect(mockUpdatePerito).not.toHaveBeenCalled();
+    expect(mockCreatePerito).toHaveBeenCalledWith({
+      nome: 'Carlos', contato: '31988880000', formacao: 'Eng. Civil', crea: 'CREA-123',
+      documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+    });
+    expect(relatorio.peritosCriados).toBe(1);
+    expect(relatorio.peritosAtualizados).toBe(0);
   });
 });

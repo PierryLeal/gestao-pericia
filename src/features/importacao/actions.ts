@@ -378,7 +378,7 @@ export async function confirmarImportacaoPeritosColaboradores(
     const input = { nome: linha.nome, contato: linha.contato, formacao: '' };
     const chave = normalizeForSearch(linha.nome);
     const existente = colaboradoresAtuais.find((c) => normalizeForSearch(c.nome) === chave);
-    const idResolvido = existente?.id ?? linha.idExistente ?? colaboradoresCriadosNesteLote.get(chave) ?? null;
+    const idResolvido = existente?.id ?? colaboradoresCriadosNesteLote.get(chave) ?? null;
 
     if (idResolvido) {
       const resultado = await updateColaborador(idResolvido, input);
@@ -399,7 +399,7 @@ export async function confirmarImportacaoPeritosColaboradores(
     };
     const chave = normalizeForSearch(linha.nome);
     const existente = peritosAtuais.find((p) => normalizeForSearch(p.nome) === chave);
-    const idResolvido = existente?.id ?? linha.idExistente ?? peritosCriadosNesteLote.get(chave) ?? null;
+    const idResolvido = existente?.id ?? peritosCriadosNesteLote.get(chave) ?? null;
 
     if (idResolvido) {
       const resultado = await updatePerito(idResolvido, input);
