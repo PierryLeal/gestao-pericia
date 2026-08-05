@@ -48,4 +48,27 @@ describe('PeritosColaboradoresPreviewTable', () => {
 
     expect(onChangePeritos).toHaveBeenCalledWith([expect.objectContaining({ relacao: 'otima' })]);
   });
+
+  it('gives every perito row the same number of cells as the perito header has columns, flagged or not', () => {
+    render(
+      <PeritosColaboradoresPreviewTable
+        colaboradores={[]}
+        peritos={[
+          peritoBase({ linhaOriginal: 2 }),
+          peritoBase({ linhaOriginal: 3, status: 'atencao', motivo: 'relação não reconhecida' }),
+        ]}
+        onChangeColaboradores={vi.fn()}
+        onChangePeritos={vi.fn()}
+      />
+    );
+
+    const tabelaPeritos = screen.getAllByRole('table').at(-1) as HTMLElement;
+    const colunas = tabelaPeritos.querySelectorAll('thead th');
+    const linhasDoCorpo = tabelaPeritos.querySelectorAll('tbody tr');
+    expect(linhasDoCorpo).toHaveLength(2);
+    for (const linha of linhasDoCorpo) {
+      expect(linha.querySelectorAll('td')).toHaveLength(colunas.length);
+    }
+    expect(colunas[colunas.length - 1]).toHaveTextContent('Motivo');
+  });
 });

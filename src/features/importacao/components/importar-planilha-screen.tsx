@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -11,12 +12,29 @@ import {
 import type {
   PericiaPreviewRow, NaoProcessada, RelatorioImportacaoPericias,
   ColaboradorPreviewRow, PeritoPreviewRow, RelatorioImportacaoPeritosColaboradores,
+  LinhaComErro,
 } from '../types';
 import { PericiasPreviewTable } from './pericias-preview-table';
 import { PeritosColaboradoresPreviewTable } from './peritos-colaboradores-preview-table';
 
 function pluralizar(quantidade: number, singular: string, plural: string): string {
   return quantidade === 1 ? singular : plural;
+}
+
+function LinhasComErro({ linhas }: { linhas: LinhaComErro[] }) {
+  if (linhas.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="font-medium text-destructive">
+        {linhas.length} {pluralizar(linhas.length, 'linha com erro', 'linhas com erro')}:
+      </p>
+      {linhas.map((linha, index) => (
+        <p key={`${linha.linhaOriginal}-${index}`} className="text-xs text-muted-foreground">
+          Linha {linha.linhaOriginal}: {linha.erro}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 export function ImportarPlanilhaScreen() {
@@ -44,6 +62,8 @@ export function ImportarPlanilhaScreen() {
       setLinhas(resultado.linhas);
       setNaoProcessadas(resultado.naoProcessadas);
       setTemPreviewPericias(true);
+    } catch {
+      toast.error('Não foi possível ler essa planilha.');
     } finally {
       setProcessandoPericias(false);
       e.target.value = '';
@@ -57,6 +77,9 @@ export function ImportarPlanilhaScreen() {
       setRelatorio(resultado);
       setLinhas([]);
       setTemPreviewPericias(false);
+    } catch {
+      // The preview is left intact so the user can retry without re-uploading.
+      toast.error('Não foi possível concluir a importação.');
     } finally {
       setProcessandoPericias(false);
     }
@@ -74,6 +97,8 @@ export function ImportarPlanilhaScreen() {
       setPeritos(resultado.peritos);
       setNaoProcessadasPeritos(resultado.naoProcessadas);
       setTemPreviewPeritos(true);
+    } catch {
+      toast.error('Não foi possível ler essa planilha.');
     } finally {
       setProcessandoPeritos(false);
       e.target.value = '';
@@ -88,6 +113,9 @@ export function ImportarPlanilhaScreen() {
       setColaboradores([]);
       setPeritos([]);
       setTemPreviewPeritos(false);
+    } catch {
+      // The preview is left intact so the user can retry without re-uploading.
+      toast.error('Não foi possível concluir a importação.');
     } finally {
       setProcessandoPeritos(false);
     }
@@ -148,6 +176,7 @@ export function ImportarPlanilhaScreen() {
               <p>
                 {relatorio.puladasPorDuplicidade} {pluralizar(relatorio.puladasPorDuplicidade, 'linha pulada', 'linhas puladas')} por duplicidade.
               </p>
+              <LinhasComErro linhas={relatorio.linhasComErro} />
             </div>
           )}
         </TabsContent>
@@ -191,6 +220,7 @@ export function ImportarPlanilhaScreen() {
                 {relatorioPeritos.colaboradoresCriados} {pluralizar(relatorioPeritos.colaboradoresCriados, 'colaborador criado', 'colaboradores criados')},{' '}
                 {relatorioPeritos.colaboradoresAtualizados} {pluralizar(relatorioPeritos.colaboradoresAtualizados, 'atualizado', 'atualizados')}.
               </p>
+              <LinhasComErro linhas={relatorioPeritos.linhasComErro} />
             </div>
           )}
         </TabsContent>

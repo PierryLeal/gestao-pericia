@@ -1,7 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { toast } from 'sonner';
 import { ImportarPlanilhaScreen } from './importar-planilha-screen';
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
 
 const mockPreviewPericias = vi.fn();
 const mockConfirmarPericias = vi.fn();
@@ -17,6 +22,28 @@ vi.mock('../actions', () => ({
 function arquivoFake(nome = 'planilha.xlsx') {
   return new File(['conteudo'], nome, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
+
+const LINHA_PREVIEW = {
+  linhaOriginal: 2, status: 'ok', motivo: null,
+  processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
+  processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
+  municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
+  peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdExistente: 2,
+  situacao: 'marcada', observacoes: null,
+};
+
+const RELATORIO_PERICIAS_VAZIO = {
+  processosCriados: 0, processosAtualizados: 0, periciasCriadas: 0,
+  peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0, linhasComErro: [],
+};
+
+const RELATORIO_PERITOS_VAZIO = {
+  peritosCriados: 0, peritosAtualizados: 0, colaboradoresCriados: 0, colaboradoresAtualizados: 0, linhasComErro: [],
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
   it('processes an uploaded file and shows the preview table', async () => {
@@ -66,10 +93,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
       }],
       naoProcessadas: [],
     });
-    mockConfirmarPericias.mockResolvedValue({
-      processosCriados: 1, processosAtualizados: 0, periciasCriadas: 1,
-      peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0,
-    });
+    mockConfirmarPericias.mockResolvedValue({ ...RELATORIO_PERICIAS_VAZIO, processosCriados: 1, periciasCriadas: 1 });
     const user = userEvent.setup();
     render(<ImportarPlanilhaScreen />);
 
@@ -93,6 +117,70 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: /confirmar importação/i })).toBeDisabled());
   });
+
+  it('lists the rows that failed to import, with their reasons, in the report', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
+    mockConfirmarPericias.mockResolvedValue({
+      ...RELATORIO_PERICIAS_VAZIO,
+      periciasCriadas: 1,
+      linhasComErro: [
+        { linhaOriginal: 7, erro: 'falha ao criar processo: Já existe um processo com esse número' },
+        { linhaOriginal: 9, erro: 'município não resolvido' },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    expect(await screen.findByText(/2 linhas com erro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Linha 7: falha ao criar processo: Já existe um processo com esse número/)).toBeInTheDocument();
+    expect(screen.getByText(/Linha 9: município não resolvido/)).toBeInTheDocument();
+  });
+
+  it('does not mention errors in the report when nothing failed', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
+    mockConfirmarPericias.mockResolvedValue({ ...RELATORIO_PERICIAS_VAZIO, periciasCriadas: 1 });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    expect(await screen.findByText(/1 perícia criada/i)).toBeInTheDocument();
+    expect(screen.queryByText(/linha.* com erro/i)).not.toBeInTheDocument();
+  });
+
+  it('shows an error toast and clears the spinner when the preview action rejects', async () => {
+    mockPreviewPericias.mockRejectedValue(new Error('Body exceeded 1 MB limit'));
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    const input = screen.getByLabelText(/planilha de perícias/i);
+    await user.upload(input, arquivoFake());
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(input).not.toBeDisabled();
+  });
+
+  it('shows an error toast and re-enables the confirm button when the confirm action rejects', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
+    mockConfirmarPericias.mockRejectedValue(new Error('Unauthorized'));
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    // The preview survives the failure so the user can retry.
+    expect(screen.getByRole('button', { name: /confirmar importação/i })).not.toBeDisabled();
+  });
 });
 
 describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
@@ -102,9 +190,7 @@ describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
       peritos: [],
       naoProcessadas: [],
     });
-    mockConfirmarPeritosColaboradores.mockResolvedValue({
-      peritosCriados: 0, peritosAtualizados: 0, colaboradoresCriados: 1, colaboradoresAtualizados: 0,
-    });
+    mockConfirmarPeritosColaboradores.mockResolvedValue({ ...RELATORIO_PERITOS_VAZIO, colaboradoresCriados: 1 });
     const user = userEvent.setup();
     render(<ImportarPlanilhaScreen />);
 
@@ -120,5 +206,56 @@ describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
       []
     ));
     expect(await screen.findByText(/1 colaborador criado/i)).toBeInTheDocument();
+  });
+
+  it('lists the rows that failed to import in the Tab 2 report', async () => {
+    mockPreviewPeritosColaboradores.mockResolvedValue({
+      colaboradores: [{ linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '', idExistente: null }],
+      peritos: [],
+      naoProcessadas: [],
+    });
+    mockConfirmarPeritosColaboradores.mockResolvedValue({
+      ...RELATORIO_PERITOS_VAZIO,
+      linhasComErro: [{ linhaOriginal: 4, erro: 'falha ao criar colaborador: nome é obrigatório' }],
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.click(screen.getByRole('tab', { name: /peritos e colaboradores/i }));
+    await user.upload(screen.getByLabelText(/planilha de peritos/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('Ana')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    expect(await screen.findByText(/1 linha com erro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Linha 4: falha ao criar colaborador: nome é obrigatório/)).toBeInTheDocument();
+  });
+
+  it('shows an error toast when the Tab 2 confirm action rejects', async () => {
+    mockPreviewPeritosColaboradores.mockResolvedValue({
+      colaboradores: [{ linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '', idExistente: null }],
+      peritos: [],
+      naoProcessadas: [],
+    });
+    mockConfirmarPeritosColaboradores.mockRejectedValue(new Error('Unauthorized'));
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.click(screen.getByRole('tab', { name: /peritos e colaboradores/i }));
+    await user.upload(screen.getByLabelText(/planilha de peritos/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('Ana')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows an error toast when the Tab 2 preview action rejects', async () => {
+    mockPreviewPeritosColaboradores.mockRejectedValue(new Error('corrupt file'));
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.click(screen.getByRole('tab', { name: /peritos e colaboradores/i }));
+    await user.upload(screen.getByLabelText(/planilha de peritos/i), arquivoFake());
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
   });
 });

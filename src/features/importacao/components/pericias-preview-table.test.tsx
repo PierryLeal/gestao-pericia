@@ -147,6 +147,26 @@ describe('PericiasPreviewTable', () => {
     ]);
   });
 
+  it('gives every row the same number of cells as the header has columns, flagged or not', () => {
+    render(
+      <PericiasPreviewTable
+        linhas={[
+          linhaBase({ linhaOriginal: 2 }),
+          linhaBase({ linhaOriginal: 3, status: 'atencao', motivo: 'situação não reconhecida' }),
+        ]}
+        onChange={vi.fn()}
+      />
+    );
+
+    const colunas = screen.getAllByRole('columnheader');
+    const linhasDoCorpo = screen.getAllByRole('row').slice(1);
+    expect(linhasDoCorpo).toHaveLength(2);
+    for (const linha of linhasDoCorpo) {
+      expect(linha.querySelectorAll('td')).toHaveLength(colunas.length);
+    }
+    expect(colunas.at(-1)).toHaveTextContent('Motivo');
+  });
+
   it('keeps fields editable (not disabled) on duplicada rows, just visually dimmed', () => {
     render(
       <PericiasPreviewTable

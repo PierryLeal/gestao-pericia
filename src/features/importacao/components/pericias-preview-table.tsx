@@ -31,6 +31,7 @@ export function PericiasPreviewTable({
           <TableHead>Situação</TableHead>
           <TableHead>Obs.</TableHead>
           <TableHead>Escritório</TableHead>
+          <TableHead>Motivo</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -112,9 +113,7 @@ export function PericiasPreviewTable({
                 onChange={(e) => atualizarLinha(index, { processoEscritorio: e.target.value })}
               />
             </TableCell>
-            {linha.motivo && (
-              <TableCell className="text-xs text-muted-foreground">{linha.motivo}</TableCell>
-            )}
+            <TableCell className="text-xs text-muted-foreground">{linha.motivo ?? '—'}</TableCell>
           </TableRow>
         ))}
       </TableBody>

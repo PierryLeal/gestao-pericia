@@ -65,6 +65,7 @@ export function PeritosColaboradoresPreviewTable({
               <TableHead>Já trabalhamos?</TableHead>
               <TableHead>Relação</TableHead>
               <TableHead>Resultados</TableHead>
+              <TableHead>Motivo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -117,9 +118,7 @@ export function PeritosColaboradoresPreviewTable({
                     </SelectContent>
                   </Select>
                 </TableCell>
-                {linha.motivo && (
-                  <TableCell className="text-xs text-muted-foreground">{linha.motivo}</TableCell>
-                )}
+                <TableCell className="text-xs text-muted-foreground">{linha.motivo ?? '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
