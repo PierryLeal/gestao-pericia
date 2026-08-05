@@ -150,7 +150,16 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
   await requireRole(['admin', 'gerencia']);
 
   const periciasAtuais = await listPericias();
+  const periciasCriadasNesteLote: Array<{
+    processo: { numero: string };
+    dataAgendada: string | null;
+    horaAgendada: string | null;
+    perito: { nome: string };
+    colaborador: { nome: string } | null;
+    observacoes: string | null;
+  }> = [];
 
+  const processosCriadosNesteLote = new Map<string, number>();
   const peritosCriadosNesteLote = new Map<string, number>();
   const colaboradoresCriadosNesteLote = new Map<string, number>();
 
@@ -165,7 +174,7 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
       continue;
     }
 
-    const jaExiste = periciasAtuais.some((p) =>
+    const jaExiste = [...periciasAtuais, ...periciasCriadasNesteLote].some((p) =>
       normalizeForSearch(p.processo.numero) === normalizeForSearch(linha.processoNumero) &&
       p.dataAgendada === linha.dataAgendada &&
       p.horaAgendada === linha.horaAgendada &&
@@ -185,12 +194,17 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
       });
       if (resultado.success) relatorio.processosAtualizados++;
     } else {
-      const resultado = await createProcesso({
-        numero: linha.processoNumero, autor: linha.processoAutor, reu: linha.processoReu, escritorio: linha.processoEscritorio,
-      });
-      if (!resultado.success) continue;
-      processoId = resultado.data.id;
-      relatorio.processosCriados++;
+      const chaveProcesso = normalizeForSearch(linha.processoNumero);
+      processoId = processosCriadosNesteLote.get(chaveProcesso) ?? null;
+      if (!processoId) {
+        const resultado = await createProcesso({
+          numero: linha.processoNumero, autor: linha.processoAutor, reu: linha.processoReu, escritorio: linha.processoEscritorio,
+        });
+        if (!resultado.success) continue;
+        processoId = resultado.data.id;
+        processosCriadosNesteLote.set(chaveProcesso, processoId);
+        relatorio.processosCriados++;
+      }
     }
 
     let peritoId = linha.peritoIdExistente;
@@ -235,7 +249,17 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
       situacao: linha.situacao,
       observacoes: linha.observacoes,
     });
-    if (resultadoPericia.success) relatorio.periciasCriadas++;
+    if (resultadoPericia.success) {
+      relatorio.periciasCriadas++;
+      periciasCriadasNesteLote.push({
+        processo: { numero: linha.processoNumero },
+        dataAgendada: linha.dataAgendada,
+        horaAgendada: linha.horaAgendada,
+        perito: { nome: linha.peritoNome },
+        colaborador: linha.colaboradorNome ? { nome: linha.colaboradorNome } : null,
+        observacoes: linha.observacoes,
+      });
+    }
   }
 
   return relatorio;

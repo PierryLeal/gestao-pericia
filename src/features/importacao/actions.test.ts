@@ -341,4 +341,30 @@ describe('confirmarImportacaoPericias', () => {
     expect(mockCreatePericia).not.toHaveBeenCalled();
     expect(relatorio.puladasPorDuplicidade).toBe(1);
   });
+
+  it('creates the same new processo only once across two rows referencing it, reusing the id on the second row', async () => {
+    const linhas = [
+      linhaBase({ linhaOriginal: 2, processoIdExistente: null, horaAgendada: '10:00' }),
+      linhaBase({ linhaOriginal: 3, processoIdExistente: null, horaAgendada: '11:00' }),
+    ];
+
+    await confirmarImportacaoPericias(linhas);
+
+    expect(mockCreateProcesso).toHaveBeenCalledTimes(1);
+    expect(mockCreatePericia).toHaveBeenNthCalledWith(1, expect.objectContaining({ processoId: 50 }));
+    expect(mockCreatePericia).toHaveBeenNthCalledWith(2, expect.objectContaining({ processoId: 50 }));
+  });
+
+  it('skips the second of two rows in the same batch that are identical on the full duplicate-detection key', async () => {
+    const linhas = [
+      linhaBase({ linhaOriginal: 2, processoIdExistente: 9 }),
+      linhaBase({ linhaOriginal: 3, processoIdExistente: 9 }),
+    ];
+
+    const relatorio = await confirmarImportacaoPericias(linhas);
+
+    expect(mockCreatePericia).toHaveBeenCalledTimes(1);
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.puladasPorDuplicidade).toBe(1);
+  });
 });
