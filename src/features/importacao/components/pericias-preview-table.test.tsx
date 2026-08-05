@@ -5,10 +5,19 @@ import { PericiasPreviewTable } from './pericias-preview-table';
 import type { PericiaPreviewRow } from '../types';
 
 vi.mock('@/features/municipios/components/municipio-combobox', () => ({
-  MunicipioCombobox: ({ onChange }: { onChange: (m: { id: number; nome: string; uf: string }) => void }) => (
-    <button type="button" onClick={() => onChange({ id: 99, nome: 'Ouro Preto', uf: 'MG' })}>
-      selecionar município
-    </button>
+  MunicipioCombobox: ({
+    selected,
+    onChange,
+  }: {
+    selected: { id: number; nome: string; uf: string } | null;
+    onChange: (m: { id: number; nome: string; uf: string }) => void;
+  }) => (
+    <div>
+      {selected && <span>{selected.nome}/{selected.uf}</span>}
+      <button type="button" onClick={() => onChange({ id: 99, nome: 'Ouro Preto', uf: 'MG' })}>
+        selecionar município
+      </button>
+    </div>
   ),
 }));
 
@@ -27,7 +36,7 @@ function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRo
 describe('PericiasPreviewTable', () => {
   it('shows every row with its processo número and município', () => {
     render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={vi.fn()} />);
-    expect(screen.getByText('0001234-56.2026')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument();
     expect(screen.getByText(/Belo Horizonte/)).toBeInTheDocument();
   });
 
@@ -38,7 +47,7 @@ describe('PericiasPreviewTable', () => {
         onChange={vi.fn()}
       />
     );
-    expect(screen.getByText(/Perito Novo/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Perito Novo')).toBeInTheDocument();
     expect(screen.getByText('(novo)')).toBeInTheDocument();
   });
 
@@ -51,6 +60,20 @@ describe('PericiasPreviewTable', () => {
         onChange={onChange}
       />
     );
+
+    await user.click(screen.getByText('selecionar município'));
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ municipioId: 99, municipioNome: 'Ouro Preto', municipioUf: 'MG' }),
+    ]);
+  });
+
+  it('shows the current município in the combobox when already resolved, and still allows changing it', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={onChange} />);
+
+    expect(screen.getByText('Belo Horizonte/MG')).toBeInTheDocument();
 
     await user.click(screen.getByText('selecionar município'));
 
@@ -83,5 +106,57 @@ describe('PericiasPreviewTable', () => {
       />
     );
     expect(screen.getByText('perícia já importada anteriormente')).toBeInTheDocument();
+  });
+
+  it('lets the user edit the processo número, calling onChange with the updated value', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={onChange} />);
+
+    const input = screen.getByDisplayValue('0001234-56.2026');
+    await user.type(input, '9');
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ processoNumero: '0001234-56.20269' }),
+    ]);
+  });
+
+  it('lets the user edit the perito nome, clearing peritoIdExistente since it may no longer match', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={onChange} />);
+
+    const input = screen.getByDisplayValue('Cleber');
+    await user.type(input, 'x');
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ peritoNome: 'Cleberx', peritoIdExistente: null }),
+    ]);
+  });
+
+  it('lets the user edit the colaborador nome, clearing colaboradorIdExistente since it may no longer match', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={onChange} />);
+
+    const input = screen.getByDisplayValue('João');
+    await user.type(input, 'x');
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ colaboradorNome: 'Joãox', colaboradorIdExistente: null }),
+    ]);
+  });
+
+  it('keeps fields editable (not disabled) on duplicada rows, just visually dimmed', () => {
+    render(
+      <PericiasPreviewTable
+        linhas={[linhaBase({ status: 'duplicada', motivo: 'perícia já importada anteriormente' })]}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByDisplayValue('0001234-56.2026')).not.toBeDisabled();
+    expect(screen.getByDisplayValue('Cleber')).not.toBeDisabled();
+    expect(screen.getByDisplayValue('João')).not.toBeDisabled();
   });
 });

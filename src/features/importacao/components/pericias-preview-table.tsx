@@ -42,7 +42,12 @@ export function PericiasPreviewTable({
               linha.status === 'duplicada' && 'opacity-50'
             )}
           >
-            <TableCell>{linha.processoNumero}</TableCell>
+            <TableCell>
+              <Input
+                value={linha.processoNumero}
+                onChange={(e) => atualizarLinha(index, { processoNumero: e.target.value })}
+              />
+            </TableCell>
             <TableCell>
               <div className="flex gap-1">
                 <Input
@@ -56,26 +61,28 @@ export function PericiasPreviewTable({
               </div>
             </TableCell>
             <TableCell>
-              {linha.municipioId ? (
-                `${linha.municipioNome}/${linha.municipioUf}`
-              ) : (
-                <MunicipioCombobox
-                  value={null}
-                  selected={null}
-                  onChange={(m) =>
-                    atualizarLinha(index, { municipioId: m.id, municipioNome: m.nome, municipioUf: m.uf })
-                  }
-                />
-              )}
+              <MunicipioCombobox
+                value={linha.municipioId}
+                selected={linha.municipioId ? { id: linha.municipioId, nome: linha.municipioNome, uf: linha.municipioUf } : null}
+                onChange={(m) =>
+                  atualizarLinha(index, { municipioId: m.id, municipioNome: m.nome, municipioUf: m.uf })
+                }
+              />
             </TableCell>
             <TableCell>
-              {linha.peritoNome}
+              <Input
+                value={linha.peritoNome}
+                onChange={(e) => atualizarLinha(index, { peritoNome: e.target.value, peritoIdExistente: null })}
+              />
               {!linha.peritoIdExistente && linha.peritoNome.trim() && (
                 <span className="ml-1 text-xs text-muted-foreground">(novo)</span>
               )}
             </TableCell>
             <TableCell>
-              {linha.colaboradorNome}
+              <Input
+                value={linha.colaboradorNome}
+                onChange={(e) => atualizarLinha(index, { colaboradorNome: e.target.value, colaboradorIdExistente: null })}
+              />
               {!linha.colaboradorIdExistente && linha.colaboradorNome.trim() && (
                 <span className="ml-1 text-xs text-muted-foreground">(novo)</span>
               )}

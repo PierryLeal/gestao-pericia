@@ -35,7 +35,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     const input = screen.getByLabelText(/planilha de perícias/i);
     await user.upload(input, arquivoFake());
 
-    await waitFor(() => expect(screen.getByText('0001234-56.2026')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
   });
 
   it('shows naoProcessadas rows in a separate, non-editable list', async () => {
@@ -72,7 +72,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     render(<ImportarPlanilhaScreen />);
 
     await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
-    await waitFor(() => expect(screen.getByText('0001234-56.2026')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
 
