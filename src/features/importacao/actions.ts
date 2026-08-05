@@ -10,12 +10,16 @@ import { createColaborador, listColaboradores } from '@/features/colaboradores/a
 import { createPericia, listPericias } from '@/features/pericias/actions';
 import { parseColunaPericia, mapSituacao } from './lib/pericia-parser';
 import { parseDataCelula, parseHoraCelula } from './lib/date-parsing';
-import { encontrarIndiceColuna } from './lib/header-lookup';
+import { mapJaTrabalhamos, mapRelacao, mapResultados } from './lib/perito-colaborador-parser';
+import { encontrarIndiceColuna, encontrarLinhaComTexto } from './lib/header-lookup';
 import type {
   NaoProcessada,
   PericiaPreviewRow,
   PreviewImportacaoPericiasResult,
   RelatorioImportacaoPericias,
+  ColaboradorPreviewRow,
+  PeritoPreviewRow,
+  PreviewImportacaoPeritosColaboradoresResult,
 } from './types';
 
 const COLUNAS_PERICIA_ACEITAS: Record<string, string[]> = {
@@ -263,4 +267,94 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
   }
 
   return relatorio;
+}
+
+const COLUNAS_COLABORADOR_ACEITAS: Record<string, string[]> = {
+  nome: ['COLABORADORES ÉTICA', 'COLABORADORES ETICA', 'COLABORADOR'],
+  contato: ['CONTATO'],
+};
+
+const COLUNAS_PERITO_ACEITAS: Record<string, string[]> = {
+  nome: ['PERITO'],
+  contato: ['CONTATO'],
+  formacao: ['FORMAÇÃO', 'FORMACAO'],
+  crea: ['CREA'],
+  documento: ['CPF'],
+  jaTrabalhamos: ['JÁ TRABALHAMOS?', 'JA TRABALHAMOS?', 'JÁ TRABALHAMOS', 'JA TRABALHAMOS'],
+  relacao: ['RELAÇÃO', 'RELACAO'],
+  resultados: ['RESULTADOS'],
+};
+
+export async function previewImportacaoPeritosColaboradores(
+  fileBuffer: ArrayBuffer
+): Promise<PreviewImportacaoPeritosColaboradoresResult> {
+  await requireRole(['admin', 'gerencia']);
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(fileBuffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return { colaboradores: [], peritos: [], naoProcessadas: [] };
+
+  const linhaPerito = encontrarLinhaComTexto(worksheet, 'PERITO');
+  if (linhaPerito === null) {
+    return {
+      colaboradores: [], peritos: [],
+      naoProcessadas: [{ linhaOriginal: 0, texto: '', motivo: 'não foi possível encontrar o cabeçalho "PERITO" na planilha' }],
+    };
+  }
+
+  const [peritosAtuais, colaboradoresAtuais] = await Promise.all([listPeritos(), listColaboradores()]);
+
+  const headerColaboradorRow = worksheet.getRow(1);
+  const indicesColaborador = Object.fromEntries(
+    Object.entries(COLUNAS_COLABORADOR_ACEITAS).map(([chave, nomes]) => [chave, encontrarIndiceColuna(headerColaboradorRow, nomes)])
+  ) as Record<keyof typeof COLUNAS_COLABORADOR_ACEITAS, number | null>;
+
+  const colaboradores: ColaboradorPreviewRow[] = [];
+  for (let rowNumber = 2; rowNumber < linhaPerito; rowNumber++) {
+    const row = worksheet.getRow(rowNumber);
+    const nome = textoCelula(row, indicesColaborador.nome);
+    if (!nome.trim()) continue;
+    const contato = textoCelula(row, indicesColaborador.contato);
+    const existente = colaboradoresAtuais.find((c) => normalizeForSearch(c.nome) === normalizeForSearch(nome));
+    colaboradores.push({
+      linhaOriginal: rowNumber, status: 'ok', motivo: null, nome, contato, idExistente: existente?.id ?? null,
+    });
+  }
+
+  const headerPeritoRow = worksheet.getRow(linhaPerito);
+  const indicesPerito = Object.fromEntries(
+    Object.entries(COLUNAS_PERITO_ACEITAS).map(([chave, nomes]) => [chave, encontrarIndiceColuna(headerPeritoRow, nomes)])
+  ) as Record<keyof typeof COLUNAS_PERITO_ACEITAS, number | null>;
+
+  const peritos: PeritoPreviewRow[] = [];
+  for (let rowNumber = linhaPerito + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
+    const row = worksheet.getRow(rowNumber);
+    const nome = textoCelula(row, indicesPerito.nome);
+    if (!nome.trim()) continue;
+
+    const motivos: string[] = [];
+    const { relacao, reconhecida: relacaoReconhecida } = mapRelacao(textoCelula(row, indicesPerito.relacao));
+    if (!relacaoReconhecida) motivos.push('relação não reconhecida');
+    const { resultados, reconhecida: resultadosReconhecida } = mapResultados(textoCelula(row, indicesPerito.resultados));
+    if (!resultadosReconhecida) motivos.push('resultados não reconhecido');
+
+    const existente = peritosAtuais.find((p) => normalizeForSearch(p.nome) === normalizeForSearch(nome));
+    peritos.push({
+      linhaOriginal: rowNumber,
+      status: motivos.length > 0 ? 'atencao' : 'ok',
+      motivo: motivos[0] ?? null,
+      nome,
+      contato: textoCelula(row, indicesPerito.contato),
+      formacao: textoCelula(row, indicesPerito.formacao),
+      crea: textoCelula(row, indicesPerito.crea),
+      documento: textoCelula(row, indicesPerito.documento),
+      jaTrabalhamos: mapJaTrabalhamos(textoCelula(row, indicesPerito.jaTrabalhamos)),
+      relacao,
+      resultados,
+      idExistente: existente?.id ?? null,
+    });
+  }
+
+  return { colaboradores, peritos, naoProcessadas: [] };
 }

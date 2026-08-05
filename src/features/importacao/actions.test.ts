@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ExcelJS from 'exceljs';
 import { previewImportacaoPericias, confirmarImportacaoPericias } from './actions';
+import { previewImportacaoPeritosColaboradores } from './actions';
 import type { PericiaPreviewRow } from './types';
 
 vi.mock('@/features/auth/guards', () => ({
@@ -366,5 +367,96 @@ describe('confirmarImportacaoPericias', () => {
     expect(mockCreatePericia).toHaveBeenCalledTimes(1);
     expect(relatorio.periciasCriadas).toBe(1);
     expect(relatorio.puladasPorDuplicidade).toBe(1);
+  });
+});
+
+async function criarPlanilhaPeritosColaboradores(linhas: (string | number)[][]): Promise<ArrayBuffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Peritos e Colaboradores');
+  linhas.forEach((linha) => worksheet.addRow(linha));
+  const buffer = await workbook.xlsx.writeBuffer();
+  return buffer as ArrayBuffer;
+}
+
+describe('previewImportacaoPeritosColaboradores', () => {
+  beforeEach(() => {
+    mockListPeritos.mockResolvedValue([]);
+    mockListColaboradores.mockResolvedValue([]);
+  });
+
+  it('splits the sheet into Colaborador rows (before "PERITO") and Perito rows (from "PERITO" onward)', async () => {
+    const buffer = await criarPlanilhaPeritosColaboradores([
+      ['COLABORADORES ÉTICA', 'CONTATO'],
+      ['Ana', '31999990000'],
+      [],
+      ['PERITO', 'CONTATO', 'FORMAÇÃO', 'CREA', 'CPF', 'JÁ TRABALHAMOS?', 'RELAÇÃO', 'RESULTADOS'],
+      ['Carlos', '31988880000', 'Eng. Civil', 'CREA-123', '111.222.333-44', 'SIM', 'boa', 'positivo'],
+    ]);
+
+    const result = await previewImportacaoPeritosColaboradores(buffer);
+
+    expect(result.colaboradores).toEqual([
+      expect.objectContaining({ nome: 'Ana', contato: '31999990000', status: 'ok', idExistente: null }),
+    ]);
+    expect(result.peritos).toEqual([
+      expect.objectContaining({
+        nome: 'Carlos', contato: '31988880000', formacao: 'Eng. Civil', crea: 'CREA-123',
+        documento: '111.222.333-44', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
+        status: 'ok', idExistente: null,
+      }),
+    ]);
+  });
+
+  it('marks a colaborador/perito name that already exists with its existing id', async () => {
+    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'Ana', contato: '', formacao: '' }]);
+    const buffer = await criarPlanilhaPeritosColaboradores([
+      ['COLABORADORES ÉTICA', 'CONTATO'],
+      ['Ana', '31999990000'],
+      ['PERITO', 'CONTATO', 'FORMAÇÃO', 'CREA', 'CPF', 'JÁ TRABALHAMOS?', 'RELAÇÃO', 'RESULTADOS'],
+    ]);
+
+    const result = await previewImportacaoPeritosColaboradores(buffer);
+
+    expect(result.colaboradores[0].idExistente).toBe(5);
+  });
+
+  it('flags an unrecognized relação/resultados as atencao', async () => {
+    const buffer = await criarPlanilhaPeritosColaboradores([
+      ['COLABORADORES ÉTICA', 'CONTATO'],
+      ['PERITO', 'CONTATO', 'FORMAÇÃO', 'CREA', 'CPF', 'JÁ TRABALHAMOS?', 'RELAÇÃO', 'RESULTADOS'],
+      ['Carlos', '', '', '', '', '', 'excelente', 'positivo'],
+    ]);
+
+    const result = await previewImportacaoPeritosColaboradores(buffer);
+
+    expect(result.peritos[0].status).toBe('atencao');
+    expect(result.peritos[0].motivo).toBe('relação não reconhecida');
+  });
+
+  it('finds columns identified by header text even when reordered', async () => {
+    const buffer = await criarPlanilhaPeritosColaboradores([
+      ['COLABORADORES ÉTICA', 'CONTATO'],
+      ['PERITO', 'FORMAÇÃO', 'CONTATO', 'RESULTADOS', 'RELAÇÃO', 'JÁ TRABALHAMOS?', 'CREA', 'CPF'],
+      ['Carlos', 'Eng. Civil', '31988880000', 'positivo', 'boa', 'SIM', 'CREA-123', '111.222.333-44'],
+    ]);
+
+    const result = await previewImportacaoPeritosColaboradores(buffer);
+
+    expect(result.peritos[0]).toMatchObject({
+      nome: 'Carlos', formacao: 'Eng. Civil', contato: '31988880000',
+      resultados: 'positivo', relacao: 'boa', jaTrabalhamos: true, crea: 'CREA-123', documento: '111.222.333-44',
+    });
+  });
+
+  it('returns an empty result when the "PERITO" header row is never found', async () => {
+    const buffer = await criarPlanilhaPeritosColaboradores([['COLABORADORES ÉTICA', 'CONTATO'], ['Ana', '31999990000']]);
+
+    const result = await previewImportacaoPeritosColaboradores(buffer);
+
+    expect(result.colaboradores).toEqual([]);
+    expect(result.peritos).toEqual([]);
+    expect(result.naoProcessadas).toEqual([
+      { linhaOriginal: 0, texto: '', motivo: 'não foi possível encontrar o cabeçalho "PERITO" na planilha' },
+    ]);
   });
 });
