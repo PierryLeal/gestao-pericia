@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   ClipboardList, CalendarDays, Folder, UserCheck, Users, ShieldCheck, UserCog,
-  PanelLeftClose, PanelLeftOpen, LogOut, type LucideIcon,
+  PanelLeftClose, PanelLeftOpen, LogOut, Upload, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/features/auth/guards';
@@ -20,6 +20,7 @@ export const NAV_ITEMS: { href: string; label: string; roles: Role[]; icon: Luci
   { href: '/processos', label: 'Processos', roles: ['admin', 'gerencia'], icon: Folder },
   { href: '/peritos', label: 'Peritos', roles: ['admin', 'gerencia'], icon: UserCheck },
   { href: '/colaboradores', label: 'Colaboradores', roles: ['admin', 'gerencia'], icon: Users },
+  { href: '/importar', label: 'Importar', roles: ['admin', 'gerencia'], icon: Upload },
   { href: '/perfis', label: 'Perfis', roles: ['admin'], icon: ShieldCheck },
   { href: '/meu-perfil', label: 'Meu perfil', roles: ['admin', 'gerencia'], icon: UserCog },
 ];
