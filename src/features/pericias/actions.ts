@@ -6,6 +6,8 @@ import type { ActionResult } from '@/lib/action-result';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 import type { PericiaSituacao, PeritoRelacao, PeritoResultado } from '@/lib/supabase/database.types';
+import { buscarTodasAsPaginas } from '@/lib/supabase/pagination';
+import { postgrestQuoted } from '@/lib/postgrest';
 import { periciaSchema, situacaoOptions, type PericiaInput } from './schemas';
 
 export type PericiaListItem = {
@@ -44,47 +46,60 @@ export async function listPericias(
 ): Promise<PericiaListItem[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let query = supabase
-    .from('pericias')
-    .select(`
-      id, data_agendada, hora_agendada, situacao, observacoes,
-      processo:processos!inner ( id, numero, autor, reu, escritorio ),
-      municipio:municipios!inner ( id, nome, uf ),
-      perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
-      colaborador:colaboradores ( id, nome, contato, formacao )
-    `)
-    .order('data_agendada', { ascending: false, nullsFirst: false });
 
-  if (filters.situacao && situacaoOptions.includes(filters.situacao as (typeof situacaoOptions)[number])) {
-    // filters.situacao is a caller-supplied string (e.g. a URL search param); it is
-    // validated against the known situacao values above before being narrowed to the
-    // PericiaSituacao literal union, so an invalid value is silently ignored instead
-    // of reaching the database and throwing.
-    query = query.eq('situacao', filters.situacao as PericiaSituacao);
-  }
-  if (filters.busca) {
-    query = query.filter('processo.numero', 'ilike', `%${filters.busca}%`);
-  }
-  if (filters.dataInicio) {
-    query = query.gte('data_agendada', filters.dataInicio);
-  }
-  if (filters.dataFim) {
-    query = query.lte('data_agendada', filters.dataFim);
-  }
-  if (filters.municipioId) {
-    query = query.eq('municipio_id', filters.municipioId);
-  }
-  if (filters.peritoId) {
-    query = query.eq('perito_id', filters.peritoId);
-  }
-  if (filters.colaboradorId) {
-    query = query.eq('colaborador_id', filters.colaboradorId);
+  function construirPagina(inicio: number, fim: number) {
+    let query = supabase
+      .from('pericias')
+      .select(`
+        id, data_agendada, hora_agendada, situacao, observacoes,
+        processo:processos!inner ( id, numero, autor, reu, escritorio ),
+        municipio:municipios!inner ( id, nome, uf ),
+        perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
+        colaborador:colaboradores ( id, nome, contato, formacao )
+      `)
+      // `.order('id')` is a secondary, always-unique tie-breaker: many rows
+      // legitimately share the same data_agendada, and OFFSET-based .range()
+      // pagination over a non-unique sort order can return the same row on
+      // two pages (or skip one) — Postgres doesn't guarantee stable tie
+      // ordering across separate queries without a deterministic total order.
+      .order('data_agendada', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: false });
+
+    if (filters.situacao && situacaoOptions.includes(filters.situacao as (typeof situacaoOptions)[number])) {
+      // filters.situacao is a caller-supplied string (e.g. a URL search param); it is
+      // validated against the known situacao values above before being narrowed to the
+      // PericiaSituacao literal union, so an invalid value is silently ignored instead
+      // of reaching the database and throwing.
+      query = query.eq('situacao', filters.situacao as PericiaSituacao);
+    }
+    if (filters.busca) {
+      const pattern = postgrestQuoted(`%${filters.busca}%`);
+      query = query.or(`numero.ilike.${pattern},autor.ilike.${pattern},reu.ilike.${pattern}`, {
+        referencedTable: 'processo',
+      });
+    }
+    if (filters.dataInicio) {
+      query = query.gte('data_agendada', filters.dataInicio);
+    }
+    if (filters.dataFim) {
+      query = query.lte('data_agendada', filters.dataFim);
+    }
+    if (filters.municipioId) {
+      query = query.eq('municipio_id', filters.municipioId);
+    }
+    if (filters.peritoId) {
+      query = query.eq('perito_id', filters.peritoId);
+    }
+    if (filters.colaboradorId) {
+      query = query.eq('colaborador_id', filters.colaboradorId);
+    }
+
+    return query.range(inicio, fim);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  const data = await buscarTodasAsPaginas(construirPagina);
 
-  return (data ?? []).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     dataAgendada: row.data_agendada,
     horaAgendada: row.hora_agendada,
@@ -211,4 +226,67 @@ export async function getColaboradoresIndisponiveis(
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => row.colaborador_id as number);
+}
+
+export type PericiaResumoMesclagem = {
+  id: number;
+  processoNumero: string;
+  dataAgendada: string | null;
+  horaAgendada: string | null;
+  situacao: PericiaSituacao;
+  donoAtual: string;
+};
+
+/**
+ * Perícias currently assigned to any of `colaboradorIds` — used by the
+ * colaborador merge dialog to preview, before confirming, exactly which
+ * perícias get reassigned to the survivor.
+ */
+export async function listPericiasPorColaboradorIds(colaboradorIds: number[]): Promise<PericiaResumoMesclagem[]> {
+  await requireRole(['admin', 'gerencia']);
+  if (colaboradorIds.length === 0) return [];
+  const supabase = await createClient();
+  const rows = await buscarTodasAsPaginas<{
+    id: number; data_agendada: string | null; hora_agendada: string | null; situacao: PericiaSituacao;
+    processo: { numero: string }; colaborador: { nome: string } | null;
+  }>((inicio, fim) =>
+    supabase
+      .from('pericias')
+      .select('id, data_agendada, hora_agendada, situacao, processo:processos!inner(numero), colaborador:colaboradores!inner(nome)')
+      .in('colaborador_id', colaboradorIds)
+      .order('data_agendada', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: false })
+      .range(inicio, fim)
+  );
+  return rows.map((row) => ({
+    id: row.id, processoNumero: row.processo.numero, dataAgendada: row.data_agendada,
+    horaAgendada: row.hora_agendada, situacao: row.situacao, donoAtual: row.colaborador?.nome ?? '',
+  }));
+}
+
+/**
+ * Perícias currently assigned to any of `peritoIds` — used by the perito
+ * merge dialog to preview, before confirming, exactly which perícias get
+ * reassigned to the survivor.
+ */
+export async function listPericiasPorPeritoIds(peritoIds: number[]): Promise<PericiaResumoMesclagem[]> {
+  await requireRole(['admin', 'gerencia']);
+  if (peritoIds.length === 0) return [];
+  const supabase = await createClient();
+  const rows = await buscarTodasAsPaginas<{
+    id: number; data_agendada: string | null; hora_agendada: string | null; situacao: PericiaSituacao;
+    processo: { numero: string }; perito: { nome: string };
+  }>((inicio, fim) =>
+    supabase
+      .from('pericias')
+      .select('id, data_agendada, hora_agendada, situacao, processo:processos!inner(numero), perito:peritos!inner(nome)')
+      .in('perito_id', peritoIds)
+      .order('data_agendada', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: false })
+      .range(inicio, fim)
+  );
+  return rows.map((row) => ({
+    id: row.id, processoNumero: row.processo.numero, dataAgendada: row.data_agendada,
+    horaAgendada: row.hora_agendada, situacao: row.situacao, donoAtual: row.perito.nome,
+  }));
 }

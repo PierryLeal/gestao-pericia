@@ -47,12 +47,24 @@ describe('mapSituacao', () => {
     expect(mapSituacao('campo')).toEqual({ situacao: 'marcada', reconhecida: true });
   });
 
+  it('maps "OK" (case-insensitive) to realizada', () => {
+    expect(mapSituacao('OK')).toEqual({ situacao: 'realizada', reconhecida: true });
+    expect(mapSituacao('ok')).toEqual({ situacao: 'realizada', reconhecida: true });
+  });
+
   it('maps empty or whitespace-only to pendente', () => {
     expect(mapSituacao('')).toEqual({ situacao: 'pendente', reconhecida: true });
     expect(mapSituacao('   ')).toEqual({ situacao: 'pendente', reconhecida: true });
   });
 
+  it('maps a canonical situação word (case-insensitive) directly to itself', () => {
+    expect(mapSituacao('REALIZADA')).toEqual({ situacao: 'realizada', reconhecida: true });
+    expect(mapSituacao('cancelada')).toEqual({ situacao: 'cancelada', reconhecida: true });
+    expect(mapSituacao('Marcada')).toEqual({ situacao: 'marcada', reconhecida: true });
+    expect(mapSituacao('Pendente')).toEqual({ situacao: 'pendente', reconhecida: true });
+  });
+
   it('flags any other value as not recognized, defaulting to pendente', () => {
-    expect(mapSituacao('REALIZADA')).toEqual({ situacao: 'pendente', reconhecida: false });
+    expect(mapSituacao('EM ANDAMENTO')).toEqual({ situacao: 'pendente', reconhecida: false });
   });
 });

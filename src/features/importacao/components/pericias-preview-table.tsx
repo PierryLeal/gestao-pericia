@@ -1,7 +1,9 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
 import { situacaoOptions, type PericiaInput } from '../../pericias/schemas';
@@ -19,11 +21,17 @@ export function PericiasPreviewTable({
     onChange(linhas.map((linha, i) => (i === index ? { ...linha, ...patch } : linha)));
   }
 
+  function removerLinha(index: number) {
+    onChange(linhas.filter((_, i) => i !== index));
+  }
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Processo</TableHead>
+          <TableHead>Autor</TableHead>
+          <TableHead>Réu</TableHead>
           <TableHead>Data - Hora</TableHead>
           <TableHead>Local</TableHead>
           <TableHead>Perito</TableHead>
@@ -32,6 +40,7 @@ export function PericiasPreviewTable({
           <TableHead>Obs.</TableHead>
           <TableHead>Escritório</TableHead>
           <TableHead>Motivo</TableHead>
+          <TableHead className="w-10" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -40,6 +49,7 @@ export function PericiasPreviewTable({
             key={linha.linhaOriginal}
             className={cn(
               linha.status === 'atencao' && 'bg-destructive/10',
+              linha.status === 'suspeito' && 'bg-amber-500/10',
               linha.status === 'duplicada' && 'opacity-50'
             )}
           >
@@ -47,6 +57,18 @@ export function PericiasPreviewTable({
               <Input
                 value={linha.processoNumero}
                 onChange={(e) => atualizarLinha(index, { processoNumero: e.target.value })}
+              />
+            </TableCell>
+            <TableCell>
+              <Input
+                value={linha.processoAutor}
+                onChange={(e) => atualizarLinha(index, { processoAutor: e.target.value })}
+              />
+            </TableCell>
+            <TableCell>
+              <Input
+                value={linha.processoReu}
+                onChange={(e) => atualizarLinha(index, { processoReu: e.target.value })}
               />
             </TableCell>
             <TableCell>
@@ -76,7 +98,7 @@ export function PericiasPreviewTable({
                 onChange={(e) => atualizarLinha(index, { peritoNome: e.target.value, peritoIdExistente: null })}
               />
               {!linha.peritoIdExistente && linha.peritoNome.trim() && (
-                <span className="ml-1 text-xs text-muted-foreground">(novo)</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">(novo)</span>
               )}
             </TableCell>
             <TableCell>
@@ -85,7 +107,7 @@ export function PericiasPreviewTable({
                 onChange={(e) => atualizarLinha(index, { colaboradorNome: e.target.value, colaboradorIdExistente: null })}
               />
               {!linha.colaboradorIdExistente && linha.colaboradorNome.trim() && (
-                <span className="ml-1 text-xs text-muted-foreground">(novo)</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">(novo)</span>
               )}
             </TableCell>
             <TableCell>
@@ -114,6 +136,12 @@ export function PericiasPreviewTable({
               />
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">{linha.motivo ?? '—'}</TableCell>
+            <TableCell>
+              <Button type="button" variant="ghost" size="icon-sm" onClick={() => removerLinha(index)}>
+                <X className="size-4" />
+                <span className="sr-only">Remover linha {linha.linhaOriginal}</span>
+              </Button>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

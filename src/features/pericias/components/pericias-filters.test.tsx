@@ -38,7 +38,7 @@ describe('PericiasFilters', () => {
     const user = userEvent.setup();
     render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
 
-    await user.type(screen.getByPlaceholderText('Número do processo'), 'P-1');
+    await user.type(screen.getByPlaceholderText('Número, autor ou réu'), 'P-1');
     await new Promise((r) => setTimeout(r, 350));
 
     expect(push).toHaveBeenCalledWith('/?busca=P-1');

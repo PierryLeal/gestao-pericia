@@ -1,7 +1,9 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { relacaoOptions, resultadoOptions, type PeritoInput } from '../../peritos/schemas';
@@ -25,6 +27,12 @@ export function PeritosColaboradoresPreviewTable({
   function atualizarPerito(index: number, patch: Partial<PeritoPreviewRow>) {
     onChangePeritos(peritos.map((linha, i) => (i === index ? { ...linha, ...patch } : linha)));
   }
+  function removerColaborador(index: number) {
+    onChangeColaboradores(colaboradores.filter((_, i) => i !== index));
+  }
+  function removerPerito(index: number) {
+    onChangePeritos(peritos.filter((_, i) => i !== index));
+  }
 
   return (
     <div className="space-y-6">
@@ -35,6 +43,7 @@ export function PeritosColaboradoresPreviewTable({
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Contato</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -45,6 +54,12 @@ export function PeritosColaboradoresPreviewTable({
                 </TableCell>
                 <TableCell>
                   <Input value={linha.contato} onChange={(e) => atualizarColaborador(index, { contato: e.target.value })} />
+                </TableCell>
+                <TableCell>
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => removerColaborador(index)}>
+                    <X className="size-4" />
+                    <span className="sr-only">Remover linha {linha.linhaOriginal}</span>
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -66,6 +81,7 @@ export function PeritosColaboradoresPreviewTable({
               <TableHead>Relação</TableHead>
               <TableHead>Resultados</TableHead>
               <TableHead>Motivo</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -119,6 +135,12 @@ export function PeritosColaboradoresPreviewTable({
                   </Select>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{linha.motivo ?? '—'}</TableCell>
+                <TableCell>
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => removerPerito(index)}>
+                    <X className="size-4" />
+                    <span className="sr-only">Remover linha {linha.linhaOriginal}</span>
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

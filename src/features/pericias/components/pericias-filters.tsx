@@ -103,7 +103,7 @@ export function PericiasFilters({
             <Label htmlFor="busca-filtro">Buscar</Label>
             <Input
               id="busca-filtro"
-              placeholder="Número do processo"
+              placeholder="Número, autor ou réu"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />

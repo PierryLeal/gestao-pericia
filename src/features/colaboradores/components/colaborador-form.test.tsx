@@ -22,12 +22,24 @@ describe('ColaboradorForm', () => {
   it('pre-fills fields when editing an existing colaborador', () => {
     render(
       <ColaboradorForm
-        colaborador={{ id: 1, nome: 'Bruna', contato: '11988887777', formacao: 'Direito' }}
+        colaborador={{ id: 1, nome: 'Bruna', contato: '11988887777', formacao: 'Direito', email: 'bruna@exemplo.com' }}
         onSaved={vi.fn()}
         onError={vi.fn()}
       />
     );
     expect(screen.getByLabelText('Nome')).toHaveValue('Bruna');
+    expect(screen.getByLabelText('E-mail')).toHaveValue('bruna@exemplo.com');
+  });
+
+  it('pre-fills an empty email as a blank field when the colaborador has none', () => {
+    render(
+      <ColaboradorForm
+        colaborador={{ id: 1, nome: 'Bruna', contato: '', formacao: '', email: null }}
+        onSaved={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('E-mail')).toHaveValue('');
   });
 
   it('formats the contato field as the user types', async () => {
@@ -42,7 +54,7 @@ describe('ColaboradorForm', () => {
   it('does not truncate an over-length existing contato value on mount', () => {
     render(
       <ColaboradorForm
-        colaborador={{ id: 1, nome: 'Bruna', contato: '5511999998888888', formacao: 'Direito' }}
+        colaborador={{ id: 1, nome: 'Bruna', contato: '5511999998888888', formacao: 'Direito', email: null }}
         onSaved={vi.fn()}
         onError={vi.fn()}
       />

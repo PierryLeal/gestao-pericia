@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import ExcelJS from 'exceljs';
-import { encontrarIndiceColuna, encontrarLinhaComTexto } from './header-lookup';
+import { encontrarIndiceColuna, encontrarLinhaComTexto, encontrarLinhaComColuna } from './header-lookup';
 
 async function criarPlanilha(linhas: string[][]): Promise<ExcelJS.Worksheet> {
   const workbook = new ExcelJS.Workbook();
@@ -51,5 +51,26 @@ describe('encontrarLinhaComTexto', () => {
   it('returns null when no row contains the text', async () => {
     const worksheet = await criarPlanilha([['A', 'B'], ['C', 'D']]);
     expect(encontrarLinhaComTexto(worksheet, 'PERITO')).toBeNull();
+  });
+});
+
+describe('encontrarLinhaComColuna', () => {
+  it('finds the header row by one of its accepted spellings, even below a title row', async () => {
+    const worksheet = await criarPlanilha([
+      ['RELATÓRIO DE PERÍCIAS 2026'],
+      ['PERÍCIA', 'DATA', 'HORA'],
+      ['Maria x João', '20/09/2026', '10:00'],
+    ]);
+    expect(encontrarLinhaComColuna(worksheet, ['PERÍCIA', 'PERICIA'])).toBe(2);
+  });
+
+  it('returns the first row when there is no title row above the header', async () => {
+    const worksheet = await criarPlanilha([['PERÍCIA', 'DATA'], ['Maria x João', '20/09/2026']]);
+    expect(encontrarLinhaComColuna(worksheet, ['PERÍCIA', 'PERICIA'])).toBe(1);
+  });
+
+  it('returns null when no row has a column matching any accepted spelling', async () => {
+    const worksheet = await criarPlanilha([['A', 'B'], ['C', 'D']]);
+    expect(encontrarLinhaComColuna(worksheet, ['PERÍCIA', 'PERICIA'])).toBeNull();
   });
 });

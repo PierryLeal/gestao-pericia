@@ -1,7 +1,7 @@
 import type { PericiaInput } from '../pericias/schemas';
 import type { PeritoInput } from '../peritos/schemas';
 
-export type PreviewStatus = 'ok' | 'atencao' | 'duplicada';
+export type PreviewStatus = 'ok' | 'atencao' | 'duplicada' | 'suspeito';
 
 export type NaoProcessada = {
   linhaOriginal: number;

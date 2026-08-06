@@ -24,7 +24,7 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
 function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRow {
   return {
     linhaOriginal: 2, status: 'ok', motivo: null,
-    processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
+    processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'Vale', processoEscritorio: 'PMRA',
     processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
     municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
     peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdExistente: 2,
@@ -38,6 +38,18 @@ describe('PericiasPreviewTable', () => {
     render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={vi.fn()} />);
     expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument();
     expect(screen.getByText(/Belo Horizonte/)).toBeInTheDocument();
+  });
+
+  it('shows the processo autor and réu as editable fields', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={onChange} />);
+
+    expect(screen.getByDisplayValue('Maria')).toBeInTheDocument();
+    const reu = screen.getByDisplayValue('Vale');
+    await user.type(reu, 'x');
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ processoReu: 'Valex' })]);
   });
 
   it('marks a new perito/colaborador name with a "(novo)" indicator', () => {
@@ -164,7 +176,22 @@ describe('PericiasPreviewTable', () => {
     for (const linha of linhasDoCorpo) {
       expect(linha.querySelectorAll('td')).toHaveLength(colunas.length);
     }
-    expect(colunas.at(-1)).toHaveTextContent('Motivo');
+    expect(colunas.at(-2)).toHaveTextContent('Motivo');
+  });
+
+  it('removes a row when its remove button is clicked', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <PericiasPreviewTable
+        linhas={[linhaBase({ linhaOriginal: 2 }), linhaBase({ linhaOriginal: 3, processoNumero: '0009999-99.2026' })]}
+        onChange={onChange}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /remover linha 2/i }));
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ linhaOriginal: 3 })]);
   });
 
   it('keeps fields editable (not disabled) on duplicada rows, just visually dimmed', () => {

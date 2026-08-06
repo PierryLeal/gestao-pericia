@@ -3,7 +3,9 @@ import { listProcessos, getProcesso, updateProcesso, deleteProcesso, listEscrito
 
 const mockSingle = vi.fn();
 const mockEq = vi.fn(() => ({ single: mockSingle }));
-const mockOrder = vi.fn();
+const mockRange = vi.fn();
+const mockOrder = vi.fn<(...args: unknown[]) => unknown>();
+mockOrder.mockImplementation(() => ({ order: mockOrder, range: mockRange }));
 const mockOr = vi.fn(() => ({ order: mockOrder }));
 const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockEq, or: mockOr }));
 const mockUpdateEq = vi.fn(() => ({ select: () => ({ single: mockSingle }) }));
@@ -22,17 +24,29 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 describe('listProcessos', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOrder.mockReturnValue({ order: mockOrder, range: mockRange });
+  });
 
   it('returns the ordered list of processos', async () => {
-    mockOrder.mockResolvedValue({ data: [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }], error: null });
+    mockRange.mockResolvedValue({ data: [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }], error: null });
     const result = await listProcessos();
     expect(result).toEqual([{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }]);
+  });
+
+  it('fetches via .range() (avoiding PostgREST\'s default row cap on an unbounded select)', async () => {
+    mockRange.mockResolvedValue({ data: [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B' }], error: null });
+    await listProcessos();
+    expect(mockRange).toHaveBeenCalledWith(0, 999);
   });
 });
 
 describe('listProcessos busca', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOrder.mockReturnValue({ order: mockOrder, range: mockRange });
+  });
 
   const rows = [
     { id: 1, numero: 'P-1', autor: 'Ana Souza', reu: 'B' },
@@ -40,19 +54,19 @@ describe('listProcessos busca', () => {
   ];
 
   it('filters by numero/autor/reu when busca is provided', async () => {
-    mockOrder.mockResolvedValue({ data: rows, error: null });
+    mockRange.mockResolvedValue({ data: rows, error: null });
     const result = await listProcessos('Souza');
     expect(result).toEqual([rows[0]]);
   });
 
   it('matches accent-insensitively (e.g. "andre" matches "André")', async () => {
-    mockOrder.mockResolvedValue({ data: rows, error: null });
+    mockRange.mockResolvedValue({ data: rows, error: null });
     const result = await listProcessos('andre');
     expect(result).toEqual([rows[1]]);
   });
 
   it('does not filter when busca is empty', async () => {
-    mockOrder.mockResolvedValue({ data: rows, error: null });
+    mockRange.mockResolvedValue({ data: rows, error: null });
     const result = await listProcessos();
     expect(result).toEqual(rows);
   });
@@ -83,10 +97,17 @@ describe('updateProcesso', () => {
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('returns an error when escritorio is missing', async () => {
+  it('accepts a blank escritorio (optional field)', async () => {
+    mockSingle.mockResolvedValue({
+      data: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' },
+      error: null,
+    });
     const result = await updateProcesso(1, { numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' });
-    expect(result).toEqual({ success: false, error: 'Escritório é obrigatório' });
-    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      success: true,
+      data: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' },
+    });
+    expect(mockUpdate).toHaveBeenCalled();
   });
 
   it('updates a valid processo', async () => {

@@ -25,12 +25,13 @@ export function ColaboradorForm({
       : (colaborador?.contato ?? '')
   );
   const [formacao, setFormacao] = useState(colaborador?.formacao ?? '');
+  const [email, setEmail] = useState(colaborador?.email ?? '');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const input: ColaboradorInput = { nome, contato, formacao };
+    const input: ColaboradorInput = { nome, contato, formacao, email };
     const result = colaborador
       ? await updateColaborador(colaborador.id, input)
       : await createColaborador(input);
@@ -58,6 +59,10 @@ export function ColaboradorForm({
       <div className="space-y-2">
         <Label htmlFor="formacao">Formação</Label>
         <Input id="formacao" value={formacao} onChange={(e) => setFormacao(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">E-mail</Label>
+        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <Button type="submit" disabled={saving} className="w-full">
         {saving && <Loader2 className="size-4 animate-spin" />}

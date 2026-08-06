@@ -4,7 +4,11 @@ function pad2(n: number): string {
 
 export function parseDataCelula(value: unknown): string | null {
   if (value instanceof Date) {
-    return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
+    // exceljs anchors date-only cells at UTC midnight regardless of the
+    // runtime's timezone (e.g. 2020-09-18 becomes 2020-09-18T00:00:00.000Z).
+    // Reading it with local getters shifts the calendar date by the
+    // runtime's UTC offset — off by one day in any timezone behind UTC.
+    return `${value.getUTCFullYear()}-${pad2(value.getUTCMonth() + 1)}-${pad2(value.getUTCDate())}`;
   }
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -21,7 +25,13 @@ export function parseDataCelula(value: unknown): string | null {
 
 export function parseHoraCelula(value: unknown): string | null {
   if (value instanceof Date) {
-    return `${pad2(value.getHours())}:${pad2(value.getMinutes())}`;
+    // exceljs anchors time-only cells at the fixed date 1899-12-30T00:00:00Z
+    // (Excel's day-zero) plus the time-of-day fraction, in UTC. Local getters
+    // would apply the runtime's historical zone offset *for that 1899 date*,
+    // which in many timezones (incl. America/Sao_Paulo, pre-1914 standardization)
+    // isn't even a round number of minutes — producing times like "05:53"
+    // instead of "09:00".
+    return `${pad2(value.getUTCHours())}:${pad2(value.getUTCMinutes())}`;
   }
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();

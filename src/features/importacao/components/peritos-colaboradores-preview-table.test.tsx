@@ -69,6 +69,40 @@ describe('PeritosColaboradoresPreviewTable', () => {
     for (const linha of linhasDoCorpo) {
       expect(linha.querySelectorAll('td')).toHaveLength(colunas.length);
     }
-    expect(colunas[colunas.length - 1]).toHaveTextContent('Motivo');
+    expect(colunas[colunas.length - 2]).toHaveTextContent('Motivo');
+  });
+
+  it('removes a colaborador row when its remove button is clicked', async () => {
+    const user = userEvent.setup();
+    const onChangeColaboradores = vi.fn();
+    render(
+      <PeritosColaboradoresPreviewTable
+        colaboradores={[colaboradorBase({ linhaOriginal: 2 }), colaboradorBase({ linhaOriginal: 3, nome: 'Beatriz' })]}
+        peritos={[]}
+        onChangeColaboradores={onChangeColaboradores}
+        onChangePeritos={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /remover linha 2/i }));
+
+    expect(onChangeColaboradores).toHaveBeenCalledWith([expect.objectContaining({ linhaOriginal: 3 })]);
+  });
+
+  it('removes a perito row when its remove button is clicked', async () => {
+    const user = userEvent.setup();
+    const onChangePeritos = vi.fn();
+    render(
+      <PeritosColaboradoresPreviewTable
+        colaboradores={[]}
+        peritos={[peritoBase({ linhaOriginal: 2 }), peritoBase({ linhaOriginal: 3, nome: 'Daniel' })]}
+        onChangeColaboradores={vi.fn()}
+        onChangePeritos={onChangePeritos}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /remover linha 2/i }));
+
+    expect(onChangePeritos).toHaveBeenCalledWith([expect.objectContaining({ linhaOriginal: 3 })]);
   });
 });

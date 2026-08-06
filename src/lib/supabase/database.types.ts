@@ -38,8 +38,8 @@ export type Database = {
         Relationships: [];
       };
       colaboradores: {
-        Row: { id: number; nome: string; contato: string; formacao: string; created_at: string };
-        Insert: { nome: string; contato?: string; formacao?: string };
+        Row: { id: number; nome: string; contato: string; formacao: string; email: string | null; created_at: string };
+        Insert: { nome: string; contato?: string; formacao?: string; email?: string | null };
         Update: Partial<Database['public']['Tables']['colaboradores']['Insert']>;
         Relationships: [];
       };
@@ -89,6 +89,22 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       update_own_nome: { Args: { new_nome: string }; Returns: void };
+      merge_colaboradores: {
+        Args: {
+          survivor_id: number; loser_ids: number[];
+          novo_nome: string; novo_contato: string; nova_formacao: string; novo_email: string | null;
+        };
+        Returns: void;
+      };
+      merge_peritos: {
+        Args: {
+          survivor_id: number; loser_ids: number[];
+          novo_nome: string; novo_contato: string; nova_formacao: string; novo_crea: string;
+          novo_documento: string; novo_ja_trabalhamos: boolean;
+          nova_relacao: PeritoRelacao; novo_resultados: PeritoResultado;
+        };
+        Returns: void;
+      };
     };
   };
 };

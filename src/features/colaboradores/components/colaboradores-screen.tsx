@@ -10,15 +10,17 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { ColaboradoresTableAsync } from './colaboradores-table';
 import { ColaboradorForm } from './colaborador-form';
 import { ColaboradoresFilters } from './colaboradores-filters';
+import { MesclarColaboradorDialog } from './mesclar-colaborador-dialog';
 import { deleteColaborador, type Colaborador } from '../actions';
 
-const COLABORADORES_HEADERS = ['Nome', 'Contato', 'Formação', ''];
+const COLABORADORES_HEADERS = ['Nome', 'Contato', 'Formação', 'E-mail', ''];
 
 export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Colaborador[]> }) {
   const router = useRouter();
   const [isFiltering, startFilterTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Colaborador | null>(null);
+  const [mesclando, setMesclando] = useState<Colaborador | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -46,6 +48,12 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
     }
   }
 
+  function handleMerged() {
+    toast.success('Colaboradores mesclados');
+    setMesclando(null);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -60,7 +68,12 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
         <TableSkeleton headers={COLABORADORES_HEADERS} />
       ) : (
         <Suspense fallback={<TableSkeleton headers={COLABORADORES_HEADERS} />}>
-          <ColaboradoresTableAsync itemsPromise={itemsPromise} onEdit={openEdit} onDelete={handleDelete} />
+          <ColaboradoresTableAsync
+            itemsPromise={itemsPromise}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            onMerge={setMesclando}
+          />
         </Suspense>
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -75,6 +88,14 @@ export function ColaboradoresScreen({ itemsPromise }: { itemsPromise: Promise<Co
           />
         </DialogContent>
       </Dialog>
+      {mesclando && (
+        <MesclarColaboradorDialog
+          colaboradorA={mesclando}
+          open={mesclando !== null}
+          onOpenChange={(open) => !open && setMesclando(null)}
+          onMerged={handleMerged}
+        />
+      )}
     </div>
   );
 }

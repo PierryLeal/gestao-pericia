@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createPericia, listPericias, updatePericia, deletePericia, getColaboradoresIndisponiveis } from './actions';
+import {
+  createPericia, listPericias, updatePericia, deletePericia, getColaboradoresIndisponiveis,
+  listPericiasPorColaboradorIds, listPericiasPorPeritoIds,
+} from './actions';
 
 const mockSingle = vi.fn();
 const mockSelect = vi.fn(() => ({ single: mockSingle }));
@@ -15,6 +18,7 @@ const mockOrder = vi.fn<(...args: unknown[]) => unknown>(() => undefined);
 // used (e.g. `processos!inner` vs a plain, non-inner embed).
 const periciasSelectCalls: string[] = [];
 const periciasEqCalls: [string, unknown][] = [];
+const periciasOrCalls: [string, unknown][] = [];
 let periciasQueryResult: { data: unknown[] | null; error: { message: string } | null } = {
   data: [],
   error: null,
@@ -32,6 +36,10 @@ function periciasQueryBuilder() {
       return builder;
     }),
     filter: vi.fn(() => builder),
+    or: vi.fn((filters: string, options: unknown) => {
+      periciasOrCalls.push([filters, options]);
+      return builder;
+    }),
     gte: vi.fn((column: string, value: unknown) => {
       periciasEqCalls.push([`gte:${column}`, value]);
       return builder;
@@ -48,6 +56,11 @@ function periciasQueryBuilder() {
       periciasEqCalls.push([`neq:${column}`, value]);
       return builder;
     }),
+    in: vi.fn((column: string, values: unknown) => {
+      periciasEqCalls.push([`in:${column}`, values]);
+      return builder;
+    }),
+    range: vi.fn(() => builder),
     then: (resolve: (v: typeof periciasQueryResult) => void, reject?: (e: unknown) => void) =>
       Promise.resolve(periciasQueryResult).then(resolve, reject),
   };
@@ -79,6 +92,7 @@ const validInput = {
 beforeEach(() => {
   periciasSelectCalls.length = 0;
   periciasEqCalls.length = 0;
+  periciasOrCalls.length = 0;
   periciasQueryResult = { data: [], error: null };
   mockOrder.mockClear();
 });
@@ -199,6 +213,22 @@ describe('listPericias', () => {
     expect(selectArg).toContain('peritos!inner');
     // colaborador is nullable (ON DELETE SET NULL) and must stay a left join.
     expect(selectArg).not.toContain('colaboradores!inner');
+  });
+
+  it('searches busca across numero, autor and reu on the embedded processo', async () => {
+    periciasQueryResult = { data: [], error: null };
+    await listPericias({ busca: 'Souza' });
+
+    expect(periciasOrCalls).toEqual([
+      ['numero.ilike."%Souza%",autor.ilike."%Souza%",reu.ilike."%Souza%"', { referencedTable: 'processo' }],
+    ]);
+  });
+
+  it('does not apply the busca filter when it is empty', async () => {
+    periciasQueryResult = { data: [], error: null };
+    await listPericias({});
+
+    expect(periciasOrCalls).toEqual([]);
   });
 
   it('maps a full row with all embeds present without throwing', async () => {
@@ -323,5 +353,57 @@ describe('getColaboradoresIndisponiveis', () => {
     const result = await getColaboradoresIndisponiveis('2026-08-10', '14:00');
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('listPericiasPorColaboradorIds', () => {
+  it('returns an empty array without querying when no ids are given', async () => {
+    const result = await listPericiasPorColaboradorIds([]);
+    expect(result).toEqual([]);
+    expect(periciasEqCalls.some(([col]) => col === 'in:colaborador_id')).toBe(false);
+  });
+
+  it('queries by colaborador_id and maps each row to a resumo', async () => {
+    periciasQueryResult = {
+      data: [{
+        id: 10, data_agendada: '2026-08-10', hora_agendada: '09:00:00', situacao: 'marcada',
+        processo: { numero: '0001234-56.2026' }, colaborador: { nome: 'João 2' },
+      }],
+      error: null,
+    };
+
+    const result = await listPericiasPorColaboradorIds([2, 3]);
+
+    expect(periciasEqCalls).toContainEqual(['in:colaborador_id', [2, 3]]);
+    expect(result).toEqual([{
+      id: 10, processoNumero: '0001234-56.2026', dataAgendada: '2026-08-10',
+      horaAgendada: '09:00:00', situacao: 'marcada', donoAtual: 'João 2',
+    }]);
+  });
+});
+
+describe('listPericiasPorPeritoIds', () => {
+  it('returns an empty array without querying when no ids are given', async () => {
+    const result = await listPericiasPorPeritoIds([]);
+    expect(result).toEqual([]);
+    expect(periciasEqCalls.some(([col]) => col === 'in:perito_id')).toBe(false);
+  });
+
+  it('queries by perito_id and maps each row to a resumo', async () => {
+    periciasQueryResult = {
+      data: [{
+        id: 20, data_agendada: '2026-09-01', hora_agendada: '14:00:00', situacao: 'pendente',
+        processo: { numero: '0009876-12.2026' }, perito: { nome: 'Carlos 2' },
+      }],
+      error: null,
+    };
+
+    const result = await listPericiasPorPeritoIds([2]);
+
+    expect(periciasEqCalls).toContainEqual(['in:perito_id', [2]]);
+    expect(result).toEqual([{
+      id: 20, processoNumero: '0009876-12.2026', dataAgendada: '2026-09-01',
+      horaAgendada: '14:00:00', situacao: 'pendente', donoAtual: 'Carlos 2',
+    }]);
   });
 });

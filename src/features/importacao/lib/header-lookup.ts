@@ -34,3 +34,15 @@ export function encontrarLinhaComTexto(worksheet: Worksheet, texto: string): num
   });
   return linhaEncontrada;
 }
+
+/** Returns the 1-based row number of the first row in `worksheet` that has a
+ *  column matching one of `nomesAceitos` (e.g. the real header row, even when
+ *  a title row sits above it), or null if no row has that column at all. */
+export function encontrarLinhaComColuna(worksheet: Worksheet, nomesAceitos: string[]): number | null {
+  let linhaEncontrada: number | null = null;
+  worksheet.eachRow((row, rowNumber) => {
+    if (linhaEncontrada !== null) return;
+    if (encontrarIndiceColuna(row, nomesAceitos) !== null) linhaEncontrada = rowNumber;
+  });
+  return linhaEncontrada;
+}

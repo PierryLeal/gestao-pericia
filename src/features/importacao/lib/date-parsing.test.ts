@@ -2,8 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { parseDataCelula, parseHoraCelula } from './date-parsing';
 
 describe('parseDataCelula', () => {
-  it('formats a Date cell value using local getters (YYYY-MM-DD)', () => {
-    expect(parseDataCelula(new Date(2026, 8, 20, 0, 0))).toBe('2026-09-20');
+  // exceljs anchors date-only cells at UTC midnight regardless of the
+  // runtime's timezone, so the fixture must be built the same way (Date.UTC),
+  // not via the local constructor — a local-time fixture can't catch a
+  // UTC-vs-local getter bug because it's tautologically timezone-invariant.
+  it('formats a Date cell value using UTC getters (YYYY-MM-DD)', () => {
+    expect(parseDataCelula(new Date(Date.UTC(2026, 8, 20, 0, 0)))).toBe('2026-09-20');
   });
 
   it('parses a DD/MM/YYYY text value', () => {
@@ -22,8 +26,8 @@ describe('parseDataCelula', () => {
 });
 
 describe('parseHoraCelula', () => {
-  it('formats a Date cell value using local getters (HH:MM)', () => {
-    expect(parseHoraCelula(new Date(1899, 11, 30, 14, 30))).toBe('14:30');
+  it('formats a Date cell value using UTC getters (HH:MM)', () => {
+    expect(parseHoraCelula(new Date(Date.UTC(1899, 11, 30, 14, 30)))).toBe('14:30');
   });
 
   it('parses an HH:MM text value', () => {

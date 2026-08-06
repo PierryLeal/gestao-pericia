@@ -9,6 +9,8 @@ import { RelacaoBadge } from '@/components/shared/relacao-badge';
 import { ResultadoBadge } from '@/components/shared/resultado-badge';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { TooltipCell } from '@/components/shared/tooltip-cell';
+import { PaginationControls } from '@/components/shared/pagination-controls';
+import { paginar, totalDePaginas, ITENS_POR_PAGINA_PADRAO } from '@/lib/paginar';
 import { cn } from '@/lib/utils';
 import { formatPhone } from '@/lib/masks';
 import type { PericiaListItem } from '../actions';
@@ -38,10 +40,15 @@ export function PericiasTable({
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [confirmTarget, setConfirmTarget] = useState<PericiaListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pagina, setPagina] = useState(1);
 
   if (items.length === 0) {
     return <p className="p-6 text-sm text-muted-foreground">Nenhuma perícia encontrada.</p>;
   }
+
+  const totalPaginas = totalDePaginas(items.length, ITENS_POR_PAGINA_PADRAO);
+  const paginaEfetiva = Math.min(pagina, totalPaginas);
+  const itensDaPagina = paginar(items, paginaEfetiva, ITENS_POR_PAGINA_PADRAO);
 
   async function handleConfirmDelete() {
     if (!confirmTarget) return;
@@ -81,7 +88,7 @@ export function PericiasTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => {
+          {itensDaPagina.map((item) => {
             const isExpanded = expanded.has(item.id);
             return (
               <Fragment key={item.id}>
@@ -182,7 +189,9 @@ export function PericiasTable({
                           <p className="text-xs font-medium text-muted-foreground">Colaborador</p>
                           {item.colaborador ? (
                             <p className="text-sm">
-                              Contato: {formatPhone(item.colaborador.contato)} · Formação: {item.colaborador.formacao}
+                              Contato: {formatPhone(item.colaborador.contato)}
+                              <br />
+                              Formação: {item.colaborador.formacao}
                             </p>
                           ) : (
                             <p className="text-sm text-muted-foreground">Nenhum colaborador vinculado.</p>
@@ -197,6 +206,13 @@ export function PericiasTable({
           })}
         </TableBody>
       </Table>
+      <PaginationControls
+        paginaAtual={paginaEfetiva}
+        totalPaginas={totalPaginas}
+        total={items.length}
+        rotulo={items.length === 1 ? 'perícia' : 'perícias'}
+        onPageChange={setPagina}
+      />
       <ConfirmDialog
         open={confirmTarget !== null}
         onOpenChange={(open) => !open && setConfirmTarget(null)}

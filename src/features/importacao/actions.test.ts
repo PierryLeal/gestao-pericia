@@ -169,6 +169,42 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].status).toBe('ok');
   });
 
+  it('flags a brand-new single-character colaborador name as suspeito, not atencao', async () => {
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'I', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].status).toBe('suspeito');
+    expect(result.linhas[0].motivo).toBe('nome de colaborador muito curto — confirme se está correto');
+  });
+
+  it('does not flag a single-character colaborador name that already exists in the cadastro', async () => {
+    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'I', contato: '', formacao: '' }]);
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'I', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].status).toBe('ok');
+    expect(result.linhas[0].colaboradorIdExistente).toBe(5);
+  });
+
+  it('does not flag a short but plausible real colaborador name (2+ characters)', async () => {
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'Jó', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].status).toBe('ok');
+  });
+
   it('reuses an existing processo by número and overwrites autor/reu/escritorio from the sheet', async () => {
     mockListProcessos.mockResolvedValue([{ id: 9, numero: '0001234-56.2026', autor: 'Antigo', reu: 'Antigo', escritorio: 'ANTIGO' }]);
     const buffer = await criarBuffer([
@@ -182,10 +218,10 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].processoAutor).toBe('Maria');
   });
 
-  it('flags SITUAÇÃO values other than CAMPO/blank as atencao, defaulting to pendente', async () => {
+  it('flags SITUAÇÃO values other than CAMPO/OK/blank/canonical words as atencao, defaulting to pendente', async () => {
     const buffer = await criarBuffer([
       HEADER,
-      ['Maria x João - 0001234-56.2026', '', '', 'Belo Horizonte', 'Cleber', '', 'REALIZADA', '', 'PMRA'],
+      ['Maria x João - 0001234-56.2026', '', '', 'Belo Horizonte', 'Cleber', '', 'EM ANDAMENTO', '', 'PMRA'],
     ]);
 
     const result = await previewImportacaoPericias(buffer);
@@ -195,11 +231,50 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].motivo).toBe('situação não reconhecida');
   });
 
+  it('maps "OK" to realizada and a canonical SITUAÇÃO word (e.g. CANCELADA) directly, without flagging the row', async () => {
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '', '', 'Belo Horizonte', 'Cleber', '', 'OK', '', 'PMRA'],
+      ['Ana x José - 0007654-56.2026', '', '', 'Belo Horizonte', 'Cleber', '', 'CANCELADA', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].situacao).toBe('realizada');
+    expect(result.linhas[0].status).toBe('ok');
+    expect(result.linhas[1].situacao).toBe('cancelada');
+    expect(result.linhas[1].status).toBe('ok');
+  });
+
   it('marks a row as duplicada when an existing pericia matches on the full composite key', async () => {
     mockListProcessos.mockResolvedValue([{ id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' }]);
     mockListPericias.mockResolvedValue([
       {
         id: 100, dataAgendada: '2026-09-20', horaAgendada: '10:00', situacao: 'marcada', observacoes: 'levar EPI',
+        processo: { id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' },
+        municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
+        perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+        colaborador: { id: 2, nome: 'João', contato: '', formacao: '' },
+      },
+    ]);
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', 'levar EPI', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].status).toBe('duplicada');
+  });
+
+  it('marks a row as duplicada even when the DB\'s hora_agendada comes back with seconds ("10:00:00")', async () => {
+    // Same root cause as the confirm-side regression test above, but on the
+    // preview path — without normalizing, a re-uploaded sheet would show
+    // every already-imported row as "ok" (new) instead of "duplicada".
+    mockListProcessos.mockResolvedValue([{ id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' }]);
+    mockListPericias.mockResolvedValue([
+      {
+        id: 100, dataAgendada: '2026-09-20', horaAgendada: '10:00:00', situacao: 'marcada', observacoes: 'levar EPI',
         processo: { id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' },
         municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
         perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
@@ -237,10 +312,23 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].status).toBe('ok');
   });
 
-  it('explains itself via naoProcessadas when the PERÍCIA header column is missing (e.g. a title row on top)', async () => {
+  it('finds the header row even when a title row sits above it', async () => {
     const buffer = await criarBuffer([
       ['RELATÓRIO DE PERÍCIAS 2026'],
       HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.naoProcessadas).toEqual([]);
+    expect(result.linhas).toHaveLength(1);
+    expect(result.linhas[0].processoNumero).toBe('0001234-56.2026');
+  });
+
+  it('explains itself via naoProcessadas when the PERÍCIA header column is missing entirely', async () => {
+    const buffer = await criarBuffer([
+      ['RELATÓRIO DE PERÍCIAS 2026'],
       ['Maria x João - 0001234-56.2026', '', '', 'Belo Horizonte', 'Cleber', '', '', '', 'PMRA'],
     ]);
 
@@ -251,7 +339,7 @@ describe('previewImportacaoPericias', () => {
       {
         linhaOriginal: 1,
         texto: '',
-        motivo: 'não foi possível encontrar a coluna "PERÍCIA" na primeira linha da planilha',
+        motivo: 'não foi possível encontrar a coluna "PERÍCIA" na planilha',
       },
     ]);
   });
@@ -337,6 +425,14 @@ describe('confirmarImportacaoPericias', () => {
     expect(relatorio.periciasCriadas).toBe(1);
   });
 
+  it('creates the processo and perícia even when the sheet has no ESCRITÓRIOS value (optional field)', async () => {
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ processoEscritorio: '' })]);
+
+    expect(mockCreateProcesso).toHaveBeenCalledWith(expect.objectContaining({ escritorio: '' }));
+    expect(relatorio.linhasComErro).toEqual([]);
+    expect(relatorio.periciasCriadas).toBe(1);
+  });
+
   it('updates the existing processo (overwriting autor/reu/escritorio) when the fresh list has that número', async () => {
     mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
 
@@ -397,6 +493,28 @@ describe('confirmarImportacaoPericias', () => {
     expect(relatorio.puladasPorDuplicidade).toBe(1);
   });
 
+  it('recognizes a duplicate even though the DB returns hora_agendada with seconds ("10:00:00") while the sheet parses to "10:00"', async () => {
+    // Postgres's `time` column round-trips through Supabase as "HH:MM:SS";
+    // parseHoraCelula produces "HH:MM". A naive string-equality duplicate
+    // check would never match these and would re-import the whole sheet
+    // every time (confirmed against production: 3062+ duplicate perícias).
+    mockListPericias.mockResolvedValue([
+      {
+        id: 100, dataAgendada: '2026-09-20', horaAgendada: '10:00:00', situacao: 'marcada', observacoes: null,
+        processo: { id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' },
+        municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
+        perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+        colaborador: { id: 2, nome: 'João', contato: '', formacao: '' },
+      },
+    ]);
+
+    const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9, horaAgendada: '10:00' })]);
+
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(relatorio.periciasCriadas).toBe(0);
+    expect(relatorio.puladasPorDuplicidade).toBe(1);
+  });
+
   it('skips a row whose own status is duplicada without a fresh-DB check', async () => {
     const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9, status: 'duplicada' })]);
 
@@ -419,6 +537,22 @@ describe('confirmarImportacaoPericias', () => {
     expect(mockUpdateProcesso).not.toHaveBeenCalled();
     expect(relatorio.processosCriados).toBe(1);
     expect(relatorio.processosAtualizados).toBe(0);
+  });
+
+  it('updates an existing processo only once across many rows referencing it, reusing the id on the rest', async () => {
+    mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+    const linhas = [
+      linhaBase({ linhaOriginal: 2, processoIdExistente: 9, horaAgendada: '10:00' }),
+      linhaBase({ linhaOriginal: 3, processoIdExistente: 9, horaAgendada: '11:00' }),
+      linhaBase({ linhaOriginal: 4, processoIdExistente: 9, horaAgendada: '12:00' }),
+    ];
+
+    const relatorio = await confirmarImportacaoPericias(linhas);
+
+    expect(mockUpdateProcesso).toHaveBeenCalledTimes(1);
+    expect(mockCreateProcesso).not.toHaveBeenCalled();
+    expect(mockCreatePericia).toHaveBeenCalledTimes(3);
+    expect(relatorio.processosAtualizados).toBe(1);
   });
 
   it('skips the second of two rows in the same batch that are identical on the full duplicate-detection key', async () => {
@@ -604,6 +738,29 @@ describe('confirmarImportacaoPericias', () => {
     expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 8, erro: 'município não resolvido' }]);
   });
 
+  it('refuses to auto-create a colaborador with a single-character name, and skips the row', async () => {
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 9, colaboradorNome: 'I', colaboradorIdExistente: null }),
+    ]);
+
+    expect(mockCreateColaborador).not.toHaveBeenCalled();
+    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(relatorio.linhasComErro).toEqual([
+      { linhaOriginal: 9, erro: 'nome de colaborador "I" muito curto para cadastrar — corrija antes de confirmar' },
+    ]);
+  });
+
+  it('still allows reusing an existing colaborador whose cadastro name happens to be a single character', async () => {
+    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'I', contato: '', formacao: '' }]);
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 10, colaboradorNome: 'I', colaboradorIdExistente: null }),
+    ]);
+
+    expect(mockCreateColaborador).not.toHaveBeenCalled();
+    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ colaboradorId: 5 }));
+    expect(relatorio.linhasComErro).toEqual([]);
+  });
+
   it('reports no errors and an empty linhasComErro on a fully successful batch', async () => {
     const relatorio = await confirmarImportacaoPericias([linhaBase()]);
     expect(relatorio.linhasComErro).toEqual([]);
@@ -689,6 +846,26 @@ describe('previewImportacaoPeritosColaboradores', () => {
     });
   });
 
+  it('finds the colaborador header even when title/blank rows sit above it', async () => {
+    const buffer = await criarPlanilhaPeritosColaboradores([
+      [],
+      [],
+      ['COLABORADORES ÉTICA', 'CONTATO'],
+      ['Ana', '31999990000'],
+      [],
+      [],
+      ['PERITO', 'CONTATO', 'FORMAÇÃO', 'CREA', 'CPF', 'JÁ TRABALHAMOS?', 'RELAÇÃO', 'RESULTADOS'],
+      ['Carlos', '31988880000', 'Eng. Civil', 'CREA-123', '111.222.333-44', 'SIM', 'ÓTIMA', 'POSITIVO'],
+    ]);
+
+    const result = await previewImportacaoPeritosColaboradores(buffer);
+
+    expect(result.colaboradores).toEqual([
+      expect.objectContaining({ nome: 'Ana', contato: '31999990000', status: 'ok', idExistente: null }),
+    ]);
+    expect(result.peritos[0]).toMatchObject({ nome: 'Carlos', relacao: 'otima', resultados: 'positivo', status: 'ok' });
+  });
+
   it('returns an empty result when the "PERITO" header row is never found', async () => {
     const buffer = await criarPlanilhaPeritosColaboradores([['COLABORADORES ÉTICA', 'CONTATO'], ['Ana', '31999990000']]);
 
@@ -716,18 +893,18 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
     };
     const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
 
-    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '', email: '' });
     expect(relatorio.colaboradoresCriados).toBe(1);
   });
 
   it('overwrites an existing colaborador when idExistente is set', async () => {
-    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'Ana', contato: '31999990000', formacao: '' }]);
+    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'Ana', contato: '31999990000', formacao: '', email: null }]);
     const colaborador: ColaboradorPreviewRow = {
       linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
     };
     const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
 
-    expect(mockUpdateColaborador).toHaveBeenCalledWith(5, { nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(mockUpdateColaborador).toHaveBeenCalledWith(5, { nome: 'Ana', contato: '31999990000', formacao: '', email: '' });
     expect(relatorio.colaboradoresAtualizados).toBe(1);
   });
 
@@ -774,8 +951,8 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
     const relatorio = await confirmarImportacaoPeritosColaboradores(colaboradores, []);
 
     expect(mockCreateColaborador).toHaveBeenCalledTimes(1);
-    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Zeca', contato: '31900001111', formacao: '' });
-    expect(mockUpdateColaborador).toHaveBeenCalledWith(8, { nome: 'Zeca', contato: '31900002222', formacao: '' });
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Zeca', contato: '31900001111', formacao: '', email: '' });
+    expect(mockUpdateColaborador).toHaveBeenCalledWith(8, { nome: 'Zeca', contato: '31900002222', formacao: '', email: '' });
     expect(relatorio.colaboradoresCriados).toBe(1);
     expect(relatorio.colaboradoresAtualizados).toBe(1);
   });
@@ -801,7 +978,7 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
   });
 
   it('ignores a stale idExistente and creates instead when the fresh colaborador list has no matching name (renamed/deleted since preview)', async () => {
-    mockListColaboradores.mockResolvedValue([{ id: 2, nome: 'João', contato: '', formacao: '' }]);
+    mockListColaboradores.mockResolvedValue([{ id: 2, nome: 'João', contato: '', formacao: '', email: null }]);
     mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 9, nome: 'Ana' } });
     const colaborador: ColaboradorPreviewRow = {
       linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
@@ -810,7 +987,7 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
     const relatorio = await confirmarImportacaoPeritosColaboradores([colaborador], []);
 
     expect(mockUpdateColaborador).not.toHaveBeenCalled();
-    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '', email: '' });
     expect(relatorio.colaboradoresCriados).toBe(1);
     expect(relatorio.colaboradoresAtualizados).toBe(0);
   });
@@ -837,8 +1014,10 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
 
   // --- I3: the Tab 2 sheet has no formação column for colaboradores.
 
-  it('preserves the stored formação of an existing colaborador instead of blanking it', async () => {
-    mockListColaboradores.mockResolvedValue([{ id: 5, nome: 'Ana', contato: '31900000000', formacao: 'Engenheira Agrônoma' }]);
+  it('preserves the stored formação and email of an existing colaborador instead of blanking them', async () => {
+    mockListColaboradores.mockResolvedValue([
+      { id: 5, nome: 'Ana', contato: '31900000000', formacao: 'Engenheira Agrônoma', email: 'ana@exemplo.com' },
+    ]);
     const colaborador: ColaboradorPreviewRow = {
       linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: 5,
     };
@@ -846,18 +1025,18 @@ describe('confirmarImportacaoPeritosColaboradores', () => {
     await confirmarImportacaoPeritosColaboradores([colaborador], []);
 
     expect(mockUpdateColaborador).toHaveBeenCalledWith(5, {
-      nome: 'Ana', contato: '31999990000', formacao: 'Engenheira Agrônoma',
+      nome: 'Ana', contato: '31999990000', formacao: 'Engenheira Agrônoma', email: 'ana@exemplo.com',
     });
   });
 
-  it('still creates a colaborador with a blank formação when there is nothing to carry through', async () => {
+  it('still creates a colaborador with a blank formação and email when there is nothing to carry through', async () => {
     const colaborador: ColaboradorPreviewRow = {
       linhaOriginal: 2, status: 'ok', motivo: null, nome: 'Ana', contato: '31999990000', idExistente: null,
     };
 
     await confirmarImportacaoPeritosColaboradores([colaborador], []);
 
-    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '' });
+    expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Ana', contato: '31999990000', formacao: '', email: '' });
   });
 
   // --- C3: write failures surface in the report.

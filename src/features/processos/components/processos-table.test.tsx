@@ -45,4 +45,21 @@ describe('ProcessosTable', () => {
     render(<ProcessosTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('PMRA')).toBeInTheDocument();
   });
+
+  it('shows the total count and paginates at 30 per page', async () => {
+    const muitos: Processo[] = Array.from({ length: 35 }, (_, i) => ({
+      id: i + 1, numero: `P-${i + 1}`, autor: 'A', reu: 'B', escritorio: 'PMRA',
+    }));
+    const user = userEvent.setup();
+    render(<ProcessosTable items={muitos} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('35 processos')).toBeInTheDocument();
+    expect(screen.getByText('P-1')).toBeInTheDocument();
+    expect(screen.queryByText('P-31')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Próxima' }));
+
+    expect(screen.getByText('P-31')).toBeInTheDocument();
+    expect(screen.queryByText('P-1')).not.toBeInTheDocument();
+  });
 });

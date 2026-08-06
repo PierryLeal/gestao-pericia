@@ -5,6 +5,7 @@ import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
 import type { Database, PeritoRelacao, PeritoResultado } from '@/lib/supabase/database.types';
 import { matchesSearch } from '@/lib/search';
+import { buscarTodasAsPaginas } from '@/lib/supabase/pagination';
 import { peritoSchema, type PeritoInput } from './schemas';
 
 export type Perito = {
@@ -35,9 +36,12 @@ function fromRow(row: Database['public']['Tables']['peritos']['Row']): Perito {
 export async function listPeritos(busca?: string): Promise<Perito[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('peritos').select('*').order('nome');
-  if (error) throw new Error(error.message);
-  const peritos = (data ?? []).map(fromRow);
+  const rows = await buscarTodasAsPaginas<Database['public']['Tables']['peritos']['Row']>((inicio, fim) =>
+    // `.order('id')` is a secondary tie-breaker: OFFSET-based .range() paging
+    // over a non-unique sort column alone can return a row twice or skip one.
+    supabase.from('peritos').select('*').order('nome').order('id').range(inicio, fim)
+  );
+  const peritos = rows.map(fromRow);
   if (!busca?.trim()) return peritos;
   return peritos.filter((perito) => matchesSearch(perito.nome, busca));
 }
@@ -89,4 +93,47 @@ export async function deletePerito(id: number): Promise<ActionResult<null>> {
     return { success: false, error: error.message };
   }
   return { success: true, data: null };
+}
+
+/**
+ * Merges two or more peritos into one, mirroring `mesclarColaboradores`:
+ * `survivorId` keeps existing, every perícia pointing at any of `loserIds`
+ * is repointed at it, `survivorId`'s fields are overwritten with `input`
+ * (the caller's edited/confirmed final values), and every perito in
+ * `loserIds` is deleted — all inside one DB transaction (the `merge_peritos`
+ * function).
+ */
+export async function mesclarPeritos(
+  survivorId: number,
+  loserIds: number[],
+  input: PeritoInput
+): Promise<ActionResult<Perito>> {
+  await requireRole(['admin', 'gerencia']);
+  if (loserIds.length === 0) {
+    return { success: false, error: 'Selecione ao menos um perito para mesclar' };
+  }
+  if (loserIds.includes(survivorId)) {
+    return { success: false, error: 'Selecione peritos diferentes para mesclar' };
+  }
+  const parsed = peritoSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('merge_peritos', {
+    survivor_id: survivorId,
+    loser_ids: loserIds,
+    novo_nome: parsed.data.nome,
+    novo_contato: parsed.data.contato,
+    nova_formacao: parsed.data.formacao,
+    novo_crea: parsed.data.crea,
+    novo_documento: parsed.data.documento,
+    novo_ja_trabalhamos: parsed.data.jaTrabalhamos,
+    nova_relacao: parsed.data.relacao,
+    novo_resultados: parsed.data.resultados,
+  });
+  if (error) return { success: false, error: error.message };
+
+  const mesclado = await getPerito(survivorId);
+  if (!mesclado) return { success: false, error: 'Perito mesclado não encontrado após a operação' };
+  return { success: true, data: mesclado };
 }

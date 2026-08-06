@@ -5,6 +5,8 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { PaginationControls } from '@/components/shared/pagination-controls';
+import { paginar, totalDePaginas, ITENS_POR_PAGINA_PADRAO } from '@/lib/paginar';
 import type { Processo } from '../actions';
 
 export function ProcessosTableAsync({
@@ -31,10 +33,15 @@ export function ProcessosTable({
 }) {
   const [confirmTarget, setConfirmTarget] = useState<Processo | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pagina, setPagina] = useState(1);
 
   if (items.length === 0) {
     return <p className="p-6 text-sm text-muted-foreground">Nenhum processo cadastrado.</p>;
   }
+
+  const totalPaginas = totalDePaginas(items.length, ITENS_POR_PAGINA_PADRAO);
+  const paginaEfetiva = Math.min(pagina, totalPaginas);
+  const itensDaPagina = paginar(items, paginaEfetiva, ITENS_POR_PAGINA_PADRAO);
 
   async function handleConfirmDelete() {
     if (!confirmTarget) return;
@@ -60,7 +67,7 @@ export function ProcessosTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => (
+          {itensDaPagina.map((item) => (
             <TableRow key={item.id}>
               <TableCell>{item.numero}</TableCell>
               <TableCell>{item.autor}</TableCell>
@@ -80,6 +87,13 @@ export function ProcessosTable({
           ))}
         </TableBody>
       </Table>
+      <PaginationControls
+        paginaAtual={paginaEfetiva}
+        totalPaginas={totalPaginas}
+        total={items.length}
+        rotulo={items.length === 1 ? 'processo' : 'processos'}
+        onPageChange={setPagina}
+      />
       <ConfirmDialog
         open={confirmTarget !== null}
         onOpenChange={(open) => !open && setConfirmTarget(null)}

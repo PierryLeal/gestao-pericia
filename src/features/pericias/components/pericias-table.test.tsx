@@ -129,4 +129,23 @@ describe('PericiasTable', () => {
     render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('PMRA')).toBeInTheDocument();
   });
+
+  it('shows the total count and paginates at 30 per page', async () => {
+    const muitos: PericiaListItem[] = Array.from({ length: 35 }, (_, i) => ({
+      ...items[0],
+      id: i + 1,
+      processo: { ...items[0].processo, numero: `PROCESSO-${i + 1}` },
+    }));
+    const user = userEvent.setup();
+    render(<PericiasTable items={muitos} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('35 perícias')).toBeInTheDocument();
+    expect(screen.getByText('PROCESSO-1')).toBeInTheDocument();
+    expect(screen.queryByText('PROCESSO-31')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Próxima' }));
+
+    expect(screen.getByText('PROCESSO-31')).toBeInTheDocument();
+    expect(screen.queryByText('PROCESSO-1')).not.toBeInTheDocument();
+  });
 });

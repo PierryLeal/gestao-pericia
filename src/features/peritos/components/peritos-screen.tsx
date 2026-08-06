@@ -10,6 +10,7 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { PeritosTableAsync } from './peritos-table';
 import { PeritosFilters } from './peritos-filters';
 import { PeritoForm } from './perito-form';
+import { MesclarPeritoDialog } from './mesclar-perito-dialog';
 import { deletePerito, type Perito } from '../actions';
 
 const PERITOS_HEADERS = ['Nome', 'Contato', 'Formação', 'CREA', 'Relação', 'Resultados', ''];
@@ -19,6 +20,7 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
   const [isFiltering, startFilterTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Perito | null>(null);
+  const [mesclando, setMesclando] = useState<Perito | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -46,6 +48,12 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
     }
   }
 
+  function handleMerged() {
+    toast.success('Peritos mesclados');
+    setMesclando(null);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -60,7 +68,7 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
         <TableSkeleton headers={PERITOS_HEADERS} />
       ) : (
         <Suspense fallback={<TableSkeleton headers={PERITOS_HEADERS} />}>
-          <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} onDelete={handleDelete} />
+          <PeritosTableAsync itemsPromise={itemsPromise} onEdit={openEdit} onDelete={handleDelete} onMerge={setMesclando} />
         </Suspense>
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -71,6 +79,14 @@ export function PeritosScreen({ itemsPromise }: { itemsPromise: Promise<Perito[]
           <PeritoForm perito={editing ?? undefined} onSaved={handleSaved} onError={(message) => toast.error(message)} />
         </DialogContent>
       </Dialog>
+      {mesclando && (
+        <MesclarPeritoDialog
+          peritoA={mesclando}
+          open={mesclando !== null}
+          onOpenChange={(open) => !open && setMesclando(null)}
+          onMerged={handleMerged}
+        />
+      )}
     </div>
   );
 }

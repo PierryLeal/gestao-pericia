@@ -23,6 +23,10 @@ describe('mapRelacao', () => {
     expect(mapRelacao('ruim')).toEqual({ relacao: 'ruim', reconhecida: true });
   });
 
+  it('maps an accented value (e.g. a sheet cell reading "ÓTIMA") to its accent-free equivalent', () => {
+    expect(mapRelacao('ÓTIMA')).toEqual({ relacao: 'otima', reconhecida: true });
+  });
+
   it('maps empty to neutra', () => {
     expect(mapRelacao('')).toEqual({ relacao: 'neutra', reconhecida: true });
   });

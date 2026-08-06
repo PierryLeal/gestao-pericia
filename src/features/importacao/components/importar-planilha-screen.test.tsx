@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toast } from 'sonner';
@@ -21,6 +21,13 @@ vi.mock('../actions', () => ({
 
 function arquivoFake(nome = 'planilha.xlsx') {
   return new File(['conteudo'], nome, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+// Stat tiles render the count and its label in separate elements (for distinct
+// typography), so the pair is found by locating the label and reading its sibling.
+function valorDoStatTile(rotulo: string) {
+  const label = screen.getByText(rotulo);
+  return within(label.parentElement as HTMLElement);
 }
 
 const LINHA_PREVIEW = {
@@ -105,8 +112,85 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     await waitFor(() => expect(mockConfirmarPericias).toHaveBeenCalledWith([
       expect.objectContaining({ processoNumero: '0001234-56.2026' }),
     ]));
-    expect(await screen.findByText(/1 perícia criada/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('perícia criada')).toBeInTheDocument());
+    expect(valorDoStatTile('perícia criada').getByText('1')).toBeInTheDocument();
   });
+
+  it('confirms a large batch in chunks and sums the merged report', async () => {
+    // 260 rendered table rows is genuinely slow in jsdom under full-suite load.
+    const muitasLinhas = Array.from({ length: 260 }, (_, i) => ({ ...LINHA_PREVIEW, linhaOriginal: i + 2 }));
+    mockPreviewPericias.mockResolvedValue({ linhas: muitasLinhas, naoProcessadas: [] });
+    mockConfirmarPericias.mockImplementation(async (lote: unknown[]) => ({
+      ...RELATORIO_PERICIAS_VAZIO, periciasCriadas: lote.length,
+    }));
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByText(/260 linhas encontradas/i)).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    await waitFor(() => expect(mockConfirmarPericias).toHaveBeenCalledTimes(2));
+    expect(mockConfirmarPericias.mock.calls[0][0]).toHaveLength(250);
+    expect(mockConfirmarPericias.mock.calls[1][0]).toHaveLength(10);
+
+    await waitFor(() => expect(screen.getByText('perícias criadas')).toBeInTheDocument());
+    expect(valorDoStatTile('perícias criadas').getByText('260')).toBeInTheDocument();
+  }, 20000);
+
+  it('shows progress between confirm batches', async () => {
+    const muitasLinhas = Array.from({ length: 260 }, (_, i) => ({ ...LINHA_PREVIEW, linhaOriginal: i + 2 }));
+    mockPreviewPericias.mockResolvedValue({ linhas: muitasLinhas, naoProcessadas: [] });
+    function loteControlado() {
+      let resolver!: (valor: typeof RELATORIO_PERICIAS_VAZIO) => void;
+      const pendente = new Promise<typeof RELATORIO_PERICIAS_VAZIO>((resolve) => { resolver = resolve; });
+      return { pendente, resolver: () => resolver({ ...RELATORIO_PERICIAS_VAZIO, periciasCriadas: 1 }) };
+    }
+    const lote1 = loteControlado();
+    const lote2 = loteControlado();
+    mockConfirmarPericias
+      .mockImplementationOnce(() => lote1.pendente)
+      .mockImplementationOnce(() => lote2.pendente);
+
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByText(/260 linhas encontradas/i)).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    expect(await screen.findByRole('button', { name: /confirmando\.\.\. 0 de 260/i })).toBeInTheDocument();
+
+    lote1.resolver();
+
+    expect(await screen.findByRole('button', { name: /confirmando\.\.\. 250 de 260/i })).toBeInTheDocument();
+
+    lote2.resolver();
+    // The preview (and its confirm button) is replaced by the report once every batch lands.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /confirmando/i })).not.toBeInTheDocument());
+    expect(screen.getByText('Resultado da importação')).toBeInTheDocument();
+  }, 20000);
+
+  it('keeps only the not-yet-processed rows in the preview when a later batch fails', async () => {
+    const muitasLinhas = Array.from({ length: 260 }, (_, i) => ({ ...LINHA_PREVIEW, linhaOriginal: i + 2 }));
+    mockPreviewPericias.mockResolvedValue({ linhas: muitasLinhas, naoProcessadas: [] });
+    mockConfirmarPericias
+      .mockResolvedValueOnce({ ...RELATORIO_PERICIAS_VAZIO, periciasCriadas: 250 })
+      .mockRejectedValueOnce(new Error('Unauthorized'));
+
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByText(/260 linhas encontradas/i)).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    // The batch that succeeded before the failure is still reported...
+    expect(valorDoStatTile('perícias criadas').getByText('250')).toBeInTheDocument();
+    // ...and the 10 rows never attempted stay in the preview for a retry.
+    await waitFor(() => expect(screen.getByText(/10 linhas encontradas/i)).toBeInTheDocument());
+  }, 20000);
 
   it('disables the confirm button when there are no ok/atencao rows', async () => {
     mockPreviewPericias.mockResolvedValue({ linhas: [], naoProcessadas: [] });
@@ -150,7 +234,8 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
 
-    expect(await screen.findByText(/1 perícia criada/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('perícia criada')).toBeInTheDocument());
+    expect(valorDoStatTile('perícia criada').getByText('1')).toBeInTheDocument();
     expect(screen.queryByText(/linha.* com erro/i)).not.toBeInTheDocument();
   });
 
@@ -205,7 +290,8 @@ describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
       [expect.objectContaining({ nome: 'Ana' })],
       []
     ));
-    expect(await screen.findByText(/1 colaborador criado/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('colaborador criado')).toBeInTheDocument());
+    expect(valorDoStatTile('colaborador criado').getByText('1')).toBeInTheDocument();
   });
 
   it('lists the rows that failed to import in the Tab 2 report', async () => {

@@ -5,6 +5,7 @@ import { requireRole } from '@/features/auth/guards';
 import type { ActionResult } from '@/lib/action-result';
 import { postgrestQuoted } from '@/lib/postgrest';
 import { matchesSearch } from '@/lib/search';
+import { buscarTodasAsPaginas } from '@/lib/supabase/pagination';
 import { processoSchema, type ProcessoInput } from './schemas';
 
 export type Processo = { id: number; numero: string; autor: string; reu: string; escritorio: string };
@@ -46,12 +47,11 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
 export async function listProcessos(busca?: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('processos')
-    .select('id, numero, autor, reu, escritorio')
-    .order('numero');
-  if (error) throw new Error(error.message);
-  const processos = data ?? [];
+  const processos = await buscarTodasAsPaginas<Processo>((inicio, fim) =>
+    // `.order('id')` is a secondary tie-breaker: OFFSET-based .range() paging
+    // over a non-unique sort column alone can return a row twice or skip one.
+    supabase.from('processos').select('id, numero, autor, reu, escritorio').order('numero').order('id').range(inicio, fim)
+  );
   if (!busca?.trim()) return processos;
   return processos.filter(
     (processo) =>

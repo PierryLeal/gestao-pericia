@@ -1,4 +1,4 @@
-import type { PericiaInput } from '../../pericias/schemas';
+import { situacaoOptions, type PericiaInput } from '../../pericias/schemas';
 
 export type PericiaParseada = {
   autor: string;
@@ -34,5 +34,8 @@ export function mapSituacao(valor: string): { situacao: PericiaInput['situacao']
   const trimmed = valor.trim().toLowerCase();
   if (!trimmed) return { situacao: 'pendente', reconhecida: true };
   if (trimmed === 'campo') return { situacao: 'marcada', reconhecida: true };
+  if (trimmed === 'ok') return { situacao: 'realizada', reconhecida: true };
+  const situacaoDireta = situacaoOptions.find((opcao) => opcao === trimmed);
+  if (situacaoDireta) return { situacao: situacaoDireta, reconhecida: true };
   return { situacao: 'pendente', reconhecida: false };
 }

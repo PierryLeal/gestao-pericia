@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
 
 import { cn } from "@/lib/utils"
@@ -22,7 +21,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex flex-1 items-center justify-center rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap outline-none data-selected:bg-background data-selected:text-foreground data-selected:shadow-sm",
+        "inline-flex flex-1 items-center justify-center rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap outline-none data-active:bg-background data-active:text-foreground data-active:shadow-sm",
         className
       )}
       {...props}
