@@ -46,12 +46,12 @@ export type Database = {
       pericias: {
         Row: {
           id: number; processo_id: number; data_agendada: string | null; hora_agendada: string | null;
-          municipio_id: number; perito_id: number; colaborador_id: number | null;
+          municipio_id: number; perito_id: number;
           situacao: PericiaSituacao; observacoes: string | null; created_at: string;
         };
         Insert: {
           processo_id: number; data_agendada?: string | null; hora_agendada?: string | null; municipio_id: number;
-          perito_id: number; colaborador_id?: number | null; situacao?: PericiaSituacao; observacoes?: string | null;
+          perito_id: number; situacao?: PericiaSituacao; observacoes?: string | null;
         };
         Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
         Relationships: [
@@ -76,8 +76,22 @@ export type Database = {
             referencedRelation: 'peritos';
             referencedColumns: ['id'];
           },
+        ];
+      };
+      pericia_colaboradores: {
+        Row: { pericia_id: number; colaborador_id: number };
+        Insert: { pericia_id: number; colaborador_id: number };
+        Update: Partial<Database['public']['Tables']['pericia_colaboradores']['Insert']>;
+        Relationships: [
           {
-            foreignKeyName: 'pericias_colaborador_id_fkey';
+            foreignKeyName: 'pericia_colaboradores_pericia_id_fkey';
+            columns: ['pericia_id'];
+            isOneToOne: false;
+            referencedRelation: 'pericias';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pericia_colaboradores_colaborador_id_fkey';
             columns: ['colaborador_id'];
             isOneToOne: false;
             referencedRelation: 'colaboradores';
@@ -89,6 +103,22 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       update_own_nome: { Args: { new_nome: string }; Returns: void };
+      create_pericia_with_colaboradores: {
+        Args: {
+          p_processo_id: number; p_data_agendada: string | null; p_hora_agendada: string | null;
+          p_municipio_id: number; p_perito_id: number; p_situacao: PericiaSituacao; p_observacoes: string | null;
+          p_colaborador_ids: number[];
+        };
+        Returns: number;
+      };
+      update_pericia_with_colaboradores: {
+        Args: {
+          p_id: number; p_processo_id: number; p_data_agendada: string | null; p_hora_agendada: string | null;
+          p_municipio_id: number; p_perito_id: number; p_situacao: PericiaSituacao; p_observacoes: string | null;
+          p_colaborador_ids: number[];
+        };
+        Returns: void;
+      };
       merge_colaboradores: {
         Args: {
           survivor_id: number; loser_ids: number[];

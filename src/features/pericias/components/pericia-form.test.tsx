@@ -128,7 +128,7 @@ describe('PericiaForm', () => {
     await user.click(busyOption);
 
     expect(
-      await screen.findByText('Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.')
+      await screen.findByText('Bruna já está atribuído a outra perícia nesse mesmo dia e horário.')
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar perícia/i })).toBeDisabled();
     expect(onSaved).not.toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe('PericiaForm', () => {
     await new Promise((r) => setTimeout(r, 350));
 
     expect(
-      await screen.findByText('Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.')
+      await screen.findByText('Bruna já está atribuído a outra perícia nesse mesmo dia e horário.')
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar perícia/i })).toBeDisabled();
   });
@@ -220,7 +220,7 @@ describe('PericiaForm', () => {
     await user.clear(screen.getByLabelText('Data agendada'));
 
     expect(
-      screen.queryByText('Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.')
+      screen.queryByText('Bruna já está atribuído a outra perícia nesse mesmo dia e horário.')
     ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar perícia/i })).not.toBeDisabled();
   });
@@ -234,7 +234,7 @@ describe('PericiaForm', () => {
           processoId: 1,
           municipioId: 3550308,
           peritoId: 1,
-          colaboradorId: 2,
+          colaboradorIds: [2],
           dataAgendada: '2026-08-10',
           horaAgendada: '14:00',
           situacao: 'marcada',
@@ -359,5 +359,88 @@ describe('PericiaForm', () => {
     await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
 
     expect(vi.mocked(createPericia)).toHaveBeenCalledWith(expect.objectContaining({ observacoes: null }));
+  });
+
+  describe('multiple colaboradores', () => {
+    const colaboradores = [
+      { id: 2, nome: 'Bruna' },
+      { id: 3, nome: 'Duda' },
+    ];
+
+    it('starts with a single colaborador row showing only a "+" button', () => {
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={colaboradores} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      expect(screen.getByRole('combobox', { name: 'Colaborador 1' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /adicionar outro colaborador/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /remover colaborador/i })).not.toBeInTheDocument();
+    });
+
+    it('adds a new empty row on "+", turning the first row\'s button into a trash icon', async () => {
+      const user = userEvent.setup();
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={colaboradores} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: /adicionar outro colaborador/i }));
+
+      expect(screen.getByRole('combobox', { name: 'Colaborador 1' })).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Colaborador 2' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /remover colaborador 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /adicionar outro colaborador/i })).toBeInTheDocument();
+    });
+
+    it('sends every selected colaborador id on save', async () => {
+      const user = userEvent.setup();
+      render(
+        <PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={colaboradores} onSaved={vi.fn()} onError={vi.fn()} />
+      );
+
+      await user.click(screen.getByRole('combobox', { name: 'Colaborador 1' }));
+      await user.click(await screen.findByText('Bruna'));
+      await user.click(screen.getByRole('button', { name: /adicionar outro colaborador/i }));
+      await user.click(screen.getByRole('combobox', { name: 'Colaborador 2' }));
+      await user.click(await screen.findByRole('option', { name: 'Duda' }));
+
+      await user.click(screen.getByText('selecionar processo'));
+      await user.click(screen.getByText('selecionar município'));
+      await user.click(screen.getByRole('combobox', { name: /perito/i }));
+      await user.click(await screen.findByText('Carlos'));
+      await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+      expect(vi.mocked(createPericia)).toHaveBeenCalledWith(
+        expect.objectContaining({ colaboradorIds: [2, 3] })
+      );
+    });
+
+    it('removes a row when its trash icon is clicked, keeping the other row\'s value', async () => {
+      const user = userEvent.setup();
+      render(
+        <PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={colaboradores} onSaved={vi.fn()} onError={vi.fn()} />
+      );
+
+      await user.click(screen.getByRole('combobox', { name: 'Colaborador 1' }));
+      await user.click(await screen.findByText('Bruna'));
+      await user.click(screen.getByRole('button', { name: /adicionar outro colaborador/i }));
+      await user.click(screen.getByRole('combobox', { name: 'Colaborador 2' }));
+      await user.click(await screen.findByRole('option', { name: 'Duda' }));
+
+      await user.click(screen.getByRole('button', { name: /remover colaborador 1/i }));
+
+      expect(screen.queryByRole('combobox', { name: 'Colaborador 2' })).not.toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Colaborador 1' })).toHaveTextContent('Duda');
+    });
+
+    it('does not offer a colaborador already picked in another row', async () => {
+      const user = userEvent.setup();
+      render(
+        <PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={colaboradores} onSaved={vi.fn()} onError={vi.fn()} />
+      );
+
+      await user.click(screen.getByRole('combobox', { name: 'Colaborador 1' }));
+      await user.click(await screen.findByText('Bruna'));
+      await user.click(screen.getByRole('button', { name: /adicionar outro colaborador/i }));
+
+      await user.click(screen.getByRole('combobox', { name: 'Colaborador 2' }));
+      expect(await screen.findByRole('option', { name: 'Duda' })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'Bruna' })).not.toBeInTheDocument();
+    });
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,8 +33,10 @@ export function PericiaForm({
   const [processo, setProcesso] = useState<Processo | null>(pericia?.processo ?? null);
   const [municipio, setMunicipio] = useState<MunicipioIBGE | null>(pericia?.municipio ?? null);
   const [peritoId, setPeritoId] = useState(pericia?.peritoId ? String(pericia.peritoId) : '');
-  const [colaboradorId, setColaboradorId] = useState(
-    pericia?.colaboradorId ? String(pericia.colaboradorId) : ''
+  // One slot per colaborador select; a slot can be '' (not yet chosen). Always
+  // at least one slot so the row (and its "+") is there even with none picked.
+  const [colaboradorIds, setColaboradorIds] = useState<string[]>(
+    pericia && pericia.colaboradorIds.length > 0 ? pericia.colaboradorIds.map(String) : ['']
   );
   const [dataAgendada, setDataAgendada] = useState(pericia?.dataAgendada ?? '');
   const [horaAgendada, setHoraAgendada] = useState(pericia?.horaAgendada ?? '');
@@ -64,10 +66,24 @@ export function PericiaForm({
   }, [dataAgendada, horaAgendada, processo?.id, pericia?.id]);
 
   const effectiveBusyIds = dataAgendada && horaAgendada ? busyColaboradorIds : [];
-  const colaboradorConflict = colaboradorId !== '' && effectiveBusyIds.includes(Number(colaboradorId));
+  const colaboradorSelecionados = colaboradorIds.filter((id) => id !== '');
+  const colaboradorConflitante = colaboradores.find(
+    (c) => colaboradorSelecionados.includes(String(c.id)) && effectiveBusyIds.includes(c.id)
+  );
 
   const peritoItems = Object.fromEntries(peritos.map((p) => [String(p.id), p.nome]));
-  const colaboradorItems = Object.fromEntries(colaboradores.map((c) => [String(c.id), c.nome]));
+
+  function handleAlterarColaborador(index: number, value: string) {
+    setColaboradorIds((atual) => atual.map((id, i) => (i === index ? value : id)));
+  }
+
+  function handleAdicionarColaborador() {
+    setColaboradorIds((atual) => [...atual, '']);
+  }
+
+  function handleRemoverColaborador(index: number) {
+    setColaboradorIds((atual) => atual.filter((_, i) => i !== index));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,7 +91,7 @@ export function PericiaForm({
       onError('Preencha processo, município e perito.');
       return;
     }
-    if (colaboradorConflict) {
+    if (colaboradorConflitante) {
       onError('Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.');
       return;
     }
@@ -84,7 +100,7 @@ export function PericiaForm({
       processoId: processo.id,
       municipioId: municipio.id,
       peritoId: Number(peritoId),
-      colaboradorId: colaboradorId ? Number(colaboradorId) : null,
+      colaboradorIds: colaboradorSelecionados.map(Number),
       dataAgendada: dataAgendada || null,
       horaAgendada: horaAgendada || null,
       situacao,
@@ -125,7 +141,7 @@ export function PericiaForm({
       <div className="space-y-2">
         <Label htmlFor="perito">Perito</Label>
         <Select items={peritoItems} value={peritoId} onValueChange={(v) => setPeritoId(v ?? '')}>
-          <SelectTrigger id="perito"><SelectValue placeholder="Selecione um perito" /></SelectTrigger>
+          <SelectTrigger id="perito" className="w-full"><SelectValue placeholder="Selecione um perito" /></SelectTrigger>
           <SelectContent>
             {peritos.map((p) => (
               <SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>
@@ -135,29 +151,55 @@ export function PericiaForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="colaborador">Colaborador (opcional)</Label>
-        <Select
-          items={{ none: 'Nenhum', ...colaboradorItems }}
-          value={colaboradorId || 'none'}
-          onValueChange={(v) => setColaboradorId(!v || v === 'none' ? '' : v)}
-        >
-          <SelectTrigger id="colaborador"><SelectValue placeholder="Selecione um colaborador" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Nenhum</SelectItem>
-            {colaboradores.map((c) => (
-              <SelectItem
-                key={c.id}
-                value={String(c.id)}
-                className={effectiveBusyIds.includes(c.id) ? 'opacity-40' : undefined}
-              >
-                {c.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {colaboradorConflict && (
+        <Label>Colaborador (opcional)</Label>
+        <div className="space-y-2">
+          {colaboradorIds.map((valorSelecionado, index) => {
+            const ultimaLinha = index === colaboradorIds.length - 1;
+            // A colaborador already chosen in another row isn't offered again here.
+            const opcoesDisponiveis = colaboradores.filter(
+              (c) => String(c.id) === valorSelecionado || !colaboradorIds.includes(String(c.id))
+            );
+            return (
+              <div key={index} className="flex items-center gap-2">
+                <Select
+                  items={{ none: 'Nenhum', ...Object.fromEntries(opcoesDisponiveis.map((c) => [String(c.id), c.nome])) }}
+                  value={valorSelecionado || 'none'}
+                  onValueChange={(v) => handleAlterarColaborador(index, !v || v === 'none' ? '' : v)}
+                >
+                  <SelectTrigger aria-label={`Colaborador ${index + 1}`} className="flex-1">
+                    <SelectValue placeholder="Selecione um colaborador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {opcoesDisponiveis.map((c) => (
+                      <SelectItem
+                        key={c.id}
+                        value={String(c.id)}
+                        className={effectiveBusyIds.includes(c.id) ? 'opacity-40' : undefined}
+                      >
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {ultimaLinha ? (
+                  <Button type="button" variant="outline" size="icon" onClick={handleAdicionarColaborador}>
+                    <Plus className="size-4" />
+                    <span className="sr-only">Adicionar outro colaborador</span>
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" size="icon" onClick={() => handleRemoverColaborador(index)}>
+                    <Trash2 className="size-4" />
+                    <span className="sr-only">Remover colaborador {index + 1}</span>
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {colaboradorConflitante && (
           <p className="text-sm text-destructive">
-            Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.
+            {colaboradorConflitante.nome} já está atribuído a outra perícia nesse mesmo dia e horário.
           </p>
         )}
       </div>
@@ -165,7 +207,7 @@ export function PericiaForm({
       <div className="space-y-2">
         <Label htmlFor="situacao">Situação</Label>
         <Select value={situacao} onValueChange={(v) => setSituacao(v as PericiaInput['situacao'])}>
-          <SelectTrigger id="situacao"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="situacao" className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
             {situacaoOptions.map((s) => (
               <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -179,7 +221,7 @@ export function PericiaForm({
         <Textarea id="observacoes" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} />
       </div>
 
-      <Button type="submit" disabled={saving || colaboradorConflict} className="w-full">
+      <Button type="submit" disabled={saving || Boolean(colaboradorConflitante)} className="w-full">
         {saving && <Loader2 className="size-4 animate-spin" />}
         {saving ? 'Salvando...' : 'Salvar perícia'}
       </Button>

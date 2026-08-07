@@ -26,7 +26,7 @@ export type PericiaPreviewRow = {
   peritoNome: string;
   peritoIdExistente: number | null;
   colaboradorNome: string;
-  colaboradorIdExistente: number | null;
+  colaboradorIdsExistentes: number[];
   situacao: PericiaInput['situacao'];
   observacoes: string | null;
 };

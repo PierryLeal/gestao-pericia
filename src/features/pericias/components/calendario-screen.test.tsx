@@ -88,7 +88,7 @@ const scheduled: PericiaListItem = {
     id: 7, nome: 'Cleber', contato: '', formacao: '', crea: '',
     jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
   },
-  colaborador: null,
+  colaboradores: [],
 };
 
 describe('CalendarioScreen', () => {
@@ -140,7 +140,7 @@ describe('CalendarioScreen', () => {
       processoId: 5,
       municipioId: 3,
       peritoId: 7,
-      colaboradorId: null,
+      colaboradorIds: [],
       dataAgendada: null,
       horaAgendada: null,
       situacao: 'pendente' as const,
@@ -168,7 +168,7 @@ describe('CalendarioScreen', () => {
   describe('drag-to-reschedule', () => {
     const withColaborador: PericiaListItem = {
       ...scheduled,
-      colaborador: { id: 9, nome: 'Ana', contato: '', formacao: '' },
+      colaboradores: [{ id: 9, nome: 'Ana', contato: '', formacao: '' }],
     };
 
     beforeEach(() => {
@@ -271,7 +271,7 @@ describe('CalendarioScreen', () => {
         processoId: 5,
         municipioId: 3,
         peritoId: 7,
-        colaboradorId: 9,
+        colaboradorIds: [9],
         dataAgendada: '2026-10-05',
         horaAgendada: '11:00',
         situacao: 'marcada',
@@ -399,17 +399,17 @@ describe('CalendarioScreen', () => {
   it('reduces both the calendar events and the não-agendadas list when filtering by colaborador', async () => {
     const colaboradorA = { id: 9, nome: 'Ana', contato: '', formacao: '' };
     const colaboradorB = { id: 10, nome: 'Bruno', contato: '', formacao: '' };
-    const comColaboradorA: PericiaListItem = { ...scheduled, colaborador: colaboradorA };
+    const comColaboradorA: PericiaListItem = { ...scheduled, colaboradores: [colaboradorA] };
     const comColaboradorB: PericiaListItem = {
       ...scheduled,
       id: 2,
-      colaborador: colaboradorB,
+      colaboradores: [colaboradorB],
       processo: { ...scheduled.processo, id: 6, numero: '0009999-99.2026' },
     };
     const naoAgendadaColaboradorB: PericiaListItem = {
       ...scheduled,
       id: 3,
-      colaborador: colaboradorB,
+      colaboradores: [colaboradorB],
       dataAgendada: null,
       horaAgendada: null,
       processo: { ...scheduled.processo, id: 10, numero: '0005555-55.2026' },
@@ -463,7 +463,7 @@ describe('CalendarioScreen', () => {
       processoId: 5,
       municipioId: 3,
       peritoId: 7,
-      colaboradorId: null,
+      colaboradorIds: [],
       dataAgendada: '2026-09-20',
       horaAgendada: '10:00',
       situacao: 'marcada' as const,

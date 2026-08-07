@@ -9,7 +9,7 @@ import { createPerito, updatePerito, listPeritos } from '@/features/peritos/acti
 import { createColaborador, updateColaborador, listColaboradores } from '@/features/colaboradores/actions';
 import { createPericia, listPericias } from '@/features/pericias/actions';
 import { upsertMunicipio } from '@/features/municipios/actions';
-import { parseColunaPericia, mapSituacao } from './lib/pericia-parser';
+import { parseColunaPericia, mapSituacao, splitColaboradorNomes } from './lib/pericia-parser';
 import { parseDataCelula, parseHoraCelula } from './lib/date-parsing';
 import { mapJaTrabalhamos, mapRelacao, mapResultados } from './lib/perito-colaborador-parser';
 import { encontrarIndiceColuna, encontrarLinhaComTexto, encontrarLinhaComColuna } from './lib/header-lookup';
@@ -91,7 +91,7 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
   ]);
   const chavesExistentes = new Set(periciasExistentes.map((p) => chavePericia({
     numero: p.processo.numero, dataAgendada: p.dataAgendada, horaAgendada: p.horaAgendada,
-    peritoNome: p.perito.nome, colaboradorNome: p.colaborador?.nome ?? '', observacoes: p.observacoes,
+    peritoNome: p.perito.nome, colaboradorNomes: p.colaboradores.map((c) => c.nome), observacoes: p.observacoes,
   })));
 
   const linhas: PericiaPreviewRow[] = [];
@@ -112,6 +112,7 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
     }
 
     const motivos: string[] = [];
+    if (!parseado.autor.trim()) motivos.push('autor não identificado');
 
     const processoExistente = processos.find(
       (p) => normalizeForSearch(p.numero) === normalizeForSearch(parseado.numeroProcesso)
@@ -127,15 +128,24 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       ? peritos.find((p) => normalizeForSearch(p.nome) === normalizeForSearch(nomePerito))
       : undefined;
 
+    // A perícia can list more than one colaborador, "/"-separated (e.g.
+    // "Igor Navarro/Julio Cesar Mulatti").
     const nomeColaborador = textoCelula(row, indices.campo);
-    const colaboradorExistente = nomeColaborador.trim()
-      ? colaboradores.find((c) => normalizeForSearch(c.nome) === normalizeForSearch(nomeColaborador))
-      : undefined;
-    // A brand-new "name" that's a single character is almost always a
-    // parsing artifact (a stray initial), not a real person — flag it apart
-    // from a plain "atencao" and refuse to auto-create it (see confirm).
-    // Reusing an *existing* colaborador is unaffected, however short its name.
-    const colaboradorNomeSuspeito = !colaboradorExistente && nomeColaborador.trim() !== '' && nomeSuspeito(nomeColaborador);
+    const nomesColaboradores = splitColaboradorNomes(nomeColaborador);
+    const colaboradorIdsExistentes: number[] = [];
+    let colaboradorNomeSuspeito = false;
+    for (const nome of nomesColaboradores) {
+      const existente = colaboradores.find((c) => normalizeForSearch(c.nome) === normalizeForSearch(nome));
+      if (existente) {
+        colaboradorIdsExistentes.push(existente.id);
+        continue;
+      }
+      // A brand-new "name" that's a single character is almost always a
+      // parsing artifact (a stray initial), not a real person — flag it apart
+      // from a plain "atencao" and refuse to auto-create it (see confirm).
+      // Reusing an *existing* colaborador is unaffected, however short its name.
+      if (nomeSuspeito(nome)) colaboradorNomeSuspeito = true;
+    }
 
     const { situacao, reconhecida } = mapSituacao(textoCelula(row, indices.situacao));
     if (!reconhecida) motivos.push('situação não reconhecida');
@@ -148,7 +158,7 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
 
     const duplicada = chavesExistentes.has(chavePericia({
       numero: parseado.numeroProcesso, dataAgendada, horaAgendada,
-      peritoNome: nomePerito, colaboradorNome: nomeColaborador, observacoes,
+      peritoNome: nomePerito, colaboradorNomes: nomesColaboradores, observacoes,
     }));
 
     linhas.push({
@@ -172,7 +182,7 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       peritoNome: nomePerito,
       peritoIdExistente: peritoExistente?.id ?? null,
       colaboradorNome: nomeColaborador,
-      colaboradorIdExistente: colaboradorExistente?.id ?? null,
+      colaboradorIdsExistentes,
       situacao,
       observacoes,
     });
@@ -196,9 +206,12 @@ function chavePericia(dados: {
   dataAgendada: string | null;
   horaAgendada: string | null;
   peritoNome: string;
-  colaboradorNome: string;
+  colaboradorNomes: string[];
   observacoes: string | null;
 }): string {
+  // Sorted so "Igor/Julio" and "Julio/Igor" (order doesn't carry meaning)
+  // produce the same key.
+  const colaboradoresOrdenados = dados.colaboradorNomes.map(normalizeForSearch).sort();
   return JSON.stringify([
     normalizeForSearch(dados.numero), dados.dataAgendada,
     // The DB's `time` column round-trips as "HH:MM:SS" (via listPericias),
@@ -207,7 +220,7 @@ function chavePericia(dados: {
     // record, and a re-import would duplicate the whole sheet. Truncate to
     // "HH:MM" so both sources compare equal regardless of which produced them.
     dados.horaAgendada?.slice(0, 5) ?? null,
-    normalizeForSearch(dados.peritoNome), normalizeForSearch(dados.colaboradorNome),
+    normalizeForSearch(dados.peritoNome), colaboradoresOrdenados,
     dados.observacoes ?? '',
   ]);
 }
@@ -238,7 +251,7 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
   // real-world perícia.
   const chavesExistentes = new Set(periciasAtuais.map((p) => chavePericia({
     numero: p.processo.numero, dataAgendada: p.dataAgendada, horaAgendada: p.horaAgendada,
-    peritoNome: p.perito.nome, colaboradorNome: p.colaborador?.nome ?? '', observacoes: p.observacoes,
+    peritoNome: p.perito.nome, colaboradorNomes: p.colaboradores.map((c) => c.nome), observacoes: p.observacoes,
   })));
   const chavesReservadasNesteLote = new Set<string>();
   const candidatas: PericiaPreviewRow[] = [];
@@ -249,7 +262,8 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
     }
     const chave = chavePericia({
       numero: linha.processoNumero, dataAgendada: linha.dataAgendada, horaAgendada: linha.horaAgendada,
-      peritoNome: linha.peritoNome, colaboradorNome: linha.colaboradorNome, observacoes: linha.observacoes,
+      peritoNome: linha.peritoNome, colaboradorNomes: splitColaboradorNomes(linha.colaboradorNome),
+      observacoes: linha.observacoes,
     });
     if (chavesExistentes.has(chave) || chavesReservadasNesteLote.has(chave)) {
       relatorio.puladasPorDuplicidade++;
@@ -351,16 +365,19 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
   });
 
   // --- Phase 6 (concurrent): same for colaboradores — optional, so a blank
-  // name is simply "no colaborador," never an error.
+  // cell is simply "no colaboradores," never an error. A row can name more
+  // than one, "/"-separated, so this resolves every distinct name across all
+  // rows rather than one per row.
   const colaboradorIdPorChave = new Map<string, number>();
-  const colaboradorNovoPorChave = new Map<string, PericiaPreviewRow>();
+  const colaboradorNovoPorChave = new Map<string, { nome: string }>();
   for (const linha of linhasComMunicipioOk) {
-    if (!linha.colaboradorNome.trim()) continue;
-    const chave = chaveDeLote(linha.colaboradorNome);
-    if (colaboradorIdPorChave.has(chave) || colaboradorNovoPorChave.has(chave)) continue;
-    const existente = colaboradoresAtuais.find((c) => normalizeForSearch(c.nome) === chave);
-    if (existente) colaboradorIdPorChave.set(chave, existente.id);
-    else colaboradorNovoPorChave.set(chave, linha);
+    for (const nome of splitColaboradorNomes(linha.colaboradorNome)) {
+      const chave = chaveDeLote(nome);
+      if (colaboradorIdPorChave.has(chave) || colaboradorNovoPorChave.has(chave)) continue;
+      const existente = colaboradoresAtuais.find((c) => normalizeForSearch(c.nome) === chave);
+      if (existente) colaboradorIdPorChave.set(chave, existente.id);
+      else colaboradorNovoPorChave.set(chave, { nome });
+    }
   }
   const colaboradoresNovosResolvidos = new Map<string, Resolucao<number>>();
   await mapComConcorrencia([...colaboradorNovoPorChave.entries()], CONCORRENCIA_IMPORTACAO, async ([chave, amostra]) => {
@@ -368,13 +385,13 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
     // real person — never auto-create a cadastro record from it. The row is
     // already flagged 'suspeito' at preview time; this is the hard backstop
     // in case it reaches confirm unedited.
-    if (nomeSuspeito(amostra.colaboradorNome)) {
+    if (nomeSuspeito(amostra.nome)) {
       colaboradoresNovosResolvidos.set(chave, {
-        erro: `nome de colaborador "${amostra.colaboradorNome}" muito curto para cadastrar — corrija antes de confirmar`,
+        erro: `nome de colaborador "${amostra.nome}" muito curto para cadastrar — corrija antes de confirmar`,
       });
       return;
     }
-    const resultado = await createColaborador({ nome: amostra.colaboradorNome, contato: '', formacao: '', email: '' });
+    const resultado = await createColaborador({ nome: amostra.nome, contato: '', formacao: '', email: '' });
     if (!resultado.success) {
       colaboradoresNovosResolvidos.set(chave, { erro: `falha ao criar colaborador: ${resultado.error}` });
       return;
@@ -384,9 +401,11 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
   });
 
   // --- Phase 7: assemble each row's perícia payload (same first-failure-wins
-  // order as before: processo, then perito, then colaborador), then create
-  // every ready perícia concurrently.
-  type PericiaPronta = { linha: PericiaPreviewRow; processoId: number; peritoId: number; colaboradorId: number | null };
+  // order as before: processo, then perito, then colaboradores — a failure
+  // resolving ANY named colaborador fails the whole row, since silently
+  // dropping just one would misrepresent who actually worked it), then
+  // create every ready perícia concurrently.
+  type PericiaPronta = { linha: PericiaPreviewRow; processoId: number; peritoId: number; colaboradorIds: number[] };
   const prontas: PericiaPronta[] = [];
 
   for (const linha of linhasComMunicipioOk) {
@@ -414,29 +433,35 @@ export async function confirmarImportacaoPericias(linhas: PericiaPreviewRow[]): 
       continue;
     }
 
-    let colaboradorId: number | null = null;
-    if (linha.colaboradorNome.trim()) {
-      const chave = chaveDeLote(linha.colaboradorNome);
-      colaboradorId = colaboradorIdPorChave.get(chave) ?? null;
+    const colaboradorIds: number[] = [];
+    let erroColaborador: string | null = null;
+    for (const nome of splitColaboradorNomes(linha.colaboradorNome)) {
+      const chave = chaveDeLote(nome);
+      let colaboradorId = colaboradorIdPorChave.get(chave) ?? null;
       if (colaboradorId === null) {
         const resolColaborador = colaboradoresNovosResolvidos.get(chave);
         if (resolColaborador && 'erro' in resolColaborador) {
-          registrarErro(linha, resolColaborador.erro);
-          continue;
+          erroColaborador = resolColaborador.erro;
+          break;
         }
         colaboradorId = resolColaborador ? resolColaborador.id : null;
       }
+      if (colaboradorId !== null) colaboradorIds.push(colaboradorId);
+    }
+    if (erroColaborador) {
+      registrarErro(linha, erroColaborador);
+      continue;
     }
 
-    prontas.push({ linha, processoId: resolProcesso.id, peritoId, colaboradorId });
+    prontas.push({ linha, processoId: resolProcesso.id, peritoId, colaboradorIds });
   }
 
-  await mapComConcorrencia(prontas, CONCORRENCIA_IMPORTACAO, async ({ linha, processoId, peritoId, colaboradorId }) => {
+  await mapComConcorrencia(prontas, CONCORRENCIA_IMPORTACAO, async ({ linha, processoId, peritoId, colaboradorIds }) => {
     const resultado = await createPericia({
       processoId,
       municipioId: linha.municipioId as number,
       peritoId,
-      colaboradorId,
+      colaboradorIds,
       dataAgendada: linha.dataAgendada,
       horaAgendada: linha.horaAgendada,
       situacao: linha.situacao,

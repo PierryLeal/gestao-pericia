@@ -38,7 +38,7 @@ const items: PericiaListItem[] = [
     processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' },
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     perito: { id: 1, nome: 'Carlos', contato: '', formacao: '', crea: '', jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial' },
-    colaborador: null,
+    colaboradores: [],
   },
 ];
 
@@ -50,7 +50,7 @@ describe('PericiasScreen', () => {
       processoId: 1,
       municipioId: 3550308,
       peritoId: 1,
-      colaboradorId: null,
+      colaboradorIds: [],
       dataAgendada: '2026-08-01',
       horaAgendada: '14:30',
       situacao: 'marcada' as const,

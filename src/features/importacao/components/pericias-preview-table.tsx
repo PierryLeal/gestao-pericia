@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
+import { TooltipField } from '@/components/shared/tooltip-field';
 import { situacaoOptions, type PericiaInput } from '../../pericias/schemas';
 import { cn } from '@/lib/utils';
 import type { PericiaPreviewRow } from '../types';
@@ -53,25 +54,31 @@ export function PericiasPreviewTable({
               linha.status === 'duplicada' && 'opacity-50'
             )}
           >
-            <TableCell>
-              <Input
-                value={linha.processoNumero}
-                onChange={(e) => atualizarLinha(index, { processoNumero: e.target.value })}
-              />
+            <TableCell className="min-w-40">
+              <TooltipField value={linha.processoNumero}>
+                <Input
+                  value={linha.processoNumero}
+                  onChange={(e) => atualizarLinha(index, { processoNumero: e.target.value })}
+                />
+              </TooltipField>
             </TableCell>
-            <TableCell>
-              <Input
-                value={linha.processoAutor}
-                onChange={(e) => atualizarLinha(index, { processoAutor: e.target.value })}
-              />
+            <TableCell className="min-w-32">
+              <TooltipField value={linha.processoAutor}>
+                <Input
+                  value={linha.processoAutor}
+                  onChange={(e) => atualizarLinha(index, { processoAutor: e.target.value })}
+                />
+              </TooltipField>
             </TableCell>
-            <TableCell>
-              <Input
-                value={linha.processoReu}
-                onChange={(e) => atualizarLinha(index, { processoReu: e.target.value })}
-              />
+            <TableCell className="min-w-32">
+              <TooltipField value={linha.processoReu}>
+                <Input
+                  value={linha.processoReu}
+                  onChange={(e) => atualizarLinha(index, { processoReu: e.target.value })}
+                />
+              </TooltipField>
             </TableCell>
-            <TableCell>
+            <TableCell className="min-w-56">
               <div className="flex gap-1">
                 <Input
                   type="date" value={linha.dataAgendada ?? ''}
@@ -83,7 +90,7 @@ export function PericiasPreviewTable({
                 />
               </div>
             </TableCell>
-            <TableCell>
+            <TableCell className="min-w-40">
               <MunicipioCombobox
                 value={linha.municipioId}
                 selected={linha.municipioId ? { id: linha.municipioId, nome: linha.municipioNome, uf: linha.municipioUf } : null}
@@ -92,30 +99,36 @@ export function PericiasPreviewTable({
                 }
               />
             </TableCell>
-            <TableCell>
-              <Input
-                value={linha.peritoNome}
-                onChange={(e) => atualizarLinha(index, { peritoNome: e.target.value, peritoIdExistente: null })}
-              />
+            <TableCell className="min-w-36">
+              <TooltipField value={linha.peritoNome}>
+                <Input
+                  value={linha.peritoNome}
+                  onChange={(e) => atualizarLinha(index, { peritoNome: e.target.value, peritoIdExistente: null })}
+                />
+              </TooltipField>
               {!linha.peritoIdExistente && linha.peritoNome.trim() && (
                 <span className="mt-0.5 block text-xs text-muted-foreground">(novo)</span>
               )}
             </TableCell>
-            <TableCell>
-              <Input
-                value={linha.colaboradorNome}
-                onChange={(e) => atualizarLinha(index, { colaboradorNome: e.target.value, colaboradorIdExistente: null })}
-              />
-              {!linha.colaboradorIdExistente && linha.colaboradorNome.trim() && (
+            <TableCell className="min-w-36">
+              <TooltipField value={linha.colaboradorNome}>
+                <Input
+                  value={linha.colaboradorNome}
+                  placeholder="Nome1/Nome2"
+                  onChange={(e) => atualizarLinha(index, { colaboradorNome: e.target.value, colaboradorIdsExistentes: [] })}
+                />
+              </TooltipField>
+              {linha.colaboradorNome.split('/').map((n) => n.trim()).filter(Boolean).length
+                > linha.colaboradorIdsExistentes.length && (
                 <span className="mt-0.5 block text-xs text-muted-foreground">(novo)</span>
               )}
             </TableCell>
-            <TableCell>
+            <TableCell className="min-w-28">
               <Select
                 value={linha.situacao}
                 onValueChange={(v) => atualizarLinha(index, { situacao: v as PericiaInput['situacao'] })}
               >
-                <SelectTrigger aria-label="Situação"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Situação" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {situacaoOptions.map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -123,19 +136,27 @@ export function PericiasPreviewTable({
                 </SelectContent>
               </Select>
             </TableCell>
-            <TableCell>
-              <Input
-                value={linha.observacoes ?? ''}
-                onChange={(e) => atualizarLinha(index, { observacoes: e.target.value || null })}
-              />
+            <TableCell className="min-w-36">
+              <TooltipField value={linha.observacoes ?? ''}>
+                <Input
+                  value={linha.observacoes ?? ''}
+                  onChange={(e) => atualizarLinha(index, { observacoes: e.target.value || null })}
+                />
+              </TooltipField>
             </TableCell>
-            <TableCell>
-              <Input
-                value={linha.processoEscritorio}
-                onChange={(e) => atualizarLinha(index, { processoEscritorio: e.target.value })}
-              />
+            <TableCell className="min-w-28">
+              <TooltipField value={linha.processoEscritorio}>
+                <Input
+                  value={linha.processoEscritorio}
+                  onChange={(e) => atualizarLinha(index, { processoEscritorio: e.target.value })}
+                />
+              </TooltipField>
             </TableCell>
-            <TableCell className="text-xs text-muted-foreground">{linha.motivo ?? '—'}</TableCell>
+            <TableCell className="min-w-40 max-w-56 whitespace-normal text-xs text-muted-foreground">
+              <TooltipField value={linha.motivo ?? ''}>
+                <span className="line-clamp-2">{linha.motivo ?? '—'}</span>
+              </TooltipField>
+            </TableCell>
             <TableCell>
               <Button type="button" variant="ghost" size="icon-sm" onClick={() => removerLinha(index)}>
                 <X className="size-4" />

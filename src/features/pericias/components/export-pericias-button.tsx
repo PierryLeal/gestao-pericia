@@ -67,7 +67,7 @@ export function ExportPericiasButton() {
           hora: item.horaAgendada ?? '',
           local: `${item.municipio.nome}/${item.municipio.uf}`,
           perito: item.perito.nome,
-          colaborador: item.colaborador?.nome ?? '',
+          colaborador: item.colaboradores.map((c) => c.nome).join('/'),
           situacao: SITUACAO_LABELS[item.situacao] ?? item.situacao,
         }))
       );

@@ -229,6 +229,13 @@ export function ImportarPlanilhaScreen() {
       setRelatorio(acumulado);
       setLinhas([]);
       setTemPreviewPericias(false);
+      if (acumulado.linhasComErro.length > 0) {
+        toast.warning(
+          `Importação concluída, mas ${acumulado.linhasComErro.length} ${pluralizar(acumulado.linhasComErro.length, 'linha falhou', 'linhas falharam')} — veja "Linhas com erro" no relatório abaixo.`
+        );
+      } else {
+        toast.success('Importação concluída com sucesso.');
+      }
     } catch {
       // Rows already processed in earlier batches are already saved; only the
       // remaining, not-yet-attempted rows are left in the preview for a retry.
@@ -288,6 +295,13 @@ export function ImportarPlanilhaScreen() {
       setColaboradores([]);
       setPeritos([]);
       setTemPreviewPeritos(false);
+      if (acumulado.linhasComErro.length > 0) {
+        toast.warning(
+          `Importação concluída, mas ${acumulado.linhasComErro.length} ${pluralizar(acumulado.linhasComErro.length, 'linha falhou', 'linhas falharam')} — veja "Linhas com erro" no relatório abaixo.`
+        );
+      } else {
+        toast.success('Importação concluída com sucesso.');
+      }
     } catch {
       setRelatorioPeritos(acumulado);
       setColaboradores((atual) => atual.slice(lotesColaboradores.slice(0, passosConcluidos).reduce((n, l) => n + l.length, 0)));

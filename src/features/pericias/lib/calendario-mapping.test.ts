@@ -14,7 +14,7 @@ const scheduled: PericiaListItem = {
     id: 7, nome: 'Cleber', contato: '', formacao: '', crea: '',
     jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
   },
-  colaborador: null,
+  colaboradores: [],
 };
 
 describe('periciaToEvent', () => {
@@ -39,6 +39,19 @@ describe('periciaToEvent', () => {
 
   it('uses a different color per situação', () => {
     expect(periciaToEvent({ ...scheduled, situacao: 'cancelada' }).backgroundColor).toBe('var(--status-cancelada)');
+  });
+
+  it('joins multiple colaboradores into one comma-separated name', () => {
+    const comDoisColaboradores: PericiaListItem = {
+      ...scheduled,
+      colaboradores: [
+        { id: 1, nome: 'Igor Navarro', contato: '', formacao: '' },
+        { id: 2, nome: 'Julio Cesar Mulatti', contato: '', formacao: '' },
+      ],
+    };
+    expect(periciaToEvent(comDoisColaboradores).extendedProps.colaboradorNome).toBe(
+      'Igor Navarro, Julio Cesar Mulatti'
+    );
   });
 });
 

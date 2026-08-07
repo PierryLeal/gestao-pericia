@@ -27,7 +27,7 @@ function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRo
     processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'Vale', processoEscritorio: 'PMRA',
     processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
     municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
-    peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdExistente: 2,
+    peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdsExistentes: [2],
     situacao: 'marcada', observacoes: null,
     ...overrides,
   };
@@ -146,7 +146,7 @@ describe('PericiasPreviewTable', () => {
     ]);
   });
 
-  it('lets the user edit the colaborador nome, clearing colaboradorIdExistente since it may no longer match', async () => {
+  it('lets the user edit the colaborador nome, clearing colaboradorIdsExistentes since it may no longer match', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={onChange} />);
@@ -155,8 +155,19 @@ describe('PericiasPreviewTable', () => {
     await user.type(input, 'x');
 
     expect(onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ colaboradorNome: 'Joãox', colaboradorIdExistente: null }),
+      expect.objectContaining({ colaboradorNome: 'Joãox', colaboradorIdsExistentes: [] }),
     ]);
+  });
+
+  it('supports multiple colaboradores separated by "/", showing "(novo)" only when at least one name is new', () => {
+    render(
+      <PericiasPreviewTable
+        linhas={[linhaBase({ colaboradorNome: 'João/Novo Colaborador', colaboradorIdsExistentes: [2] })]}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.getByDisplayValue('João/Novo Colaborador')).toBeInTheDocument();
+    expect(screen.getByText('(novo)')).toBeInTheDocument();
   });
 
   it('gives every row the same number of cells as the header has columns, flagged or not', () => {

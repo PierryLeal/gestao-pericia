@@ -37,7 +37,7 @@ export function periciaToEvent(item: PericiaListItem): CalendarEvent {
     extendedProps: {
       processoNumero: item.processo.numero,
       peritoNome: item.perito.nome,
-      colaboradorNome: item.colaborador?.nome ?? null,
+      colaboradorNome: item.colaboradores.length > 0 ? item.colaboradores.map((c) => c.nome).join(', ') : null,
       municipioNome: item.municipio.nome,
       municipioUf: item.municipio.uf,
       horaAgendada: item.horaAgendada ?? '',

@@ -8,7 +8,7 @@ export const periciaSchema = z.object({
   horaAgendada: z.string().regex(/^\d{2}:\d{2}$/, 'Hora inválida').nullable(),
   municipioId: z.number().int().positive('Selecione um município'),
   peritoId: z.number().int().positive('Selecione um perito'),
-  colaboradorId: z.number().int().positive().nullable().default(null),
+  colaboradorIds: z.array(z.number().int().positive()).default([]),
   situacao: z.enum(situacaoOptions).default('pendente'),
   observacoes: z.string().trim().nullable().default(null),
 });

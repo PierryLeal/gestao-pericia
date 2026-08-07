@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { ImportarPlanilhaScreen } from './importar-planilha-screen';
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 
 const mockPreviewPericias = vi.fn();
@@ -35,7 +35,7 @@ const LINHA_PREVIEW = {
   processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
   processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
   municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
-  peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdExistente: 2,
+  peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdsExistentes: [2],
   situacao: 'marcada', observacoes: null,
 };
 
@@ -60,7 +60,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
         processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
         processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
         municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
-        peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdExistente: 2,
+        peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdsExistentes: [2],
         situacao: 'marcada', observacoes: null,
       }],
       naoProcessadas: [],
@@ -95,7 +95,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
         processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
         processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
         municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
-        peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdExistente: 2,
+        peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdsExistentes: [2],
         situacao: 'marcada', observacoes: null,
       }],
       naoProcessadas: [],
@@ -222,6 +222,8 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     expect(await screen.findByText(/2 linhas com erro/i)).toBeInTheDocument();
     expect(screen.getByText(/Linha 7: falha ao criar processo: Já existe um processo com esse número/)).toBeInTheDocument();
     expect(screen.getByText(/Linha 9: município não resolvido/)).toBeInTheDocument();
+    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('2 linhas falharam'));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it('does not mention errors in the report when nothing failed', async () => {
@@ -237,6 +239,8 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     await waitFor(() => expect(screen.getByText('perícia criada')).toBeInTheDocument());
     expect(valorDoStatTile('perícia criada').getByText('1')).toBeInTheDocument();
     expect(screen.queryByText(/linha.* com erro/i)).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith('Importação concluída com sucesso.');
+    expect(toast.warning).not.toHaveBeenCalled();
   });
 
   it('shows an error toast and clears the spinner when the preview action rejects', async () => {
@@ -292,6 +296,7 @@ describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
     ));
     await waitFor(() => expect(screen.getByText('colaborador criado')).toBeInTheDocument());
     expect(valorDoStatTile('colaborador criado').getByText('1')).toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith('Importação concluída com sucesso.');
   });
 
   it('lists the rows that failed to import in the Tab 2 report', async () => {
@@ -314,6 +319,7 @@ describe('ImportarPlanilhaScreen — aba Peritos e Colaboradores', () => {
 
     expect(await screen.findByText(/1 linha com erro/i)).toBeInTheDocument();
     expect(screen.getByText(/Linha 4: falha ao criar colaborador: nome é obrigatório/)).toBeInTheDocument();
+    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('1 linha falhou'));
   });
 
   it('shows an error toast when the Tab 2 confirm action rejects', async () => {

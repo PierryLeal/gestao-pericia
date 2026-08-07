@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseColunaPericia, mapSituacao } from './pericia-parser';
+import { parseColunaPericia, mapSituacao, splitColaboradorNomes } from './pericia-parser';
 
 describe('parseColunaPericia', () => {
   it('parses "autor x reu - numero"', () => {
@@ -39,6 +39,40 @@ describe('parseColunaPericia', () => {
   it('returns null when the numero portion would be empty', () => {
     expect(parseColunaPericia('João x Maria - ')).toBeNull();
   });
+
+  it('finds a CNJ-format número even with a "nome- número" separator (dash, no leading space)', () => {
+    expect(parseColunaPericia('MURILO LOPES FERREIRA- 5001487-40.2019.8.13.0090')).toEqual({
+      autor: 'MURILO LOPES FERREIRA', reu: 'Vale', numeroProcesso: '5001487-40.2019.8.13.0090',
+    });
+  });
+
+  it('finds a CNJ-format número separated by an en dash ("–")', () => {
+    expect(parseColunaPericia('IRANI GONCALVES PIMENTA LIMA – 5006889-93.2020.8.13.0114')).toEqual({
+      autor: 'IRANI GONCALVES PIMENTA LIMA', reu: 'Vale', numeroProcesso: '5006889-93.2020.8.13.0114',
+    });
+  });
+
+  it('finds a CNJ-format número with "nome -número" separator (dash, no trailing space)', () => {
+    expect(parseColunaPericia('GERALDA LUIZA DE SOUZA -5002269-37.2022.8.13.0027')).toEqual({
+      autor: 'GERALDA LUIZA DE SOUZA', reu: 'Vale', numeroProcesso: '5002269-37.2022.8.13.0027',
+    });
+  });
+
+  it('splits autor/réu on " x " even with a CNJ número and a tight dash separator', () => {
+    expect(parseColunaPericia('MARINA E WILTON X VALE- 5000000-00.2021.8.13.0090')).toEqual({
+      autor: 'MARINA E WILTON', reu: 'VALE', numeroProcesso: '5000000-00.2021.8.13.0090',
+    });
+  });
+
+  it('returns an empty autor/réu for a bare CNJ número with no name prefix', () => {
+    expect(parseColunaPericia('5003036-80.2022.8.13.0090')).toEqual({
+      autor: '', reu: '', numeroProcesso: '5003036-80.2022.8.13.0090',
+    });
+  });
+
+  it('still returns null when there is truly no processo número in any recognizable shape', () => {
+    expect(parseColunaPericia('MARIA TERESA HOOGENBOOM X VALE')).toBeNull();
+  });
 });
 
 describe('mapSituacao', () => {
@@ -66,5 +100,35 @@ describe('mapSituacao', () => {
 
   it('flags any other value as not recognized, defaulting to pendente', () => {
     expect(mapSituacao('EM ANDAMENTO')).toEqual({ situacao: 'pendente', reconhecida: false });
+  });
+});
+
+describe('splitColaboradorNomes', () => {
+  it('splits multiple colaboradores separated by "/"', () => {
+    expect(splitColaboradorNomes('Igor Navarro/Julio Cesar Mulatti')).toEqual([
+      'Igor Navarro', 'Julio Cesar Mulatti',
+    ]);
+  });
+
+  it('trims whitespace around each name', () => {
+    expect(splitColaboradorNomes('Igor Navarro / Julio Cesar Mulatti')).toEqual([
+      'Igor Navarro', 'Julio Cesar Mulatti',
+    ]);
+  });
+
+  it('returns a single-item array for a single colaborador', () => {
+    expect(splitColaboradorNomes('Igor Navarro')).toEqual(['Igor Navarro']);
+  });
+
+  it('returns an empty array for an empty or blank cell', () => {
+    expect(splitColaboradorNomes('')).toEqual([]);
+    expect(splitColaboradorNomes('   ')).toEqual([]);
+  });
+
+  it('drops empty segments from a trailing or doubled separator', () => {
+    expect(splitColaboradorNomes('Igor Navarro/')).toEqual(['Igor Navarro']);
+    expect(splitColaboradorNomes('Igor Navarro//Julio Cesar Mulatti')).toEqual([
+      'Igor Navarro', 'Julio Cesar Mulatti',
+    ]);
   });
 });

@@ -42,7 +42,7 @@ export function CalendarioScreen({
     if (filters.situacao && item.situacao !== filters.situacao) return false;
     if (filters.busca && !item.processo.numero.toLowerCase().includes(filters.busca.toLowerCase())) return false;
     if (filters.peritoId && item.perito.id !== filters.peritoId) return false;
-    if (filters.colaboradorId && item.colaborador?.id !== filters.colaboradorId) return false;
+    if (filters.colaboradorId && !item.colaboradores.some((c) => c.id === filters.colaboradorId)) return false;
     return true;
   });
   const { events, unscheduled } = splitAgendadasNaoAgendadas(filteredItems);
@@ -61,9 +61,9 @@ export function CalendarioScreen({
       const novaData = formatDateLocal(event.start);
       const novaHora = formatTimeLocal(event.start);
 
-      if (item.colaborador) {
+      if (item.colaboradores.length > 0) {
         const busyIds = await getColaboradoresIndisponiveis(novaData, novaHora, item.id);
-        if (busyIds.includes(item.colaborador.id)) {
+        if (item.colaboradores.some((c) => busyIds.includes(c.id))) {
           revert();
           toast.error('Não é possível mover: o colaborador já está em outra perícia nesse dia e horário.');
           return;
@@ -74,7 +74,7 @@ export function CalendarioScreen({
         processoId: item.processo.id,
         municipioId: item.municipio.id,
         peritoId: item.perito.id,
-        colaboradorId: item.colaborador?.id ?? null,
+        colaboradorIds: item.colaboradores.map((c) => c.id),
         dataAgendada: novaData,
         horaAgendada: novaHora,
         situacao: item.situacao,

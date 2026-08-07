@@ -131,7 +131,9 @@ export function PericiasTable({
                   <TableCell>{item.municipio.nome}/{item.municipio.uf}</TableCell>
                   <TableCell>{item.perito.nome}</TableCell>
                   <TableCell>
-                    {item.colaborador ? item.colaborador.nome : <span className="text-muted-foreground">—</span>}
+                    {item.colaboradores.length > 0
+                      ? item.colaboradores.map((c) => c.nome).join(', ')
+                      : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     <StatusBadge situacao={item.situacao} />
@@ -186,13 +188,21 @@ export function PericiasTable({
                           </div>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground">Colaborador</p>
-                          {item.colaborador ? (
-                            <p className="text-sm">
-                              Contato: {formatPhone(item.colaborador.contato)}
-                              <br />
-                              Formação: {item.colaborador.formacao}
-                            </p>
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {item.colaboradores.length > 1 ? 'Colaboradores' : 'Colaborador'}
+                          </p>
+                          {item.colaboradores.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {item.colaboradores.map((c) => (
+                                <p key={c.id} className="text-sm">
+                                  {item.colaboradores.length > 1 && <span className="font-medium">{c.nome}</span>}
+                                  {item.colaboradores.length > 1 && <br />}
+                                  Contato: {formatPhone(c.contato)}
+                                  <br />
+                                  Formação: {c.formacao}
+                                </p>
+                              ))}
+                            </div>
                           ) : (
                             <p className="text-sm text-muted-foreground">Nenhum colaborador vinculado.</p>
                           )}

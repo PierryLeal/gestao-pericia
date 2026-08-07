@@ -45,8 +45,13 @@ export function ProcessoCombobox({
         <PopoverTrigger
           render={<Button type="button" variant="outline" role="combobox" className="w-full justify-between" />}
         >
-          {selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : 'Selecione um processo'}
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+          <span
+            className="min-w-0 flex-1 truncate text-left"
+            title={selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : undefined}
+          >
+            {selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : 'Selecione um processo'}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0">
           <Command shouldFilter={false}>

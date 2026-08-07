@@ -19,7 +19,7 @@ const items: PericiaListItem[] = [
       id: 1, nome: 'Carlos Lima', contato: '(11) 90000-0000', formacao: 'Eng. Civil', crea: '123456',
       jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
     },
-    colaborador: null,
+    colaboradores: [],
   },
 ];
 
@@ -128,6 +128,27 @@ describe('PericiasTable', () => {
   it('shows the processo escritorio', () => {
     render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('PMRA')).toBeInTheDocument();
+  });
+
+  it('shows a comma-separated list of names and a per-colaborador detail block when there is more than one', async () => {
+    const itemComDoisColaboradores: PericiaListItem = {
+      ...items[0],
+      id: 4,
+      colaboradores: [
+        { id: 1, nome: 'Igor Navarro', contato: '31999990000', formacao: '' },
+        { id: 2, nome: 'Julio Cesar Mulatti', contato: '', formacao: 'Direito' },
+      ],
+    };
+    const user = userEvent.setup();
+    render(<PericiasTable items={[itemComDoisColaboradores]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('Igor Navarro, Julio Cesar Mulatti')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /detalhes da perícia/i }));
+
+    expect(screen.getByText('Colaboradores')).toBeInTheDocument();
+    expect(screen.getByText('Julio Cesar Mulatti', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText(/Formação: Direito/)).toBeInTheDocument();
   });
 
   it('shows the total count and paginates at 30 per page', async () => {

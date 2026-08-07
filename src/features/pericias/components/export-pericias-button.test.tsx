@@ -57,7 +57,7 @@ const items: PericiaListItem[] = [
       id: 7, nome: 'Cleber', contato: '', formacao: '', crea: '',
       jaTrabalhamos: true, relacao: 'boa' as const, resultados: 'positivo' as const,
     },
-    colaborador: null,
+    colaboradores: [],
   },
 ];
 
@@ -139,6 +139,26 @@ describe('ExportPericiasButton', () => {
     ]);
     expect(window.URL.createObjectURL).toHaveBeenCalled();
     expect(mockToastSuccess).toHaveBeenCalledWith('Planilha exportada');
+  });
+
+  it('joins multiple colaboradores with "/", mirroring the import format', async () => {
+    mockListPericias.mockResolvedValue([
+      {
+        ...items[0],
+        colaboradores: [
+          { id: 1, nome: 'Igor Navarro', contato: '', formacao: '' },
+          { id: 2, nome: 'Julio Cesar Mulatti', contato: '', formacao: '' },
+        ],
+      },
+    ]);
+    const user = userEvent.setup();
+    render(<ExportPericiasButton />);
+
+    await user.click(screen.getByRole('button', { name: /exportar excel/i }));
+
+    expect(mockAddRows).toHaveBeenCalledWith([
+      expect.objectContaining({ colaborador: 'Igor Navarro/Julio Cesar Mulatti' }),
+    ]);
   });
 
   it('shows an error message when listPericias fails', async () => {

@@ -60,7 +60,10 @@ export function MunicipioCombobox({
             />
           )}
         >
-          <span className="truncate">
+          <span
+            className="min-w-0 flex-1 truncate text-left"
+            title={selected ? `${selected.nome}/${selected.uf}` : undefined}
+          >
             {selected ? `${selected.nome}/${selected.uf}` : 'Selecione um município'}
           </span>
           {clearable ? <span className="ml-2 h-4 w-4 shrink-0" /> : (

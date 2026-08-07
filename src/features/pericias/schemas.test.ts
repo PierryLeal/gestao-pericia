@@ -9,10 +9,37 @@ describe('periciaSchema', () => {
       horaAgendada: '14:30',
       municipioId: 3550308,
       peritoId: 1,
-      colaboradorId: null,
+      colaboradorIds: [],
       situacao: 'marcada',
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts more than one colaborador id', () => {
+    const result = periciaSchema.safeParse({
+      processoId: 1,
+      dataAgendada: '2026-08-01',
+      horaAgendada: '14:30',
+      municipioId: 1,
+      peritoId: 1,
+      colaboradorIds: [5, 6],
+      situacao: 'marcada',
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.colaboradorIds).toEqual([5, 6]);
+  });
+
+  it('defaults colaboradorIds to an empty array when omitted', () => {
+    const result = periciaSchema.safeParse({
+      processoId: 1,
+      dataAgendada: '2026-08-01',
+      horaAgendada: '14:30',
+      municipioId: 1,
+      peritoId: 1,
+      situacao: 'marcada',
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.colaboradorIds).toEqual([]);
   });
 
   it('rejects an invalid situacao', () => {
@@ -45,7 +72,7 @@ describe('periciaSchema', () => {
       horaAgendada: null,
       municipioId: 1,
       peritoId: 1,
-      colaboradorId: null,
+      colaboradorIds: [],
       situacao: 'marcada',
     });
     expect(result.success).toBe(true);
@@ -58,7 +85,7 @@ describe('periciaSchema', () => {
       horaAgendada: '14:30',
       municipioId: 1,
       peritoId: 1,
-      colaboradorId: null,
+      colaboradorIds: [],
       situacao: 'marcada',
       observacoes: 'Perícia remarcada a pedido do perito',
     });
@@ -71,7 +98,7 @@ describe('periciaSchema', () => {
       horaAgendada: '14:30',
       municipioId: 1,
       peritoId: 1,
-      colaboradorId: null,
+      colaboradorIds: [],
       situacao: 'marcada',
     });
     expect(withoutNote.success).toBe(true);
