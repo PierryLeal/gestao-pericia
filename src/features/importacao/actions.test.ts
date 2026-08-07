@@ -121,7 +121,7 @@ describe('previewImportacaoPericias', () => {
     expect(result.naoProcessadas).toEqual([]);
     expect(result.linhas).toHaveLength(1);
     expect(result.linhas[0]).toMatchObject({
-      status: 'atencao', motivo: 'autor não identificado',
+      status: 'atencao', motivos: ['autor não identificado'],
       processoNumero: '5003036-80.2022.8.13.0090', processoAutor: '', processoReu: '',
     });
   });
@@ -136,7 +136,7 @@ describe('previewImportacaoPericias', () => {
     const result = await previewImportacaoPericias(buffer);
 
     expect(result.linhas[0].status).toBe('atencao');
-    expect(result.linhas[0].motivo).toBe('município não encontrado');
+    expect(result.linhas[0].motivos).toEqual(['município não encontrado']);
     expect(result.linhas[0].municipioId).toBeNull();
   });
 
@@ -166,7 +166,7 @@ describe('previewImportacaoPericias', () => {
     const result = await previewImportacaoPericias(buffer);
 
     expect(result.linhas[0].status).toBe('atencao');
-    expect(result.linhas[0].motivo).toBe('perito não informado');
+    expect(result.linhas[0].motivos).toEqual(['perito não informado']);
     expect(result.linhas[0].peritoIdExistente).toBeNull();
   });
 
@@ -194,7 +194,7 @@ describe('previewImportacaoPericias', () => {
     const result = await previewImportacaoPericias(buffer);
 
     expect(result.linhas[0].status).toBe('suspeito');
-    expect(result.linhas[0].motivo).toBe('nome de colaborador muito curto — confirme se está correto');
+    expect(result.linhas[0].motivos).toEqual(['nome de colaborador "I" muito curto — confirme se está correto']);
   });
 
   it('does not flag a single-character colaborador name that already exists in the cadastro', async () => {
@@ -244,7 +244,7 @@ describe('previewImportacaoPericias', () => {
 
     expect(result.linhas[0].situacao).toBe('pendente');
     expect(result.linhas[0].status).toBe('atencao');
-    expect(result.linhas[0].motivo).toBe('situação não reconhecida');
+    expect(result.linhas[0].motivos).toEqual(['situação não reconhecida']);
   });
 
   it('maps "OK" to realizada and a canonical SITUAÇÃO word (e.g. CANCELADA) directly, without flagging the row', async () => {
@@ -328,6 +328,61 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].status).toBe('ok');
   });
 
+  it('flags both sides of a same-colaborador schedule conflict between two sheet rows', async () => {
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+      ['Ana x José - 0007654-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].status).toBe('ok');
+    expect(result.linhas[0].motivos).toEqual([
+      'João já está escalado no mesmo horário para o processo 0007654-56.2026 — esta linha será importada, a outra não',
+    ]);
+    expect(result.linhas[1].status).toBe('atencao');
+    expect(result.linhas[1].motivos).toEqual([
+      'conflito de horário: João já está escalado no mesmo horário para outra linha do processo 0001234-56.2026 — esta linha não será importada',
+    ]);
+  });
+
+  it('flags a sheet row that conflicts with an existing pericia already saved in the system', async () => {
+    mockListPericias.mockResolvedValue([
+      {
+        id: 100, dataAgendada: '2026-09-20', horaAgendada: '10:00:00', situacao: 'marcada', observacoes: null,
+        processo: { id: 9, numero: '0009999-99.2019', autor: 'Outra', reu: 'Parte', escritorio: 'PMRA' },
+        municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
+        perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+        colaboradores: [{ id: 2, nome: 'João', contato: '', formacao: '' }],
+      },
+    ]);
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].status).toBe('atencao');
+    expect(result.linhas[0].motivos).toEqual([
+      'conflito de horário: João já está escalado no mesmo horário para a perícia existente do processo 0009999-99.2019 — esta linha não será importada',
+    ]);
+  });
+
+  it('does not flag a schedule conflict for two rows of the same processo', async () => {
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', 'obs2', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].motivos).toEqual([]);
+    expect(result.linhas[1].motivos).toEqual([]);
+  });
+
   it('finds the header row even when a title row sits above it', async () => {
     const buffer = await criarBuffer([
       ['RELATÓRIO DE PERÍCIAS 2026'],
@@ -392,7 +447,7 @@ function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRo
   return {
     linhaOriginal: 2,
     status: 'ok',
-    motivo: null,
+    motivos: [],
     processoNumero: '0001234-56.2026',
     processoAutor: 'Maria',
     processoReu: 'João',
@@ -744,7 +799,7 @@ describe('confirmarImportacaoPericias', () => {
 
   it('skips an atencao row whose município was never resolved instead of sending null to createPericia', async () => {
     const relatorio = await confirmarImportacaoPericias([
-      linhaBase({ linhaOriginal: 8, status: 'atencao', motivo: 'município não encontrado', municipioId: null }),
+      linhaBase({ linhaOriginal: 8, status: 'atencao', motivos: ['município não encontrado'], municipioId: null }),
     ]);
 
     expect(mockCreatePericia).not.toHaveBeenCalled();

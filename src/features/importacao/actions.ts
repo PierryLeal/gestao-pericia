@@ -17,6 +17,7 @@ import { textoDaCelula } from './lib/cell-text';
 import { chaveDeLote } from './lib/resolver-id';
 import { mapComConcorrencia } from './lib/concurrency';
 import { nomeSuspeito } from './lib/nome-suspeito';
+import { detectarConflitosDeHorario, type LinhaParaConflito, type PericiaExistenteParaConflito } from './lib/conflito-horario';
 import type {
   NaoProcessada,
   PericiaPreviewRow,
@@ -93,8 +94,13 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
     numero: p.processo.numero, dataAgendada: p.dataAgendada, horaAgendada: p.horaAgendada,
     peritoNome: p.perito.nome, colaboradorNomes: p.colaboradores.map((c) => c.nome), observacoes: p.observacoes,
   })));
+  const existentesParaConflito: PericiaExistenteParaConflito[] = periciasExistentes.map((p) => ({
+    processoNumero: p.processo.numero, dataAgendada: p.dataAgendada, horaAgendada: p.horaAgendada,
+    situacao: p.situacao, colaboradorNomes: p.colaboradores.map((c) => c.nome),
+  }));
 
   const linhas: PericiaPreviewRow[] = [];
+  const linhasParaConflito: LinhaParaConflito[] = [];
   const naoProcessadas: NaoProcessada[] = [];
 
   for (let rowNumber = linhaCabecalho + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
@@ -133,7 +139,7 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
     const nomeColaborador = textoCelula(row, indices.campo);
     const nomesColaboradores = splitColaboradorNomes(nomeColaborador);
     const colaboradorIdsExistentes: number[] = [];
-    let colaboradorNomeSuspeito = false;
+    const nomesColaboradorSuspeitos: string[] = [];
     for (const nome of nomesColaboradores) {
       const existente = colaboradores.find((c) => normalizeForSearch(c.nome) === normalizeForSearch(nome));
       if (existente) {
@@ -144,8 +150,9 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       // parsing artifact (a stray initial), not a real person — flag it apart
       // from a plain "atencao" and refuse to auto-create it (see confirm).
       // Reusing an *existing* colaborador is unaffected, however short its name.
-      if (nomeSuspeito(nome)) colaboradorNomeSuspeito = true;
+      if (nomeSuspeito(nome)) nomesColaboradorSuspeitos.push(nome);
     }
+    const colaboradorNomeSuspeito = nomesColaboradorSuspeitos.length > 0;
 
     const { situacao, reconhecida } = mapSituacao(textoCelula(row, indices.situacao));
     if (!reconhecida) motivos.push('situação não reconhecida');
@@ -161,14 +168,16 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       peritoNome: nomePerito, colaboradorNomes: nomesColaboradores, observacoes,
     }));
 
+    const motivosCompletos = [
+      ...motivos,
+      ...nomesColaboradorSuspeitos.map((nome) => `nome de colaborador "${nome}" muito curto — confirme se está correto`),
+      ...(duplicada ? ['perícia já importada anteriormente'] : []),
+    ];
+
     linhas.push({
       linhaOriginal: rowNumber,
       status: duplicada ? 'duplicada' : colaboradorNomeSuspeito ? 'suspeito' : motivos.length > 0 ? 'atencao' : 'ok',
-      motivo: duplicada
-        ? 'perícia já importada anteriormente'
-        : colaboradorNomeSuspeito
-          ? 'nome de colaborador muito curto — confirme se está correto'
-          : motivos[0] ?? null,
+      motivos: motivosCompletos,
       processoNumero: parseado.numeroProcesso,
       processoAutor: parseado.autor,
       processoReu: parseado.reu,
@@ -186,6 +195,26 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       situacao,
       observacoes,
     });
+    linhasParaConflito.push({
+      linhaOriginal: rowNumber, processoNumero: parseado.numeroProcesso, dataAgendada, horaAgendada,
+      situacao, colaboradorNomes: nomesColaboradores,
+    });
+  }
+
+  const conflitos = detectarConflitosDeHorario(linhasParaConflito, existentesParaConflito);
+  for (const linha of linhas) {
+    const conflitosDaLinha = conflitos.get(linha.linhaOriginal);
+    if (!conflitosDaLinha || conflitosDaLinha.length === 0) continue;
+    for (const conflito of conflitosDaLinha) {
+      linha.motivos.push(
+        conflito.vaiSerImportada
+          ? `${conflito.colaboradorNome} já está escalado no mesmo horário para o processo ${conflito.processoConflitante} — esta linha será importada, a outra não`
+          : `conflito de horário: ${conflito.colaboradorNome} já está escalado no mesmo horário para ${conflito.contraExistente ? 'a perícia existente do' : 'outra linha do'} processo ${conflito.processoConflitante} — esta linha não será importada`
+      );
+      // A losing row upgrades to "atencao" so its color reflects the risk;
+      // a winning row is purely informational and keeps its original status.
+      if (!conflito.vaiSerImportada && linha.status === 'ok') linha.status = 'atencao';
+    }
   }
 
   return { linhas, naoProcessadas };

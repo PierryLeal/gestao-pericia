@@ -31,7 +31,7 @@ function valorDoStatTile(rotulo: string) {
 }
 
 const LINHA_PREVIEW = {
-  linhaOriginal: 2, status: 'ok', motivo: null,
+  linhaOriginal: 2, status: 'ok', motivos: [],
   processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
   processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
   municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
@@ -56,7 +56,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
   it('processes an uploaded file and shows the preview table', async () => {
     mockPreviewPericias.mockResolvedValue({
       linhas: [{
-        linhaOriginal: 2, status: 'ok', motivo: null,
+        linhaOriginal: 2, status: 'ok', motivos: [],
         processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
         processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
         municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
@@ -91,7 +91,7 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
   it('calls confirmarImportacaoPericias with the (possibly edited) preview rows and shows the report', async () => {
     mockPreviewPericias.mockResolvedValue({
       linhas: [{
-        linhaOriginal: 2, status: 'ok', motivo: null,
+        linhaOriginal: 2, status: 'ok', motivos: [],
         processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'João', processoEscritorio: 'PMRA',
         processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
         municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',

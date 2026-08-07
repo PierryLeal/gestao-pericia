@@ -23,7 +23,7 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
 
 function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRow {
   return {
-    linhaOriginal: 2, status: 'ok', motivo: null,
+    linhaOriginal: 2, status: 'ok', motivos: [],
     processoNumero: '0001234-56.2026', processoAutor: 'Maria', processoReu: 'Vale', processoEscritorio: 'PMRA',
     processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
     municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
@@ -68,7 +68,7 @@ describe('PericiasPreviewTable', () => {
     const onChange = vi.fn();
     render(
       <PericiasPreviewTable
-        linhas={[linhaBase({ status: 'atencao', motivo: 'município não encontrado', municipioId: null, municipioNome: 'Cidade X', municipioUf: '' })]}
+        linhas={[linhaBase({ status: 'atencao', motivos: ['município não encontrado'], municipioId: null, municipioNome: 'Cidade X', municipioUf: '' })]}
         onChange={onChange}
       />
     );
@@ -99,7 +99,7 @@ describe('PericiasPreviewTable', () => {
     const onChange = vi.fn();
     render(
       <PericiasPreviewTable
-        linhas={[linhaBase({ status: 'atencao', motivo: 'situação não reconhecida' })]}
+        linhas={[linhaBase({ status: 'atencao', motivos: ['situação não reconhecida'] })]}
         onChange={onChange}
       />
     );
@@ -113,7 +113,7 @@ describe('PericiasPreviewTable', () => {
   it('shows duplicada rows dimmed with an explanatory reason', () => {
     render(
       <PericiasPreviewTable
-        linhas={[linhaBase({ status: 'duplicada', motivo: 'perícia já importada anteriormente' })]}
+        linhas={[linhaBase({ status: 'duplicada', motivos: ['perícia já importada anteriormente'] })]}
         onChange={vi.fn()}
       />
     );
@@ -175,7 +175,7 @@ describe('PericiasPreviewTable', () => {
       <PericiasPreviewTable
         linhas={[
           linhaBase({ linhaOriginal: 2 }),
-          linhaBase({ linhaOriginal: 3, status: 'atencao', motivo: 'situação não reconhecida' }),
+          linhaBase({ linhaOriginal: 3, status: 'atencao', motivos: ['situação não reconhecida'] }),
         ]}
         onChange={vi.fn()}
       />
@@ -188,6 +188,17 @@ describe('PericiasPreviewTable', () => {
       expect(linha.querySelectorAll('td')).toHaveLength(colunas.length);
     }
     expect(colunas.at(-2)).toHaveTextContent('Motivo');
+  });
+
+  it('renders every motivo of a row as its own list item', () => {
+    render(
+      <PericiasPreviewTable
+        linhas={[linhaBase({ status: 'atencao', motivos: ['situação não reconhecida', 'conflito de horário: João já está escalado...'] })]}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText('situação não reconhecida')).toBeInTheDocument();
+    expect(screen.getByText('conflito de horário: João já está escalado...')).toBeInTheDocument();
   });
 
   it('removes a row when its remove button is clicked', async () => {
@@ -208,7 +219,7 @@ describe('PericiasPreviewTable', () => {
   it('keeps fields editable (not disabled) on duplicada rows, just visually dimmed', () => {
     render(
       <PericiasPreviewTable
-        linhas={[linhaBase({ status: 'duplicada', motivo: 'perícia já importada anteriormente' })]}
+        linhas={[linhaBase({ status: 'duplicada', motivos: ['perícia já importada anteriormente'] })]}
         onChange={vi.fn()}
       />
     );

@@ -153,8 +153,16 @@ export function PericiasPreviewTable({
               </TooltipField>
             </TableCell>
             <TableCell className="min-w-40 max-w-56 whitespace-normal text-xs text-muted-foreground">
-              <TooltipField value={linha.motivo ?? ''}>
-                <span className="line-clamp-2">{linha.motivo ?? '—'}</span>
+              <TooltipField value={linha.motivos.join(' · ')}>
+                {linha.motivos.length > 0 ? (
+                  <ul className="line-clamp-3 list-disc space-y-0.5 pl-3">
+                    {linha.motivos.map((motivo, i) => (
+                      <li key={i}>{motivo}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>—</span>
+                )}
               </TooltipField>
             </TableCell>
             <TableCell>

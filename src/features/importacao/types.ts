@@ -12,7 +12,7 @@ export type NaoProcessada = {
 export type PericiaPreviewRow = {
   linhaOriginal: number;
   status: PreviewStatus;
-  motivo: string | null;
+  motivos: string[];
   processoNumero: string;
   processoAutor: string;
   processoReu: string;
