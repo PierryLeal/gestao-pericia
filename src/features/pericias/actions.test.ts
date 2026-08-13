@@ -234,9 +234,6 @@ describe('listPericias', () => {
       relacao: 8,
       resultados: 9,
     },
-    pericia_colaboradores: [
-      { colaborador: { id: 3, nome: 'Colaborador W', contato: '(11) 98888-0000', formacao: 'Direito' } },
-    ],
   };
 
   it('uses inner joins for the required (non-nullable) embedded relations when searching', async () => {
@@ -270,6 +267,10 @@ describe('listPericias', () => {
 
   it('maps a full row with all embeds present without throwing', async () => {
     periciasQueryResult = { data: [fullRow], error: null };
+    periciaColaboradoresResult = {
+      data: [{ pericia_id: 1, colaborador: { id: 3, nome: 'Colaborador W', contato: '(11) 98888-0000', formacao: 'Direito' } }],
+      error: null,
+    };
 
     const result = await listPericias();
 
@@ -300,7 +301,8 @@ describe('listPericias', () => {
   });
 
   it('maps a row with no colaboradores to an empty array', async () => {
-    periciasQueryResult = { data: [{ ...fullRow, pericia_colaboradores: [] }], error: null };
+    periciasQueryResult = { data: [fullRow], error: null };
+    periciaColaboradoresResult = { data: [], error: null };
 
     const result = await listPericias();
 
@@ -361,33 +363,36 @@ describe('listPericias', () => {
 
 describe('getColaboradoresIndisponiveis', () => {
   it('returns the colaborador ids already booked at that exact date and time', async () => {
+    periciasQueryResult = { data: [{ id: 100, processo_id: 1 }], error: null };
     periciaColaboradoresResult = { data: [{ colaborador_id: 2 }, { colaborador_id: 5 }], error: null };
 
     const result = await getColaboradoresIndisponiveis('2026-08-10', '14:00');
 
     expect(result).toEqual([2, 5]);
-    expect(periciaColaboradoresEqCalls).toContainEqual(['pericias.data_agendada', '2026-08-10']);
-    expect(periciaColaboradoresEqCalls).toContainEqual(['pericias.hora_agendada', '14:00']);
+    expect(periciasEqCalls).toContainEqual(['data_agendada', '2026-08-10']);
+    expect(periciasEqCalls).toContainEqual(['hora_agendada', '14:00']);
   });
 
   it('excludes the given pericia id when editing', async () => {
+    periciasQueryResult = { data: [{ id: 7, processo_id: 1 }, { id: 9, processo_id: 2 }], error: null };
     await getColaboradoresIndisponiveis('2026-08-10', '14:00', undefined, 7);
-    expect(periciaColaboradoresEqCalls).toContainEqual(['neq:pericia_id', 7]);
+    expect(periciaColaboradoresEqCalls).toContainEqual(['in:pericia_id', [9]]);
   });
 
   it('does not filter by pericia id when no exclude id is given', async () => {
+    periciasQueryResult = { data: [{ id: 7, processo_id: 1 }], error: null };
     await getColaboradoresIndisponiveis('2026-08-10', '14:00');
-    expect(periciaColaboradoresEqCalls.some(([col]) => col === 'neq:pericia_id')).toBe(false);
+    expect(periciaColaboradoresEqCalls).toContainEqual(['in:pericia_id', [7]]);
   });
 
   it('excludes pericias for the same processo when a processoId is given', async () => {
     await getColaboradoresIndisponiveis('2026-08-10', '14:00', 5);
-    expect(periciaColaboradoresEqCalls).toContainEqual(['neq:pericias.processo_id', 5]);
+    expect(periciasEqCalls).toContainEqual(['neq:processo_id', 5]);
   });
 
   it('does not filter by processo when no processoId is given', async () => {
     await getColaboradoresIndisponiveis('2026-08-10', '14:00');
-    expect(periciaColaboradoresEqCalls.some(([col]) => col === 'neq:pericias.processo_id')).toBe(false);
+    expect(periciasEqCalls.some(([col]) => col === 'neq:processo_id')).toBe(false);
   });
 
   it('returns an empty array when nobody is booked', async () => {
@@ -405,12 +410,13 @@ describe('listPericiasPorColaboradorIds', () => {
 
   it('queries pericia_colaboradores by colaborador_id and maps each row to a resumo', async () => {
     periciaColaboradoresResult = {
+      data: [{ pericia_id: 10, colaborador: { nome: 'João 2' } }],
+      error: null,
+    };
+    periciasQueryResult = {
       data: [{
-        colaborador: { nome: 'João 2' },
-        pericia: {
-          id: 10, data_agendada: '2026-08-10', hora_agendada: '09:00:00', situacao: 'marcada',
-          processo: { numero: '0001234-56.2026' },
-        },
+        id: 10, data_agendada: '2026-08-10', hora_agendada: '09:00:00', situacao: 'marcada',
+        processo: { numero: '0001234-56.2026' },
       }],
       error: null,
     };
@@ -428,12 +434,13 @@ describe('listPericiasPorColaboradorIds', () => {
     // Only the loser's own link shows up here — the pericia's other,
     // untouched colaborador never appears in this query's result at all.
     periciaColaboradoresResult = {
+      data: [{ pericia_id: 10, colaborador: { nome: 'Perdedor' } }],
+      error: null,
+    };
+    periciasQueryResult = {
       data: [{
-        colaborador: { nome: 'Perdedor' },
-        pericia: {
-          id: 10, data_agendada: '2026-08-10', hora_agendada: '09:00:00', situacao: 'marcada',
-          processo: { numero: '0001234-56.2026' },
-        },
+        id: 10, data_agendada: '2026-08-10', hora_agendada: '09:00:00', situacao: 'marcada',
+        processo: { numero: '0001234-56.2026' },
       }],
       error: null,
     };

@@ -54,8 +54,7 @@ export async function listPericias(
         id, data_agendada, hora_agendada, situacao, observacoes,
         processo:processos!inner ( id, numero, autor, reu, escritorio ),
         municipio:municipios!inner ( id, nome, uf ),
-        perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados ),
-        pericia_colaboradores ( colaborador:colaboradores ( id, nome, contato, formacao ) )
+        perito:peritos!inner ( id, nome, contato, formacao, crea, ja_trabalhamos, relacao, resultados )
       `)
       // `.order('id')` is a secondary, always-unique tie-breaker: many rows
       // legitimately share the same data_agendada, and OFFSET-based .range()
@@ -98,6 +97,10 @@ export async function listPericias(
   }
 
   const data = await buscarTodasAsPaginas(construirPagina);
+  const colaboradoresPorPericia = await buscarColaboradoresPorPericiaIds(
+    supabase,
+    data.map((row) => row.id)
+  );
 
   return data.map((row) => ({
     id: row.id,
@@ -117,8 +120,39 @@ export async function listPericias(
       relacao: row.perito.relacao,
       resultados: row.perito.resultados,
     },
-    colaboradores: row.pericia_colaboradores.map((pc) => pc.colaborador),
+    colaboradores: colaboradoresPorPericia.get(row.id) ?? [],
   }));
+}
+
+// PostgREST's automatic relationship embedding between `pericias` and
+// `pericia_colaboradores` has been unreliable in production (intermittent
+// "Could not find a relationship" errors from its schema cache) — querying
+// pericia_colaboradores as its own, unembedded table and joining in JS
+// sidesteps that relationship-graph resolution entirely.
+async function buscarColaboradoresPorPericiaIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  periciaIds: number[]
+): Promise<Map<number, { id: number; nome: string; contato: string; formacao: string }[]>> {
+  const porPericia = new Map<number, { id: number; nome: string; contato: string; formacao: string }[]>();
+  if (periciaIds.length === 0) return porPericia;
+
+  const linhas = await buscarTodasAsPaginas<{
+    pericia_id: number;
+    colaborador: { id: number; nome: string; contato: string; formacao: string };
+  }>((inicio, fim) =>
+    supabase
+      .from('pericia_colaboradores')
+      .select('pericia_id, colaborador:colaboradores!inner ( id, nome, contato, formacao )')
+      .in('pericia_id', periciaIds)
+      .range(inicio, fim)
+  );
+
+  for (const linha of linhas) {
+    const atuais = porPericia.get(linha.pericia_id) ?? [];
+    atuais.push(linha.colaborador);
+    porPericia.set(linha.pericia_id, atuais);
+  }
+  return porPericia;
 }
 
 export async function createPericia(input: PericiaInput): Promise<ActionResult<{ id: number }>> {
@@ -183,13 +217,17 @@ export async function getPericiaForEdit(
     .select(`
       id, data_agendada, hora_agendada, situacao, observacoes, perito_id,
       processo:processos ( id, numero, autor, reu, escritorio ),
-      municipio:municipios ( id, nome, uf ),
-      pericia_colaboradores ( colaborador_id )
+      municipio:municipios ( id, nome, uf )
     `)
     .eq('id', id)
     .single();
   if (error || !data) return null;
   const row = data;
+  const { data: colaboradoresLinks, error: colaboradoresError } = await supabase
+    .from('pericia_colaboradores')
+    .select('colaborador_id')
+    .eq('pericia_id', id);
+  if (colaboradoresError) return null;
   return {
     id: row.id,
     processoId: row.processo.id,
@@ -197,7 +235,7 @@ export async function getPericiaForEdit(
     horaAgendada: row.hora_agendada,
     municipioId: row.municipio.id,
     peritoId: row.perito_id,
-    colaboradorIds: row.pericia_colaboradores.map((pc) => pc.colaborador_id),
+    colaboradorIds: (colaboradoresLinks ?? []).map((pc) => pc.colaborador_id),
     situacao: row.situacao,
     observacoes: row.observacoes,
     processo: row.processo,
@@ -221,21 +259,33 @@ export async function getColaboradoresIndisponiveis(
 ): Promise<number[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let query = supabase
-    .from('pericia_colaboradores')
-    .select('colaborador_id, pericia_id, pericias!inner(processo_id)')
-    .eq('pericias.data_agendada', dataAgendada)
-    .eq('pericias.hora_agendada', horaAgendada);
+
+  // Resolved in two unembedded queries (pericias, then pericia_colaboradores)
+  // instead of one query embedding pericias!inner from pericia_colaboradores —
+  // see buscarColaboradoresPorPericiaIds above for why.
+  let periciasQuery = supabase
+    .from('pericias')
+    .select('id, processo_id')
+    .eq('data_agendada', dataAgendada)
+    .eq('hora_agendada', horaAgendada);
   if (processoId) {
     // A colaborador on another pericia for the SAME processo at this date/time is not
     // a real conflict (e.g. two specialists examining the same case together) — only
     // a different processo at the same date/time is a genuine double-booking.
-    query = query.neq('pericias.processo_id', processoId);
+    periciasQuery = periciasQuery.neq('processo_id', processoId);
   }
+  const { data: periciasNoSlot, error: periciasError } = await periciasQuery;
+  if (periciasError) throw new Error(periciasError.message);
+  let periciaIds = (periciasNoSlot ?? []).map((p) => p.id);
   if (excludePericiaId) {
-    query = query.neq('pericia_id', excludePericiaId);
+    periciaIds = periciaIds.filter((id) => id !== excludePericiaId);
   }
-  const { data, error } = await query;
+  if (periciaIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('pericia_colaboradores')
+    .select('colaborador_id')
+    .in('pericia_id', periciaIds);
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => row.colaborador_id as number);
 }
@@ -260,28 +310,42 @@ export async function listPericiasPorColaboradorIds(colaboradorIds: number[]): P
   await requireRole(['admin', 'gerencia']);
   if (colaboradorIds.length === 0) return [];
   const supabase = await createClient();
-  const rows = await buscarTodasAsPaginas<{
-    colaborador: { nome: string };
-    pericia: {
-      id: number; data_agendada: string | null; hora_agendada: string | null; situacao: PericiaSituacao;
-      processo: { numero: string };
-    };
-  }>((inicio, fim) =>
+
+  // Two unembedded queries (pericia_colaboradores links, then pericias) instead
+  // of one embedding pericias!inner from pericia_colaboradores — see
+  // buscarColaboradoresPorPericiaIds above for why.
+  const links = await buscarTodasAsPaginas<{ pericia_id: number; colaborador: { nome: string } }>((inicio, fim) =>
     supabase
       .from('pericia_colaboradores')
-      .select(`
-        colaborador:colaboradores!inner(nome),
-        pericia:pericias!inner(id, data_agendada, hora_agendada, situacao, processo:processos!inner(numero))
-      `)
+      .select('pericia_id, colaborador:colaboradores!inner(nome)')
       .in('colaborador_id', colaboradorIds)
       .order('pericia_id', { ascending: false })
       .order('colaborador_id', { ascending: false })
       .range(inicio, fim)
   );
-  return rows.map((row) => ({
-    id: row.pericia.id, processoNumero: row.pericia.processo.numero, dataAgendada: row.pericia.data_agendada,
-    horaAgendada: row.pericia.hora_agendada, situacao: row.pericia.situacao, donoAtual: row.colaborador.nome,
-  }));
+  if (links.length === 0) return [];
+
+  const periciaIds = [...new Set(links.map((l) => l.pericia_id))];
+  const periciasRows = await buscarTodasAsPaginas<{
+    id: number; data_agendada: string | null; hora_agendada: string | null; situacao: PericiaSituacao;
+    processo: { numero: string };
+  }>((inicio, fim) =>
+    supabase
+      .from('pericias')
+      .select('id, data_agendada, hora_agendada, situacao, processo:processos!inner(numero)')
+      .in('id', periciaIds)
+      .range(inicio, fim)
+  );
+  const periciasPorId = new Map(periciasRows.map((p) => [p.id, p]));
+
+  return links.flatMap((link) => {
+    const pericia = periciasPorId.get(link.pericia_id);
+    if (!pericia) return [];
+    return [{
+      id: pericia.id, processoNumero: pericia.processo.numero, dataAgendada: pericia.data_agendada,
+      horaAgendada: pericia.hora_agendada, situacao: pericia.situacao, donoAtual: link.colaborador.nome,
+    }];
+  });
 }
 
 /**
