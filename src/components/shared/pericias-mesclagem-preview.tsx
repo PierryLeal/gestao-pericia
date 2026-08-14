@@ -1,4 +1,5 @@
 import { StatusBadge } from '@/components/shared/status-badge';
+import { rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
 import type { PericiaResumoMesclagem } from '@/features/pericias/actions';
 
 export function PericiasMesclagemPreview({
@@ -26,7 +27,7 @@ export function PericiasMesclagemPreview({
         {pericias.map((p) => (
           <div key={p.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-sm">
             <div className="min-w-0">
-              <p className="truncate font-medium">{p.processoNumero}</p>
+              <p className="truncate font-medium">{rotuloNumeroProcesso(p.processoNumero)}</p>
               <p className="text-xs text-muted-foreground">
                 {p.dataAgendada ? new Date(`${p.dataAgendada}T00:00`).toLocaleDateString('pt-BR') : 'Sem data'}
                 {p.horaAgendada ? ` às ${p.horaAgendada.slice(0, 5)}` : ''} · atualmente com {p.donoAtual}

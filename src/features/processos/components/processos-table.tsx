@@ -1,12 +1,15 @@
 'use client';
 
 import { use, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PaginationControls } from '@/components/shared/pagination-controls';
 import { paginar, totalDePaginas, ITENS_POR_PAGINA_PADRAO } from '@/lib/paginar';
+import { isNumeroProvisorio, rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
+import { cn } from '@/lib/utils';
 import type { Processo } from '../actions';
 
 export function ProcessosTableAsync({
@@ -67,24 +70,45 @@ export function ProcessosTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {itensDaPagina.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.numero}</TableCell>
+          {itensDaPagina.map((item) => {
+            const numeroNaoIdentificado = isNumeroProvisorio(item.numero);
+            const numeroRotulo = rotuloNumeroProcesso(item.numero, 'processo sem número identificado');
+            return (
+            <TableRow key={item.id} className={cn(numeroNaoIdentificado && 'bg-destructive/10')}>
+              <TableCell>
+                {numeroNaoIdentificado ? (
+                  <div className="flex items-center gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="inline-flex" />}>
+                        <AlertTriangle className="size-4 shrink-0 text-destructive" />
+                        <span className="sr-only">Número não identificado</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Número do processo não identificado na importação — edite para preencher.
+                      </TooltipContent>
+                    </Tooltip>
+                    <span className="text-muted-foreground italic">Não identificado</span>
+                  </div>
+                ) : (
+                  <span>{item.numero}</span>
+                )}
+              </TableCell>
               <TableCell>{item.autor}</TableCell>
               <TableCell>{item.reu}</TableCell>
               <TableCell>{item.escritorio}</TableCell>
               <TableCell>
                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(item)}>
                   <Pencil className="size-4" />
-                  <span className="sr-only">Editar {item.numero}</span>
+                  <span className="sr-only">Editar {numeroRotulo}</span>
                 </Button>
                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => setConfirmTarget(item)}>
                   <Trash2 className="size-4" />
-                  <span className="sr-only">Excluir {item.numero}</span>
+                  <span className="sr-only">Excluir {numeroRotulo}</span>
                 </Button>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
       <PaginationControls
@@ -98,7 +122,7 @@ export function ProcessosTable({
         open={confirmTarget !== null}
         onOpenChange={(open) => !open && setConfirmTarget(null)}
         title="Excluir processo"
-        description={`Excluir o processo "${confirmTarget?.numero}"? Essa ação não pode ser desfeita.`}
+        description={`Excluir o processo "${rotuloNumeroProcesso(confirmTarget?.numero, 'sem número identificado')}"? Essa ação não pode ser desfeita.`}
         onConfirm={handleConfirmDelete}
         loading={deleting}
       />

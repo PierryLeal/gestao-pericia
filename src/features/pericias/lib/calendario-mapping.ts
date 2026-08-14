@@ -1,3 +1,4 @@
+import { rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
 import type { PericiaListItem } from '../actions';
 
 const SITUACAO_COLORS: Record<PericiaListItem['situacao'], string> = {
@@ -34,7 +35,7 @@ const COR_PROBLEMA = 'var(--destructive)';
 
 export function periciaToEvent(item: PericiaListItem): CalendarEvent {
   const color = item.problemas.length > 0 ? COR_PROBLEMA : SITUACAO_COLORS[item.situacao];
-  const processoNumero = item.processo?.numero ?? 'Sem processo';
+  const processoNumero = rotuloNumeroProcesso(item.processo?.numero, 'Sem processo');
   const peritoNome = item.perito?.nome ?? 'Sem perito';
   return {
     id: String(item.id),

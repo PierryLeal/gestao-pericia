@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createProcesso, updateProcesso, type Processo } from '../actions';
 import { EscritorioCombobox } from './escritorio-combobox';
+import { formatarNumeroProcesso, isNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 
 export function ProcessoForm({
   processo,
@@ -19,7 +20,7 @@ export function ProcessoForm({
   onError: (message: string) => void;
   submitLabel?: string;
 }) {
-  const [numero, setNumero] = useState(processo?.numero ?? '');
+  const [numero, setNumero] = useState(formatarNumeroProcesso(processo?.numero));
   const [autor, setAutor] = useState(processo?.autor ?? '');
   const [reu, setReu] = useState(processo?.reu ?? '');
   const [escritorio, setEscritorio] = useState(processo?.escritorio ?? '');
@@ -42,7 +43,16 @@ export function ProcessoForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="numero">Número do processo</Label>
-        <Input id="numero" value={numero} onChange={(e) => setNumero(e.target.value)} />
+        <Input
+          id="numero"
+          value={numero}
+          onChange={(e) => setNumero(e.target.value)}
+          placeholder={
+            processo && isNumeroProvisorio(processo.numero)
+              ? 'não identificado na importação — preencha o número real'
+              : undefined
+          }
+        />
       </div>
       <div className="space-y-2">
         <Label>Escritório</Label>

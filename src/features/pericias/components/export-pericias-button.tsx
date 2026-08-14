@@ -6,6 +6,7 @@ import ExcelJS from 'exceljs';
 import { toast } from 'sonner';
 import { FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatarNumeroProcesso } from '@/lib/processo-numero-provisorio';
 import { listPericias } from '../actions';
 
 const SITUACAO_LABELS: Record<string, string> = {
@@ -62,7 +63,7 @@ export function ExportPericiasButton() {
       worksheet.getRow(1).font = { bold: true };
       worksheet.addRows(
         items.map((item) => ({
-          numero: item.processo?.numero ?? '',
+          numero: formatarNumeroProcesso(item.processo?.numero),
           autor: item.processo?.autor ?? '',
           reu: item.processo?.reu ?? '',
           data: item.dataAgendada ? new Date(item.dataAgendada) : '',

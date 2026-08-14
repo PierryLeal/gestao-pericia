@@ -19,6 +19,7 @@ import { textoDaCelula } from './lib/cell-text';
 import { chaveDeLote } from './lib/resolver-id';
 import { mapComConcorrencia } from './lib/concurrency';
 import { nomeSuspeito } from '@/lib/nome-suspeito';
+import { marcarNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 import { detectarConflitosDeHorario, type LinhaParaConflito, type PericiaExistenteParaConflito } from './lib/conflito-horario';
 import type {
   NaoProcessada,
@@ -149,18 +150,24 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       // text that could otherwise get created as a bogus processo downstream.
       const parseadoOriginal = parseColunaPericia(textoPericia);
       // No CNJ number and no " - " separator to split on (e.g. an internal file
-      // code like "FC.02.01.055", not a lawsuit número at all) — the raw cell
-      // text becomes the row's provisional "número" instead of staying blank.
-      // A blank número is never deduped against anything (two unrelated blank
-      // rows could otherwise look identical and wrongly merge), which meant
-      // every one of these rows got recreated on every re-import of the same
-      // sheet — confirmed against production: reimporting created 147+ extra
-      // duplicate pericias for exactly this reason. The raw text is usually
-      // distinct per row, so it lets normal dedup work instead.
-      const parseado = parseadoOriginal ?? { autor: '', reu: '', numeroProcesso: textoPericia.trim() };
+      // code like "FC.02.01.055", not a lawsuit número at all), OR autor/réu
+      // were identified but no separate número exists in the text (e.g. "MBR X
+      // UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER", where "CAPÃO XAVIER" is part of
+      // the réu, not a número) — the raw cell text becomes the row's
+      // provisional "número" instead of staying blank. A blank número is never
+      // deduped against anything (two unrelated blank rows could otherwise look
+      // identical and wrongly merge), which meant every one of these rows got
+      // recreated on every re-import of the same sheet — confirmed against
+      // production: reimporting created 147+ extra duplicate pericias for
+      // exactly this reason. The raw text is usually distinct per row, so it
+      // lets normal dedup work instead.
+      const numeroIdentificado = parseadoOriginal?.numeroProcesso.trim();
+      const parseado = parseadoOriginal
+        ? { ...parseadoOriginal, numeroProcesso: numeroIdentificado || marcarNumeroProvisorio(textoPericia.trim()) }
+        : { autor: '', reu: '', numeroProcesso: marcarNumeroProvisorio(textoPericia.trim()) };
 
       const motivos: string[] = [];
-      if (!parseadoOriginal) {
+      if (!numeroIdentificado) {
         motivos.push(`processo não identificado no texto "${textoPericia.trim()}" — usando o texto da célula como identificador provisório; edite o campo Processo manualmente`);
       }
       if (!parseado.autor.trim()) motivos.push('autor não identificado');

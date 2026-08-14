@@ -14,6 +14,7 @@ import { PaginationControls } from '@/components/shared/pagination-controls';
 import { paginar, totalDePaginas, ITENS_POR_PAGINA_PADRAO } from '@/lib/paginar';
 import { cn } from '@/lib/utils';
 import { formatPhone } from '@/lib/masks';
+import { isNumeroProvisorio, rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
 import type { PericiaListItem } from '../actions';
 
 export function PericiasTableAsync({
@@ -92,7 +93,8 @@ export function PericiasTable({
         <TableBody>
           {itensDaPagina.map((item) => {
             const isExpanded = expanded.has(item.id);
-            const numeroLabel = item.processo?.numero ?? 'Sem processo';
+            const numeroLabel = rotuloNumeroProcesso(item.processo?.numero, 'Sem processo');
+            const numeroNaoIdentificado = !item.processo || isNumeroProvisorio(item.processo.numero);
             const temProblema = item.problemas.length > 0;
             return (
               <Fragment key={item.id}>
@@ -120,7 +122,7 @@ export function PericiasTable({
                           </TooltipContent>
                         </Tooltip>
                       )}
-                      <span className={cn(!item.processo && 'text-muted-foreground')}>{numeroLabel}</span>
+                      <span className={cn(numeroNaoIdentificado && 'text-muted-foreground')}>{numeroLabel}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -271,7 +273,7 @@ export function PericiasTable({
         open={confirmTarget !== null}
         onOpenChange={(open) => !open && setConfirmTarget(null)}
         title="Excluir perícia"
-        description={`Excluir a perícia do processo "${confirmTarget?.processo?.numero ?? 'sem processo'}"? Essa ação não pode ser desfeita.`}
+        description={`Excluir a perícia do processo "${rotuloNumeroProcesso(confirmTarget?.processo?.numero, 'sem processo')}"? Essa ação não pode ser desfeita.`}
         onConfirm={handleConfirmDelete}
         loading={deleting}
       />

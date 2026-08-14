@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { PericiasTable } from './pericias-table';
+import { marcarNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 import type { PericiaListItem } from '../actions';
 
 const items: PericiaListItem[] = [
@@ -165,6 +166,18 @@ describe('PericiasTable', () => {
     expect(screen.getByText('Sem processo')).toBeInTheDocument();
     await user.hover(screen.getByText('Perícia com pendências', { selector: '.sr-only' }));
     expect(await screen.findByText('processo não vinculado')).toBeInTheDocument();
+  });
+
+  it('shows "Sem processo" instead of the raw provisional número placeholder', () => {
+    const semNumeroIdentificado: PericiaListItem = {
+      ...items[0],
+      id: 7,
+      processo: { ...items[0].processo!, numero: marcarNumeroProvisorio('MBR X UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER') },
+    };
+    render(<PericiasTable items={[semNumeroIdentificado]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('Sem processo')).toBeInTheDocument();
+    expect(screen.queryByText(/SEM_NUMERO_IDENTIFICADO/)).not.toBeInTheDocument();
   });
 
   it('shows fallback text and no problem icon when município and perito are missing but processo is fine', () => {

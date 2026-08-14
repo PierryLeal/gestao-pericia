@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
 import { searchProcessos, type Processo } from '../actions';
 import { NovoProcessoDialog } from './novo-processo-dialog';
 
@@ -47,9 +48,9 @@ export function ProcessoCombobox({
         >
           <span
             className="min-w-0 flex-1 truncate text-left"
-            title={selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : undefined}
+            title={selected ? `${rotuloNumeroProcesso(selected.numero)} — ${selected.autor} x ${selected.reu}` : undefined}
           >
-            {selected ? `${selected.numero} — ${selected.autor} x ${selected.reu}` : 'Selecione um processo'}
+            {selected ? `${rotuloNumeroProcesso(selected.numero)} — ${selected.autor} x ${selected.reu}` : 'Selecione um processo'}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </PopoverTrigger>
@@ -77,7 +78,7 @@ export function ProcessoCombobox({
                     }}
                   >
                     <Check className={cn('mr-2 h-4 w-4', value === processo.id ? 'opacity-100' : 'opacity-0')} />
-                    {processo.numero} — {processo.autor} x {processo.reu}
+                    {rotuloNumeroProcesso(processo.numero)} — {processo.autor} x {processo.reu}
                   </CommandItem>
                 ))}
               </CommandGroup>

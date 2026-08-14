@@ -46,6 +46,24 @@ export function parseColunaPericia(texto: string): PericiaParseada | null {
   const numeroProcesso = trimmed.slice(lastDashIndex + 3).trim();
   if (!nomePart || !numeroProcesso) return null;
 
+  // A genuine processo número — even a non-CNJ internal code — always has at
+  // least one digit. Without one, the text after the last " - " isn't a
+  // número at all.
+  if (!/\d/.test(numeroProcesso)) {
+    const xMatch = nomePart.match(/^(.*?)\s+x\s+(.*)$/i);
+    // A real "autor x réu" separator was found before the dash: the
+    // discarded text is a continuation of the réu, not a separate número
+    // (e.g. "MBR X UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER", where "CAPÃO
+    // XAVIER" is the mine/place tied to the réu) — re-attach it instead of
+    // truncating the réu at a false separator.
+    if (xMatch) {
+      return { autor: xMatch[1].trim(), reu: `${xMatch[2].trim()} - ${numeroProcesso}`, numeroProcesso: '' };
+    }
+    // No "x" anywhere in the name part either — nothing reliably
+    // distinguishes autor from this trailing text, so don't guess a split.
+    return null;
+  }
+
   return { ...extrairAutorReu(nomePart), numeroProcesso };
 }
 

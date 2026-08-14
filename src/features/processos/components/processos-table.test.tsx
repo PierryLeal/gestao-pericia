@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ProcessosTable } from './processos-table';
+import { marcarNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 import type { Processo } from '../actions';
 
 const items: Processo[] = [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' }];
@@ -61,5 +62,17 @@ describe('ProcessosTable', () => {
 
     expect(screen.getByText('P-31')).toBeInTheDocument();
     expect(screen.queryByText('P-1')).not.toBeInTheDocument();
+  });
+
+  it('hides a provisional (unidentified) número from view, showing "Não identificado" instead', () => {
+    const semNumero: Processo[] = [
+      { id: 2, numero: marcarNumeroProvisorio('MBR X UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER'), autor: 'MBR', reu: 'UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER', escritorio: '' },
+    ];
+    render(<ProcessosTable items={semNumero} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('Não identificado')).toBeInTheDocument();
+    expect(screen.queryByText(/SEM_NUMERO_IDENTIFICADO/)).not.toBeInTheDocument();
+    // The réu column legitimately shows this text — only the número column hides it.
+    expect(screen.getByText('UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER')).toBeInTheDocument();
   });
 });

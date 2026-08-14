@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ExcelJS from 'exceljs';
 import { previewImportacaoPericias, confirmarImportacaoPericias } from './actions';
 import { previewImportacaoPeritosColaboradores, confirmarImportacaoPeritosColaboradores } from './actions';
+import { marcarNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 import type { PericiaPreviewRow, ColaboradorPreviewRow, PeritoPreviewRow } from './types';
 
 vi.mock('@/features/auth/guards', () => ({
@@ -112,7 +113,7 @@ describe('previewImportacaoPericias', () => {
       // staying blank — a blank número is never deduped against anything, so
       // re-importing the same sheet would otherwise recreate this row every
       // time (confirmed in production: 147+ extra duplicates from exactly this).
-      processoNumero: 'texto sem separador',
+      processoNumero: marcarNumeroProvisorio('texto sem separador'),
       processoAutor: '',
       processoReu: '',
     });
@@ -360,12 +361,12 @@ describe('previewImportacaoPericias', () => {
     // never deduped against anything — so re-importing the same sheet always
     // created a second copy. Confirmed in production: 147+ extra duplicates.
     mockListProcessos.mockResolvedValue([
-      { id: 9, numero: 'FC.02.01.055', autor: '', reu: '', escritorio: '' },
+      { id: 9, numero: marcarNumeroProvisorio('FC.02.01.055'), autor: '', reu: '', escritorio: '' },
     ]);
     mockListPericias.mockResolvedValue([
       {
         id: 100, dataAgendada: '2020-11-11', horaAgendada: '08:00', situacao: 'realizada', observacoes: null,
-        processo: { id: 9, numero: 'FC.02.01.055', autor: '', reu: '', escritorio: '' },
+        processo: { id: 9, numero: marcarNumeroProvisorio('FC.02.01.055'), autor: '', reu: '', escritorio: '' },
         municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
         perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
         colaboradores: [{ id: 2, nome: 'Lelis', contato: '', formacao: '' }],
@@ -378,7 +379,7 @@ describe('previewImportacaoPericias', () => {
 
     const result = await previewImportacaoPericias(buffer);
 
-    expect(result.linhas[0].processoNumero).toBe('FC.02.01.055');
+    expect(result.linhas[0].processoNumero).toBe(marcarNumeroProvisorio('FC.02.01.055'));
     expect(result.linhas[0].status).toBe('duplicada');
   });
 

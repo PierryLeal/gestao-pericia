@@ -17,6 +17,7 @@ import { renderCalendarEventContent } from './calendario-event-content';
 import { getColaboradoresIndisponiveis, updatePericia } from '../actions';
 import type { PericiaListItem, EditingPericia } from '../actions';
 import { splitAgendadasNaoAgendadas, formatDateLocal, formatTimeLocal } from '../lib/calendario-mapping';
+import { formatarNumeroProcesso, rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
 
 type PeritoOption = { id: number; nome: string };
 type ColaboradorOption = { id: number; nome: string };
@@ -36,7 +37,7 @@ export function CalendarioScreen({
   const [filters, setFilters] = useState<CalendarioFiltersValue>({});
   const filteredItems = items.filter((item) => {
     if (filters.situacao && item.situacao !== filters.situacao) return false;
-    if (filters.busca && !item.processo?.numero.toLowerCase().includes(filters.busca.toLowerCase())) return false;
+    if (filters.busca && !formatarNumeroProcesso(item.processo?.numero).toLowerCase().includes(filters.busca.toLowerCase())) return false;
     if (filters.peritoId && item.perito?.id !== filters.peritoId) return false;
     if (filters.colaboradorId && !item.colaboradores.some((c) => c.id === filters.colaboradorId)) return false;
     if (filters.contrato && item.contrato !== filters.contrato) return false;
@@ -142,7 +143,7 @@ export function CalendarioScreen({
                   <p className="text-sm text-muted-foreground">Nenhuma perícia sem data.</p>
                 )}
                 {unscheduled.map((item) => {
-                  const rotulo = `${item.processo?.numero ?? 'Sem processo'} — ${item.perito?.nome ?? 'Sem perito'}`;
+                  const rotulo = `${rotuloNumeroProcesso(item.processo?.numero, 'Sem processo')} — ${item.perito?.nome ?? 'Sem perito'}`;
                   const temProblema = item.problemas.length > 0;
                   return (
                     <Tooltip key={item.id}>

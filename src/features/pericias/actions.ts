@@ -10,6 +10,7 @@ import { buscarTodasAsPaginas, buscarPorIdsEmLotes } from '@/lib/supabase/pagina
 import { postgrestQuoted } from '@/lib/postgrest';
 import { normalizeForSearch } from '@/lib/search';
 import { nomeSuspeito } from '@/lib/nome-suspeito';
+import { isNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 import { periciaSchema, periciaImportSchema, situacaoOptions, type PericiaInput, type PericiaImportInput } from './schemas';
 import { ERRO_COLABORADOR_CONFLITANTE } from './constants';
 
@@ -39,10 +40,11 @@ export type PericiaListItem = {
 };
 
 function problemasDaPericia(row: {
-  processo: unknown; municipio: unknown; perito: unknown; colaboradores: { nome: string }[];
+  processo: { numero: string } | null; municipio: unknown; perito: unknown; colaboradores: { nome: string }[];
 }): string[] {
   const problemas: string[] = [];
   if (!row.processo) problemas.push('processo não vinculado');
+  else if (isNumeroProvisorio(row.processo.numero)) problemas.push('número do processo não identificado na importação');
   if (!row.municipio) problemas.push('município não vinculado');
   if (!row.perito) problemas.push('perito não vinculado');
   for (const colaborador of row.colaboradores) {

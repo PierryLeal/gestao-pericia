@@ -11,6 +11,7 @@ import { MunicipioCombobox } from '@/features/municipios/components/municipio-co
 import { TooltipField } from '@/components/shared/tooltip-field';
 import { situacaoOptions, type PericiaInput } from '../../pericias/schemas';
 import { cn } from '@/lib/utils';
+import { formatarNumeroProcesso, isNumeroProvisorio } from '@/lib/processo-numero-provisorio';
 import type { PericiaPreviewRow } from '../types';
 
 // A real spreadsheet import can be 1700+ rows — rendering every <TableRow> at
@@ -96,9 +97,10 @@ export function PericiasPreviewTable({
                 )}
               >
                 <TableCell className="min-w-40">
-                  <TooltipField value={linha.processoNumero}>
+                  <TooltipField value={formatarNumeroProcesso(linha.processoNumero)}>
                     <Input
-                      value={linha.processoNumero}
+                      value={formatarNumeroProcesso(linha.processoNumero)}
+                      placeholder={isNumeroProvisorio(linha.processoNumero) ? 'não identificado — edite se souber o número' : undefined}
                       onChange={(e) => atualizarLinha(index, { processoNumero: e.target.value })}
                     />
                   </TooltipField>

@@ -73,6 +73,22 @@ describe('parseColunaPericia', () => {
   it('still returns null when there is truly no processo número in any recognizable shape', () => {
     expect(parseColunaPericia('MARIA TERESA HOOGENBOOM X VALE')).toBeNull();
   });
+
+  it('does not mistake a place name after the last " - " for a número (no digits)', () => {
+    expect(parseColunaPericia('MBR X UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER')).toEqual({
+      autor: 'MBR', reu: 'UNIÃO FEDERAL-ITR 2003 - CAPÃO XAVIER', numeroProcesso: '',
+    });
+  });
+
+  it('still treats the text after the last " - " as número when it contains a digit (internal code)', () => {
+    expect(parseColunaPericia('JOÃO SILVA - FC.02.01.055')).toEqual({
+      autor: 'JOÃO SILVA', reu: 'Vale', numeroProcesso: 'FC.02.01.055',
+    });
+  });
+
+  it('returns null (rather than guessing an autor) when there is no "x" and no digit after the last " - "', () => {
+    expect(parseColunaPericia('MINA BRUCUTU - VARGEM DA LUA (REUNIÃO)')).toBeNull();
+  });
 });
 
 describe('mapSituacao', () => {
