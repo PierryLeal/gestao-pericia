@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
 import { OptionCombobox } from '@/components/shared/option-combobox';
+import { ContratoFiltro } from '@/components/shared/contrato-filtro';
 import { situacaoOptions } from '../schemas';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 
@@ -72,6 +73,7 @@ export function PericiasFilters({
       searchParams.get('situacao') ||
       searchParams.get('dataInicio') ||
       searchParams.get('dataFim') ||
+      searchParams.get('contrato') ||
       municipioId ||
       peritoId ||
       colaboradorId
@@ -171,6 +173,11 @@ export function PericiasFilters({
               placeholder="Colaborador"
             />
           </div>
+          <ContratoFiltro
+            id="contrato-filtro"
+            value={searchParams.get('contrato') ?? ''}
+            onChange={(value) => updateParam('contrato', value)}
+          />
         </div>
       </CardContent>
     </Card>

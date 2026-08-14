@@ -15,15 +15,11 @@ import { PericiaForm } from './pericia-form';
 import { CalendarioFilters, type CalendarioFiltersValue } from './calendario-filters';
 import { renderCalendarEventContent } from './calendario-event-content';
 import { getColaboradoresIndisponiveis, updatePericia } from '../actions';
-import type { PericiaListItem } from '../actions';
-import type { Processo } from '@/features/processos/actions';
-import type { MunicipioIBGE } from '@/lib/ibge/client';
-import type { PericiaInput } from '../schemas';
+import type { PericiaListItem, EditingPericia } from '../actions';
 import { splitAgendadasNaoAgendadas, formatDateLocal, formatTimeLocal } from '../lib/calendario-mapping';
 
 type PeritoOption = { id: number; nome: string };
 type ColaboradorOption = { id: number; nome: string };
-type EditingPericia = PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
 
 export function CalendarioScreen({
   items,
@@ -40,9 +36,10 @@ export function CalendarioScreen({
   const [filters, setFilters] = useState<CalendarioFiltersValue>({});
   const filteredItems = items.filter((item) => {
     if (filters.situacao && item.situacao !== filters.situacao) return false;
-    if (filters.busca && !item.processo.numero.toLowerCase().includes(filters.busca.toLowerCase())) return false;
-    if (filters.peritoId && item.perito.id !== filters.peritoId) return false;
+    if (filters.busca && !item.processo?.numero.toLowerCase().includes(filters.busca.toLowerCase())) return false;
+    if (filters.peritoId && item.perito?.id !== filters.peritoId) return false;
     if (filters.colaboradorId && !item.colaboradores.some((c) => c.id === filters.colaboradorId)) return false;
+    if (filters.contrato && item.contrato !== filters.contrato) return false;
     return true;
   });
   const { events, unscheduled } = splitAgendadasNaoAgendadas(filteredItems);
@@ -58,11 +55,19 @@ export function CalendarioScreen({
         revert();
         return;
       }
+      if (!item.processo || !item.municipio || !item.perito) {
+        revert();
+        toast.error('Complete o processo, o município e o perito desta perícia (em Editar) antes de agendar.');
+        return;
+      }
+
       const novaData = formatDateLocal(event.start);
       const novaHora = formatTimeLocal(event.start);
 
       if (item.colaboradores.length > 0) {
-        const busyIds = await getColaboradoresIndisponiveis(novaData, novaHora, item.id);
+        const busyIds = await getColaboradoresIndisponiveis(
+          novaData, novaHora, item.processo.id, id, item.perito.id, item.local, item.situacao
+        );
         if (item.colaboradores.some((c) => busyIds.includes(c.id))) {
           revert();
           toast.error('Não é possível mover: o colaborador já está em outra perícia nesse dia e horário.');
@@ -79,6 +84,8 @@ export function CalendarioScreen({
         horaAgendada: novaHora,
         situacao: item.situacao,
         observacoes: item.observacoes,
+        contrato: item.contrato,
+        local: item.local,
       });
       if (!result.success) {
         revert();
@@ -134,26 +141,40 @@ export function CalendarioScreen({
                 {unscheduled.length === 0 && (
                   <p className="text-sm text-muted-foreground">Nenhuma perícia sem data.</p>
                 )}
-                {unscheduled.map((item) => (
-                  <Tooltip key={item.id}>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          data-pericia-id={item.id}
-                          data-title={`${item.processo.numero} — ${item.perito.nome}`}
-                          onClick={() => openEdit(item.id)}
-                          className="calendario-nao-agendada-item block w-full truncate rounded-md border p-2 text-left text-sm hover:bg-accent"
-                        />
-                      }
-                    >
-                      {item.processo.numero} — {item.perito.nome}
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {item.processo.numero} — {item.perito.nome}
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
+                {unscheduled.map((item) => {
+                  const rotulo = `${item.processo?.numero ?? 'Sem processo'} — ${item.perito?.nome ?? 'Sem perito'}`;
+                  const temProblema = item.problemas.length > 0;
+                  return (
+                    <Tooltip key={item.id}>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            data-pericia-id={item.id}
+                            data-title={rotulo}
+                            onClick={() => openEdit(item.id)}
+                            className={
+                              'calendario-nao-agendada-item block w-full cursor-pointer truncate rounded-md border p-2 text-left text-sm hover:bg-accent' +
+                              (temProblema ? ' border-destructive/50 bg-destructive/10' : '')
+                            }
+                          />
+                        }
+                      >
+                        {rotulo}
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {rotulo}
+                        {temProblema && (
+                          <ul className="mt-1 list-disc pl-3 text-destructive">
+                            {item.problemas.map((problema) => (
+                              <li key={problema}>{problema}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

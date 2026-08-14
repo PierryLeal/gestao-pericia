@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { CalendarioFilters } from './calendario-filters';
 
+vi.mock('@/features/pericias/actions', () => ({
+  listContratosDistintos: vi.fn(async () => ['VALE AT']),
+}));
+
 describe('CalendarioFilters', () => {
   it('reports the busca text as the user types', async () => {
     const onChange = vi.fn();
@@ -55,5 +59,16 @@ describe('CalendarioFilters', () => {
     await user.click(await screen.findByRole('option', { name: 'Ana' }));
 
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ colaboradorId: 1 }));
+  });
+
+  it('reports the selected contrato', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<CalendarioFilters peritos={[]} colaboradores={[]} onChange={onChange} />);
+
+    await user.click(screen.getByRole('combobox', { name: /contrato/i }));
+    await user.click(await screen.findByRole('option', { name: 'VALE AT' }));
+
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ contrato: 'VALE AT' }));
   });
 });

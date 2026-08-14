@@ -42,6 +42,7 @@ vi.mock('../actions', async () => {
     ...actual,
     updatePericia: (...args: unknown[]) => mockUpdatePericia(...args),
     getColaboradoresIndisponiveis: (...args: unknown[]) => mockGetColaboradoresIndisponiveis(...args),
+    listContratosDistintos: vi.fn(async () => ['VALE AT']),
   };
 });
 
@@ -82,6 +83,8 @@ const scheduled: PericiaListItem = {
   horaAgendada: '10:00',
   situacao: 'marcada',
   observacoes: null,
+  contrato: null,
+  local: 'Belo Horizonte',
   processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y', escritorio: 'PMRA' },
   municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
   perito: {
@@ -89,6 +92,7 @@ const scheduled: PericiaListItem = {
     jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
   },
   colaboradores: [],
+  problemas: [],
 };
 
 describe('CalendarioScreen', () => {
@@ -113,6 +117,7 @@ describe('CalendarioScreen', () => {
           municipioUf: 'MG',
           horaAgendada: '10:00',
           situacao: 'marcada',
+          problemas: [],
         },
       },
     ]);
@@ -145,6 +150,8 @@ describe('CalendarioScreen', () => {
       horaAgendada: null,
       situacao: 'pendente' as const,
       observacoes: null,
+      contrato: null,
+      local: null,
       processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y', escritorio: 'PMRA' },
       municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
     }));
@@ -244,7 +251,7 @@ describe('CalendarioScreen', () => {
         revert,
       });
 
-      expect(mockGetColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-10-05', '11:00', 1);
+      expect(mockGetColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-10-05', '11:00', 5, 1, 7, 'Belo Horizonte', 'marcada');
       expect(revert).toHaveBeenCalled();
       expect(mockUpdatePericia).not.toHaveBeenCalled();
     });
@@ -276,6 +283,8 @@ describe('CalendarioScreen', () => {
         horaAgendada: '11:00',
         situacao: 'marcada',
         observacoes: null,
+        contrato: null,
+        local: 'Belo Horizonte',
       });
       expect(revert).not.toHaveBeenCalled();
       expect(mockRefresh).toHaveBeenCalled();
@@ -339,7 +348,7 @@ describe('CalendarioScreen', () => {
       id: 2,
       dataAgendada: null,
       horaAgendada: null,
-      perito: { ...scheduled.perito, id: 8, nome: 'Outro Perito' },
+      perito: { ...scheduled.perito!, id: 8, nome: 'Outro Perito' },
     };
     const user = userEvent.setup();
     render(
@@ -366,7 +375,7 @@ describe('CalendarioScreen', () => {
       ...scheduled,
       id: 2,
       situacao: 'pendente',
-      processo: { ...scheduled.processo, id: 6, numero: '0009999-99.2026' },
+      processo: { ...scheduled.processo!, id: 6, numero: '0009999-99.2026' },
     };
     const pendenteNaoAgendada: PericiaListItem = {
       ...scheduled,
@@ -374,7 +383,7 @@ describe('CalendarioScreen', () => {
       situacao: 'pendente',
       dataAgendada: null,
       horaAgendada: null,
-      processo: { ...scheduled.processo, id: 10, numero: '0005555-55.2026' },
+      processo: { ...scheduled.processo!, id: 10, numero: '0005555-55.2026' },
     };
     const user = userEvent.setup();
     render(
@@ -404,7 +413,7 @@ describe('CalendarioScreen', () => {
       ...scheduled,
       id: 2,
       colaboradores: [colaboradorB],
-      processo: { ...scheduled.processo, id: 6, numero: '0009999-99.2026' },
+      processo: { ...scheduled.processo!, id: 6, numero: '0009999-99.2026' },
     };
     const naoAgendadaColaboradorB: PericiaListItem = {
       ...scheduled,
@@ -412,7 +421,7 @@ describe('CalendarioScreen', () => {
       colaboradores: [colaboradorB],
       dataAgendada: null,
       horaAgendada: null,
-      processo: { ...scheduled.processo, id: 10, numero: '0005555-55.2026' },
+      processo: { ...scheduled.processo!, id: 10, numero: '0005555-55.2026' },
     };
     const user = userEvent.setup();
     render(
@@ -432,6 +441,36 @@ describe('CalendarioScreen', () => {
 
     expect(captured.props?.events).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /0005555-55.2026/ })).not.toBeInTheDocument();
+  });
+
+  it('reduces both the calendar events and the não-agendadas list when filtering by contrato', async () => {
+    const comValeAt: PericiaListItem = { ...scheduled, contrato: 'VALE AT' };
+    const comOutroContrato: PericiaListItem = {
+      ...scheduled,
+      id: 2,
+      dataAgendada: null,
+      horaAgendada: null,
+      contrato: 'ANGLO',
+      processo: { ...scheduled.processo!, id: 6, numero: '0009999-99.2026' },
+    };
+    const user = userEvent.setup();
+    render(
+      <CalendarioScreen
+        items={[comValeAt, comOutroContrato]}
+        peritos={[{ id: 7, nome: 'Cleber' }]}
+        colaboradores={[]}
+        getPericiaForEdit={vi.fn()}
+      />
+    );
+
+    expect(captured.props?.events).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /0009999-99.2026/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: /contrato/i }));
+    await user.click(await screen.findByRole('option', { name: 'VALE AT' }));
+
+    expect(captured.props?.events).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /0009999-99.2026/ })).not.toBeInTheDocument();
   });
 
   it('offers month/week/day view buttons in the header toolbar', () => {
@@ -468,6 +507,8 @@ describe('CalendarioScreen', () => {
       horaAgendada: '10:00',
       situacao: 'marcada' as const,
       observacoes: null,
+      contrato: null,
+      local: null,
       processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y', escritorio: 'PMRA' },
       municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
     }));

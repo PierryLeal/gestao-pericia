@@ -19,7 +19,9 @@ export type Database = {
         Relationships: [];
       };
       processos: {
-        Row: { id: number; numero: string; autor: string; reu: string; escritorio: string; created_at: string };
+        Row: {
+          id: number; numero: string; autor: string; reu: string; escritorio: string; created_at: string;
+        };
         Insert: { numero: string; autor: string; reu: string; escritorio: string };
         Update: Partial<{ numero: string; autor: string; reu: string; escritorio: string }>;
         Relationships: [];
@@ -45,13 +47,14 @@ export type Database = {
       };
       pericias: {
         Row: {
-          id: number; processo_id: number; data_agendada: string | null; hora_agendada: string | null;
-          municipio_id: number; perito_id: number;
-          situacao: PericiaSituacao; observacoes: string | null; created_at: string;
+          id: number; processo_id: number | null; data_agendada: string | null; hora_agendada: string | null;
+          municipio_id: number | null; perito_id: number | null;
+          situacao: PericiaSituacao; observacoes: string | null; contrato: string | null; local: string | null; created_at: string;
         };
         Insert: {
-          processo_id: number; data_agendada?: string | null; hora_agendada?: string | null; municipio_id: number;
-          perito_id: number; situacao?: PericiaSituacao; observacoes?: string | null;
+          processo_id?: number | null; data_agendada?: string | null; hora_agendada?: string | null;
+          municipio_id?: number | null; perito_id?: number | null; situacao?: PericiaSituacao; observacoes?: string | null;
+          contrato?: string | null; local?: string | null;
         };
         Update: Partial<Database['public']['Tables']['pericias']['Insert']>;
         Relationships: [
@@ -105,17 +108,17 @@ export type Database = {
       update_own_nome: { Args: { new_nome: string }; Returns: void };
       create_pericia_with_colaboradores: {
         Args: {
-          p_processo_id: number; p_data_agendada: string | null; p_hora_agendada: string | null;
-          p_municipio_id: number; p_perito_id: number; p_situacao: PericiaSituacao; p_observacoes: string | null;
-          p_colaborador_ids: number[];
+          p_processo_id: number | null; p_data_agendada: string | null; p_hora_agendada: string | null;
+          p_municipio_id: number | null; p_perito_id: number | null; p_situacao: PericiaSituacao;
+          p_observacoes: string | null; p_colaborador_ids: number[]; p_contrato: string | null; p_local: string | null;
         };
         Returns: number;
       };
       update_pericia_with_colaboradores: {
         Args: {
-          p_id: number; p_processo_id: number; p_data_agendada: string | null; p_hora_agendada: string | null;
-          p_municipio_id: number; p_perito_id: number; p_situacao: PericiaSituacao; p_observacoes: string | null;
-          p_colaborador_ids: number[];
+          p_id: number; p_processo_id: number | null; p_data_agendada: string | null; p_hora_agendada: string | null;
+          p_municipio_id: number | null; p_perito_id: number | null; p_situacao: PericiaSituacao;
+          p_observacoes: string | null; p_colaborador_ids: number[]; p_contrato: string | null; p_local: string | null;
         };
         Returns: void;
       };

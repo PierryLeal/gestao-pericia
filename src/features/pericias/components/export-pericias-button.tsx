@@ -30,6 +30,7 @@ export function ExportPericiasButton() {
       const municipioId = searchParams.get('municipioId');
       const peritoId = searchParams.get('peritoId');
       const colaboradorId = searchParams.get('colaboradorId');
+      const contrato = searchParams.get('contrato');
       if (situacao) filters.situacao = situacao;
       if (busca) filters.busca = busca;
       if (dataInicio) filters.dataInicio = dataInicio;
@@ -37,6 +38,7 @@ export function ExportPericiasButton() {
       if (municipioId) filters.municipioId = Number(municipioId);
       if (peritoId) filters.peritoId = Number(peritoId);
       if (colaboradorId) filters.colaboradorId = Number(colaboradorId);
+      if (contrato) filters.contrato = contrato;
 
       const items = await listPericias(filters);
       if (items.length === 0) {
@@ -60,13 +62,13 @@ export function ExportPericiasButton() {
       worksheet.getRow(1).font = { bold: true };
       worksheet.addRows(
         items.map((item) => ({
-          numero: item.processo.numero,
-          autor: item.processo.autor,
-          reu: item.processo.reu,
+          numero: item.processo?.numero ?? '',
+          autor: item.processo?.autor ?? '',
+          reu: item.processo?.reu ?? '',
           data: item.dataAgendada ? new Date(item.dataAgendada) : '',
           hora: item.horaAgendada ?? '',
-          local: `${item.municipio.nome}/${item.municipio.uf}`,
-          perito: item.perito.nome,
+          local: item.municipio ? `${item.municipio.nome}/${item.municipio.uf}` : '',
+          perito: item.perito?.nome ?? '',
           colaborador: item.colaboradores.map((c) => c.nome).join('/'),
           situacao: SITUACAO_LABELS[item.situacao] ?? item.situacao,
         }))

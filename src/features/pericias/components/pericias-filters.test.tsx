@@ -19,6 +19,10 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
   ),
 }));
 
+vi.mock('@/features/pericias/actions', () => ({
+  listContratosDistintos: vi.fn(async () => ['VALE AT']),
+}));
+
 describe('PericiasFilters', () => {
   beforeEach(() => {
     push.mockClear();
@@ -85,9 +89,20 @@ describe('PericiasFilters', () => {
     expect(push).toHaveBeenCalledWith(expect.stringContaining('dataFim=2026-08-10'));
   });
 
-  it('clears data, municipioId, peritoId and colaboradorId when "Limpar filtros" is clicked', async () => {
+  it('pushes contrato when a contrato is selected in the Contrato filter', async () => {
+    params = new URLSearchParams();
+    const user = userEvent.setup();
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
+
+    await user.click(screen.getByRole('combobox', { name: /contrato/i }));
+    await user.click(await screen.findByRole('option', { name: 'VALE AT' }));
+
+    expect(push).toHaveBeenCalledWith(expect.stringContaining('contrato=VALE+AT'));
+  });
+
+  it('clears data, municipioId, peritoId, colaboradorId and contrato when "Limpar filtros" is clicked', async () => {
     params = new URLSearchParams(
-      'busca=P-1&situacao=Em+andamento&dataInicio=2026-08-01&dataFim=2026-08-05&municipioId=3550308&peritoId=1&colaboradorId=2'
+      'busca=P-1&situacao=Em+andamento&dataInicio=2026-08-01&dataFim=2026-08-05&municipioId=3550308&peritoId=1&colaboradorId=2&contrato=VALE+AT'
     );
     const user = userEvent.setup();
     render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
@@ -101,5 +116,6 @@ describe('PericiasFilters', () => {
     expect(pushedUrl).not.toContain('municipioId=');
     expect(pushedUrl).not.toContain('peritoId=');
     expect(pushedUrl).not.toContain('colaboradorId=');
+    expect(pushedUrl).not.toContain('contrato=');
   });
 });

@@ -7,6 +7,8 @@ export type LinhaParaConflito = {
   horaAgendada: string | null;
   situacao: string;
   colaboradorNomes: string[];
+  peritoNome: string;
+  local: string | null;
 };
 
 export type PericiaExistenteParaConflito = {
@@ -15,6 +17,8 @@ export type PericiaExistenteParaConflito = {
   horaAgendada: string | null;
   situacao: string;
   colaboradorNomes: string[];
+  peritoNome: string;
+  local: string | null;
 };
 
 export type ConflitoDeHorario = {
@@ -37,8 +41,9 @@ function chaveSlot(colaboradorNome: string, dataAgendada: string, horaAgendada: 
 /**
  * Predicts, at preview time, which rows will collide with the double-booking
  * check the database enforces on confirm (same colaborador, same data/hora,
- * different processo, neither cancelada) — so the user can see and fix it
- * before confirming instead of discovering it in the post-import error list.
+ * different processo, neither cancelada, and NOT the same perito+local) — so
+ * the user can see and fix it before confirming instead of discovering it in
+ * the post-import error list.
  *
  * A pericia already saved in the system always "wins" a slot (it's already
  * committed). Among sheet rows contending for the same slot, the earliest
@@ -58,7 +63,10 @@ export function detectarConflitosDeHorario(
 
   // Whoever currently "occupies" a slot — an existing DB pericia always claims
   // its slot up front, since it can't be displaced by anything in this import.
-  const ocupantes = new Map<string, { processoNumero: string; existente: boolean; linhaOriginal?: number }>();
+  const ocupantes = new Map<
+    string,
+    { processoNumero: string; peritoNome: string; local: string | null; existente: boolean; linhaOriginal?: number }
+  >();
 
   for (const existente of existentes) {
     if (existente.situacao === 'cancelada') continue;
@@ -66,7 +74,10 @@ export function detectarConflitosDeHorario(
     for (const nome of existente.colaboradorNomes) {
       const slot = chaveSlot(nome, existente.dataAgendada, existente.horaAgendada);
       if (!ocupantes.has(slot)) {
-        ocupantes.set(slot, { processoNumero: existente.processoNumero, existente: true });
+        ocupantes.set(slot, {
+          processoNumero: existente.processoNumero, peritoNome: existente.peritoNome,
+          local: existente.local, existente: true,
+        });
       }
     }
   }
@@ -79,13 +90,28 @@ export function detectarConflitosDeHorario(
       const ocupante = ocupantes.get(slot);
 
       if (!ocupante) {
-        ocupantes.set(slot, { processoNumero: linha.processoNumero, existente: false, linhaOriginal: linha.linhaOriginal });
+        ocupantes.set(slot, {
+          processoNumero: linha.processoNumero, peritoNome: linha.peritoNome, local: linha.local,
+          existente: false, linhaOriginal: linha.linhaOriginal,
+        });
         continue;
       }
       if (normalizeForSearch(ocupante.processoNumero) === normalizeForSearch(linha.processoNumero)) {
         // Same processo isn't a real conflict — matches the DB trigger's own rule.
         continue;
       }
+      // Same perito + local, besides the same colaborador/data/hora, is
+      // understood as sequential work — the colaborador wraps up one pericia
+      // and moves straight into the next — so it's exempt too, even across
+      // different processos. `local` is the raw place label (a company site
+      // code like "CMD" often never resolves to a real município), which is
+      // what the DB trigger's own exemption actually compares.
+      const peritoIgual =
+        linha.peritoNome.trim() !== '' && normalizeForSearch(ocupante.peritoNome) === normalizeForSearch(linha.peritoNome);
+      const localIgual =
+        Boolean(ocupante.local?.trim()) && Boolean(linha.local?.trim()) &&
+        normalizeForSearch(ocupante.local ?? '') === normalizeForSearch(linha.local ?? '');
+      if (peritoIgual && localIgual) continue;
 
       adicionar(linha.linhaOriginal, {
         colaboradorNome: nome, processoConflitante: ocupante.processoNumero,

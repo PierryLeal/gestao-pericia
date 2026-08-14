@@ -6,9 +6,11 @@ import type { ActionResult } from '@/lib/action-result';
 import { postgrestQuoted } from '@/lib/postgrest';
 import { matchesSearch } from '@/lib/search';
 import { buscarTodasAsPaginas } from '@/lib/supabase/pagination';
-import { processoSchema, type ProcessoInput } from './schemas';
+import { processoSchema, processoImportSchema, type ProcessoInput, type ProcessoImportInput } from './schemas';
 
-export type Processo = { id: number; numero: string; autor: string; reu: string; escritorio: string };
+export type Processo = {
+  id: number; numero: string; autor: string; reu: string; escritorio: string;
+};
 
 export async function searchProcessos(query: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
@@ -44,21 +46,70 @@ export async function createProcesso(input: ProcessoInput): Promise<ActionResult
   return { success: true, data };
 }
 
-export async function listProcessos(busca?: string): Promise<Processo[]> {
+/** Used only by the bulk-import confirm flow — see `processoImportSchema`. */
+export async function createProcessoComPendencias(input: ProcessoImportInput): Promise<ActionResult<Processo>> {
+  await requireRole(['admin', 'gerencia']);
+  const parsed = processoImportSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('processos')
+    .insert(parsed.data)
+    .select('id, numero, autor, reu, escritorio')
+    .single();
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Já existe um processo com esse número' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data };
+}
+
+/** Used only by the bulk-import confirm flow — see `processoImportSchema`. */
+export async function updateProcessoComPendencias(id: number, input: ProcessoImportInput): Promise<ActionResult<Processo>> {
+  await requireRole(['admin', 'gerencia']);
+  const parsed = processoImportSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('processos')
+    .update(parsed.data)
+    .eq('id', id)
+    .select('id, numero, autor, reu, escritorio')
+    .single();
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Já existe um processo com esse número' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data };
+}
+
+export async function listProcessos(filters: { busca?: string } = {}): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const processos = await buscarTodasAsPaginas<Processo>((inicio, fim) =>
+  let processos = await buscarTodasAsPaginas<Processo>((inicio, fim) => {
+    const query = supabase.from('processos').select('id, numero, autor, reu, escritorio');
     // `.order('id')` is a secondary tie-breaker: OFFSET-based .range() paging
     // over a non-unique sort column alone can return a row twice or skip one.
-    supabase.from('processos').select('id, numero, autor, reu, escritorio').order('numero').order('id').range(inicio, fim)
-  );
-  if (!busca?.trim()) return processos;
-  return processos.filter(
-    (processo) =>
-      matchesSearch(processo.numero, busca) ||
-      matchesSearch(processo.autor, busca) ||
-      matchesSearch(processo.reu, busca)
-  );
+    return query.order('numero').order('id').range(inicio, fim);
+  });
+  if (filters.busca?.trim()) {
+    const busca = filters.busca;
+    processos = processos.filter(
+      (processo) =>
+        matchesSearch(processo.numero, busca) ||
+        matchesSearch(processo.autor, busca) ||
+        matchesSearch(processo.reu, busca)
+    );
+  }
+  return processos;
 }
 
 export async function getProcesso(id: number): Promise<Processo | null> {
@@ -116,3 +167,4 @@ export async function listEscritoriosDistintos(): Promise<string[]> {
   const values = (data ?? []).map((row) => row.escritorio).filter((v): v is string => Boolean(v));
   return [...new Set(values)];
 }
+

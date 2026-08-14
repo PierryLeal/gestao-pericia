@@ -22,9 +22,10 @@ vi.mock('../actions', () => ({
   ),
   deleteProcesso: vi.fn(),
   listEscritoriosDistintos: vi.fn(async () => []),
+  listContratosDistintos: vi.fn(async () => []),
 }));
 
-const items = [{ id: 1, numero: 'P-1', autor: 'Ana', reu: 'Bia', escritorio: 'PMRA' }];
+const items = [{ id: 1, numero: 'P-1', autor: 'Ana', reu: 'Bia', escritorio: 'PMRA', contrato: null }];
 
 describe('ProcessosScreen', () => {
   it('opens the create dialog and saves a new processo', async () => {

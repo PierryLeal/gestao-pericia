@@ -15,6 +15,7 @@ export type CalendarEventDetails = {
   municipioUf: string;
   horaAgendada: string;
   situacao: PericiaListItem['situacao'];
+  problemas: string[];
 };
 
 export type CalendarEvent = {
@@ -26,22 +27,30 @@ export type CalendarEvent = {
   extendedProps: CalendarEventDetails;
 };
 
+// A bulk-imported pericia can be scheduled (has data/hora) yet still be
+// missing its processo/município/perito — a red border on the calendar
+// event flags that at a glance, same as the "não agendadas" sidebar.
+const COR_PROBLEMA = 'var(--destructive)';
+
 export function periciaToEvent(item: PericiaListItem): CalendarEvent {
-  const color = SITUACAO_COLORS[item.situacao];
+  const color = item.problemas.length > 0 ? COR_PROBLEMA : SITUACAO_COLORS[item.situacao];
+  const processoNumero = item.processo?.numero ?? 'Sem processo';
+  const peritoNome = item.perito?.nome ?? 'Sem perito';
   return {
     id: String(item.id),
-    title: `${item.processo.numero} — ${item.perito.nome}`,
+    title: `${processoNumero} — ${peritoNome}`,
     start: `${item.dataAgendada}T${item.horaAgendada}`,
     backgroundColor: color,
     borderColor: color,
     extendedProps: {
-      processoNumero: item.processo.numero,
-      peritoNome: item.perito.nome,
+      processoNumero,
+      peritoNome,
       colaboradorNome: item.colaboradores.length > 0 ? item.colaboradores.map((c) => c.nome).join(', ') : null,
-      municipioNome: item.municipio.nome,
-      municipioUf: item.municipio.uf,
+      municipioNome: item.municipio?.nome ?? 'Sem município',
+      municipioUf: item.municipio?.uf ?? '',
       horaAgendada: item.horaAgendada ?? '',
       situacao: item.situacao,
+      problemas: item.problemas,
     },
   };
 }

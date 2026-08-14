@@ -4,12 +4,17 @@ import { describe, it, expect, vi } from 'vitest';
 import { ProcessoForm } from './processo-form';
 
 vi.mock('../actions', () => ({
-  createProcesso: vi.fn(async (input: { numero: string; autor: string; reu: string; escritorio: string }) => ({
-    success: true,
-    data: { id: 1, ...input },
-  })),
+  createProcesso: vi.fn(
+    async (input: { numero: string; autor: string; reu: string; escritorio: string }) => ({
+      success: true,
+      data: { id: 1, ...input },
+    })
+  ),
   updateProcesso: vi.fn(
-    async (id: number, input: { numero: string; autor: string; reu: string; escritorio: string }) => ({
+    async (
+      id: number,
+      input: { numero: string; autor: string; reu: string; escritorio: string }
+    ) => ({
       success: true,
       data: { id, ...input },
     })
@@ -29,7 +34,7 @@ describe('ProcessoForm', () => {
     expect(screen.getByLabelText('Número do processo')).toHaveValue('P-5');
     expect(screen.getByLabelText('Autor')).toHaveValue('Ana');
     expect(screen.getByLabelText('Réu')).toHaveValue('Bia');
-    expect(screen.getByRole('combobox')).toHaveTextContent('PMRA');
+    expect(screen.getByRole('combobox', { name: /escritório/i })).toHaveTextContent('PMRA');
   });
 
   it('calls updateProcesso and onSaved when editing', async () => {
@@ -43,6 +48,8 @@ describe('ProcessoForm', () => {
       />
     );
     await user.click(screen.getByRole('button', { name: /salvar processo/i }));
-    expect(onSaved).toHaveBeenCalledWith({ id: 5, numero: 'P-5', autor: 'Ana', reu: 'Bia', escritorio: 'PMRA' });
+    expect(onSaved).toHaveBeenCalledWith({
+      id: 5, numero: 'P-5', autor: 'Ana', reu: 'Bia', escritorio: 'PMRA',
+    });
   });
 });

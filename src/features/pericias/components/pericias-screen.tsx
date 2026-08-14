@@ -11,16 +11,13 @@ import { PericiasTableAsync } from './pericias-table';
 import { PericiasFilters } from './pericias-filters';
 import { PericiaForm } from './pericia-form';
 import { ExportPericiasButton } from './export-pericias-button';
-import { deletePericia, type PericiaListItem } from '../actions';
-import type { Processo } from '@/features/processos/actions';
+import { deletePericia, type PericiaListItem, type EditingPericia } from '../actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
-import type { PericiaInput } from '../schemas';
 
 type PeritoOption = { id: number; nome: string };
 type ColaboradorOption = { id: number; nome: string };
-type EditingPericia = PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
 
-const PERICIAS_HEADERS = ['', 'Nº Processo', 'Escritório', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', 'Obs.', ''];
+const PERICIAS_HEADERS = ['', 'Nº Processo', 'Escritório', 'Contrato', 'Data - Hora', 'Local', 'Perito', 'Colaborador', 'Situação', 'Obs.', ''];
 
 export function PericiasScreen({
   itemsPromise,

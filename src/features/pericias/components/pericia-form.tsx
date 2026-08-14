@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { ProcessoCombobox } from '@/features/processos/components/processo-combobox';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
-import { createPericia, updatePericia, getColaboradoresIndisponiveis } from '../actions';
+import { ContratoCombobox } from './contrato-combobox';
+import { createPericia, updatePericia, getColaboradoresIndisponiveis, type EditingPericia } from '../actions';
 import { situacaoOptions, type PericiaInput } from '../schemas';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
@@ -24,7 +25,7 @@ export function PericiaForm({
   onSaved,
   onError,
 }: {
-  pericia?: PericiaInput & { id: number; processo: Processo; municipio: MunicipioIBGE };
+  pericia?: EditingPericia;
   peritos: PeritoOption[];
   colaboradores: ColaboradorOption[];
   onSaved: (id: number) => void;
@@ -42,6 +43,7 @@ export function PericiaForm({
   const [horaAgendada, setHoraAgendada] = useState(pericia?.horaAgendada ?? '');
   const [situacao, setSituacao] = useState<PericiaInput['situacao']>(pericia?.situacao ?? 'pendente');
   const [observacoes, setObservacoes] = useState(pericia?.observacoes ?? '');
+  const [contrato, setContrato] = useState<string | null>(pericia?.contrato ?? null);
   const [saving, setSaving] = useState(false);
   const [busyColaboradorIds, setBusyColaboradorIds] = useState<number[]>([]);
 
@@ -51,7 +53,10 @@ export function PericiaForm({
     }
     let cancelled = false;
     const handle = setTimeout(() => {
-      getColaboradoresIndisponiveis(dataAgendada, horaAgendada, processo?.id, pericia?.id)
+      getColaboradoresIndisponiveis(
+        dataAgendada, horaAgendada, processo?.id, pericia?.id,
+        peritoId ? Number(peritoId) : undefined, municipio?.nome, situacao
+      )
         .then((ids) => {
           if (!cancelled) setBusyColaboradorIds(ids);
         })
@@ -63,7 +68,7 @@ export function PericiaForm({
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [dataAgendada, horaAgendada, processo?.id, pericia?.id]);
+  }, [dataAgendada, horaAgendada, processo?.id, pericia?.id, peritoId, municipio?.nome, situacao]);
 
   const effectiveBusyIds = dataAgendada && horaAgendada ? busyColaboradorIds : [];
   const colaboradorSelecionados = colaboradorIds.filter((id) => id !== '');
@@ -105,6 +110,8 @@ export function PericiaForm({
       horaAgendada: horaAgendada || null,
       situacao,
       observacoes: observacoes.trim() || null,
+      contrato,
+      local: municipio.nome,
     };
     const result = pericia ? await updatePericia(pericia.id, input) : await createPericia(input);
     setSaving(false);
@@ -125,6 +132,11 @@ export function PericiaForm({
       <div className="space-y-2">
         <Label>Município</Label>
         <MunicipioCombobox value={municipio?.id ?? null} selected={municipio} onChange={setMunicipio} />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Contrato</Label>
+        <ContratoCombobox value={contrato} onChange={setContrato} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

@@ -106,8 +106,8 @@ describe('ColaboradoresScreen', () => {
     await user.click(await screen.findByRole('option', { name: 'Eduardo' }));
     await user.click(await screen.findByRole('option', { name: 'Carla' }));
 
-    expect(await screen.findByText('Eduardo', { selector: 'span' })).toBeInTheDocument();
-    expect(await screen.findByText('Carla', { selector: 'span' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('Remover Eduardo da mesclagem')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Remover Carla da mesclagem')).toBeInTheDocument();
 
     await user.click(await screen.findByRole('button', { name: /revisar mesclagem/i }));
     await user.click(await screen.findByRole('button', { name: /confirmar mesclagem/i }));

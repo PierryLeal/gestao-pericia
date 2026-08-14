@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ContratoFiltro } from '@/components/shared/contrato-filtro';
 import { situacaoOptions, type PericiaInput } from '../schemas';
 
 type PeritoOption = { id: number; nome: string };
@@ -15,6 +16,7 @@ export type CalendarioFiltersValue = {
   busca?: string;
   peritoId?: number;
   colaboradorId?: number;
+  contrato?: string;
 };
 
 export function CalendarioFilters({
@@ -92,6 +94,11 @@ export function CalendarioFilters({
             </SelectContent>
           </Select>
         </div>
+        <ContratoFiltro
+          id="calendario-contrato"
+          value={value.contrato ?? ''}
+          onChange={(v) => update({ contrato: v || undefined })}
+        />
       </CardContent>
     </Card>
   );

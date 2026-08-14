@@ -8,21 +8,21 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { listEscritoriosDistintos } from '../actions';
+import { listContratosDistintos } from '../actions';
 
-export function EscritorioCombobox({
+export function ContratoCombobox({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (escritorio: string) => void;
+  value: string | null;
+  onChange: (contrato: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<string[]>([]);
 
   useEffect(() => {
-    listEscritoriosDistintos()
+    listContratosDistintos()
       .then(setOptions)
       .catch(() => setOptions([]));
   }, []);
@@ -33,8 +33,8 @@ export function EscritorioCombobox({
     : options;
   const exactMatch = options.some((o) => o.toLowerCase() === trimmedQuery.toLowerCase());
 
-  function handleSelect(escritorio: string) {
-    onChange(escritorio);
+  function handleSelect(contrato: string) {
+    onChange(contrato);
     setQuery('');
     setOpen(false);
   }
@@ -44,24 +44,37 @@ export function EscritorioCombobox({
       <PopoverTrigger
         render={
           <Button
-            type="button" variant="outline" role="combobox" aria-label="Escritório"
+            type="button" variant="outline" role="combobox" aria-label="Contrato"
             className="w-full justify-between"
           />
         }
       >
-        <span className="truncate">{value || 'Selecione um escritório'}</span>
+        <span className="truncate">{value || 'Selecione um contrato'}</span>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Buscar ou digitar escritório..." value={query} onValueChange={setQuery} />
+          <CommandInput placeholder="Buscar ou digitar contrato..." value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>Nenhum escritório encontrado.</CommandEmpty>
+            <CommandEmpty>Nenhum contrato encontrado.</CommandEmpty>
             <CommandGroup>
-              {filtered.map((escritorio) => (
-                <CommandItem key={escritorio} value={escritorio} onSelect={() => handleSelect(escritorio)}>
-                  <Check className={cn('mr-2 h-4 w-4', value === escritorio ? 'opacity-100' : 'opacity-0')} />
-                  {escritorio}
+              {value && (
+                <CommandItem
+                  value="__limpar__"
+                  onSelect={() => {
+                    onChange(null);
+                    setQuery('');
+                    setOpen(false);
+                  }}
+                >
+                  <Check className="mr-2 h-4 w-4 opacity-0" />
+                  Sem contrato
+                </CommandItem>
+              )}
+              {filtered.map((contrato) => (
+                <CommandItem key={contrato} value={contrato} onSelect={() => handleSelect(contrato)}>
+                  <Check className={cn('mr-2 h-4 w-4', value === contrato ? 'opacity-100' : 'opacity-0')} />
+                  {contrato}
                 </CommandItem>
               ))}
               {trimmedQuery && !exactMatch && (

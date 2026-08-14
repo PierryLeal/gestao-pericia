@@ -8,6 +8,8 @@ const scheduled: PericiaListItem = {
   horaAgendada: '10:00',
   situacao: 'marcada',
   observacoes: null,
+  contrato: null,
+  local: null,
   processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y', escritorio: 'PMRA' },
   municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
   perito: {
@@ -15,6 +17,7 @@ const scheduled: PericiaListItem = {
     jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
   },
   colaboradores: [],
+  problemas: [],
 };
 
 describe('periciaToEvent', () => {
@@ -33,8 +36,26 @@ describe('periciaToEvent', () => {
         municipioUf: 'MG',
         horaAgendada: '10:00',
         situacao: 'marcada',
+        problemas: [],
       },
     });
+  });
+
+  it('colors the event red and lists the reasons when the pericia has pending problems', () => {
+    const comProblema: PericiaListItem = { ...scheduled, processo: null, problemas: ['processo não vinculado'] };
+    const event = periciaToEvent(comProblema);
+    expect(event.backgroundColor).toBe('var(--destructive)');
+    expect(event.title).toBe('Sem processo — Cleber');
+    expect(event.extendedProps.problemas).toEqual(['processo não vinculado']);
+  });
+
+  it('falls back to placeholder text when processo, município or perito are missing', () => {
+    const semNada: PericiaListItem = {
+      ...scheduled, processo: null, municipio: null, perito: null, problemas: ['x'],
+    };
+    const event = periciaToEvent(semNada);
+    expect(event.title).toBe('Sem processo — Sem perito');
+    expect(event.extendedProps.municipioNome).toBe('Sem município');
   });
 
   it('uses a different color per situação', () => {

@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listProcessos, getProcesso, updateProcesso, deleteProcesso, listEscritoriosDistintos } from './actions';
+import {
+  listProcessos, getProcesso, updateProcesso, deleteProcesso, listEscritoriosDistintos,
+} from './actions';
 
 const mockSingle = vi.fn();
-const mockEq = vi.fn(() => ({ single: mockSingle }));
+const mockEq = vi.fn<(...args: unknown[]) => unknown>(() => ({ single: mockSingle }));
 const mockRange = vi.fn();
 const mockOrder = vi.fn<(...args: unknown[]) => unknown>();
 mockOrder.mockImplementation(() => ({ order: mockOrder, range: mockRange }));
@@ -55,13 +57,13 @@ describe('listProcessos busca', () => {
 
   it('filters by numero/autor/reu when busca is provided', async () => {
     mockRange.mockResolvedValue({ data: rows, error: null });
-    const result = await listProcessos('Souza');
+    const result = await listProcessos({ busca: 'Souza' });
     expect(result).toEqual([rows[0]]);
   });
 
   it('matches accent-insensitively (e.g. "andre" matches "André")', async () => {
     mockRange.mockResolvedValue({ data: rows, error: null });
-    const result = await listProcessos('andre');
+    const result = await listProcessos({ busca: 'andre' });
     expect(result).toEqual([rows[1]]);
   });
 

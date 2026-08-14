@@ -14,14 +14,40 @@ describe('parseDataCelula', () => {
     expect(parseDataCelula('20/09/2026')).toBe('2026-09-20');
   });
 
+  it('parses a D/M/YYYY text value with no leading zeros', () => {
+    expect(parseDataCelula('9/5/2026')).toBe('2026-05-09');
+  });
+
   it('parses a YYYY-MM-DD text value as-is', () => {
     expect(parseDataCelula('2026-09-20')).toBe('2026-09-20');
+  });
+
+  // The dominant real-world format in an actual imported sheet: hand-typed
+  // cells with a 2-digit year and no leading zero on day/month (e.g. "14/6/22").
+  // Confirmed against production data: without this, over half the rows in a
+  // real sheet (1289 of 2391 date cells) silently lost their scheduled date.
+  it('parses a D/M/YY text value with a 2-digit year, pivoting 00-68 to 20xx', () => {
+    expect(parseDataCelula('14/6/22')).toBe('2022-06-14');
+    expect(parseDataCelula('27/2/26')).toBe('2026-02-27');
+  });
+
+  it('parses a DD/MM/YY text value with a 2-digit year', () => {
+    expect(parseDataCelula('18/10/22')).toBe('2022-10-18');
+  });
+
+  it('pivots a 2-digit year of 69-99 to 19xx', () => {
+    expect(parseDataCelula('1/1/69')).toBe('1969-01-01');
+    expect(parseDataCelula('1/1/99')).toBe('1999-01-01');
   });
 
   it('returns null for an empty or unparseable value', () => {
     expect(parseDataCelula('')).toBeNull();
     expect(parseDataCelula(null)).toBeNull();
     expect(parseDataCelula('não é uma data')).toBeNull();
+    // A genuine data-entry typo in the source sheet (an invalid "30-31" day
+    // range before the real date) — correctly stays unparseable rather than
+    // guessing at malformed input.
+    expect(parseDataCelula('30-31-01/11/2020')).toBeNull();
   });
 });
 

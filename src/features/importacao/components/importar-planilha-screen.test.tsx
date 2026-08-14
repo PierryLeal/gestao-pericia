@@ -41,7 +41,8 @@ const LINHA_PREVIEW = {
 
 const RELATORIO_PERICIAS_VAZIO = {
   processosCriados: 0, processosAtualizados: 0, periciasCriadas: 0,
-  peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0, linhasComErro: [],
+  peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0,
+  linhasComErro: [], linhasComAviso: [], linhasPuladasPorDuplicidade: [],
 };
 
 const RELATORIO_PERITOS_VAZIO = {
@@ -202,6 +203,33 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /confirmar importação/i })).toBeDisabled());
   });
 
+  it('explains that every row was already imported when re-uploading the same sheet', async () => {
+    mockPreviewPericias.mockResolvedValue({
+      linhas: [{ ...LINHA_PREVIEW, status: 'duplicada' }],
+      naoProcessadas: [],
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /confirmar importação/i })).toBeDisabled());
+    expect(
+      screen.getByText(/essa linha já foi importada anteriormente — não há nada novo para confirmar/i)
+    ).toBeInTheDocument();
+  });
+
+  it('does not show the "already imported" message when the upload itself has no rows at all', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [], naoProcessadas: [] });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /confirmar importação/i })).toBeDisabled());
+    expect(screen.queryByText(/já foi importada anteriormente/i)).not.toBeInTheDocument();
+  });
+
   it('lists the rows that failed to import, with their reasons, in the report', async () => {
     mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
     mockConfirmarPericias.mockResolvedValue({
@@ -224,6 +252,78 @@ describe('ImportarPlanilhaScreen — aba Perícias e Processos', () => {
     expect(screen.getByText(/Linha 9: município não resolvido/)).toBeInTheDocument();
     expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('2 linhas falharam'));
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('shows an amber "linhas criadas com aviso" section, separate from erros, for rows saved with a dropped colaborador', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
+    mockConfirmarPericias.mockResolvedValue({
+      ...RELATORIO_PERICIAS_VAZIO,
+      periciasCriadas: 1,
+      linhasComAviso: [
+        { linhaOriginal: 13, erro: 'perícia criada, mas sem o(s) colaborador(es) da planilha: conflito de horário.' },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    expect(await screen.findByText(/linha criada com aviso/i)).toBeInTheDocument();
+    expect(screen.getByText(/Linha 13: perícia criada, mas sem o\(s\) colaborador/)).toBeInTheDocument();
+    expect(screen.queryByText(/linha com erro/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a "linhas puladas por duplicidade" section, separate from erros/avisos, with the reason', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
+    mockConfirmarPericias.mockResolvedValue({
+      ...RELATORIO_PERICIAS_VAZIO,
+      periciasCriadas: 1,
+      puladasPorDuplicidade: 1,
+      linhasPuladasPorDuplicidade: [
+        { linhaOriginal: 7, erro: 'linha idêntica à linha 2 desta mesma planilha (mesmo processo, data, hora, perito e colaborador(es)) — não foi criada de novo para não duplicar o mesmo agendamento.' },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+
+    expect(await screen.findByText(/linha pulada por duplicidade/i)).toBeInTheDocument();
+    expect(screen.getByText(/Linha 7: linha idêntica à linha 2/)).toBeInTheDocument();
+    expect(screen.queryByText(/linha com erro/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/linha criada com aviso/i)).not.toBeInTheDocument();
+  });
+
+  it('filters both the erros and avisos lists by a typed keyword', async () => {
+    mockPreviewPericias.mockResolvedValue({ linhas: [LINHA_PREVIEW], naoProcessadas: [] });
+    mockConfirmarPericias.mockResolvedValue({
+      ...RELATORIO_PERICIAS_VAZIO,
+      periciasCriadas: 1,
+      linhasComErro: [
+        { linhaOriginal: 7, erro: 'falha ao criar processo: Autor é obrigatório' },
+        { linhaOriginal: 9, erro: 'município não resolvido' },
+      ],
+      linhasComAviso: [
+        { linhaOriginal: 13, erro: 'perícia criada, mas sem o(s) colaborador(es): conflito de horário.' },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ImportarPlanilhaScreen />);
+
+    await user.upload(screen.getByLabelText(/planilha de perícias/i), arquivoFake());
+    await waitFor(() => expect(screen.getByDisplayValue('0001234-56.2026')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /confirmar importação/i }));
+    await screen.findByText(/com erro/i);
+
+    await user.type(screen.getByPlaceholderText(/filtrar por palavra/i), 'colaborador');
+
+    expect(screen.queryByText(/Linha 7:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Linha 9:/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Linha 13:/)).toBeInTheDocument();
   });
 
   it('does not mention errors in the report when nothing failed', async () => {

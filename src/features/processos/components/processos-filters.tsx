@@ -30,14 +30,16 @@ export function ProcessosFilters({
   return (
     <Card size="sm">
       <CardContent>
-        <div className="max-w-xs space-y-1.5">
-          <Label htmlFor="busca-processos">Buscar</Label>
-          <Input
-            id="busca-processos"
-            placeholder="Número, autor ou réu"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="busca-processos">Buscar</Label>
+            <Input
+              id="busca-processos"
+              placeholder="Número, autor ou réu"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

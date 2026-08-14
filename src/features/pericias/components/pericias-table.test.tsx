@@ -11,6 +11,8 @@ const items: PericiaListItem[] = [
     horaAgendada: '14:30',
     situacao: 'marcada',
     observacoes: 'Levar equipamento de medição extra para esta perícia específica',
+    contrato: 'VALE AT',
+    local: null,
     processo: {
       id: 1, numero: '0001234-56.2026.8.26.0100', autor: 'Maria Souza', reu: 'João Pereira', escritorio: 'PMRA',
     },
@@ -20,6 +22,7 @@ const items: PericiaListItem[] = [
       jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo',
     },
     colaboradores: [],
+    problemas: [],
   },
 ];
 
@@ -38,6 +41,7 @@ describe('PericiasTable', () => {
     expect(screen.getByText('0001234-56.2026.8.26.0100')).toBeInTheDocument();
     expect(screen.getByText('São Paulo/SP')).toBeInTheDocument();
     expect(screen.getByText('Carlos Lima')).toBeInTheDocument();
+    expect(screen.getByText('VALE AT')).toBeInTheDocument();
     expect(screen.queryByText(/Autor: Maria Souza/)).not.toBeInTheDocument();
   });
 
@@ -151,11 +155,38 @@ describe('PericiasTable', () => {
     expect(screen.getByText(/Formação: Direito/)).toBeInTheDocument();
   });
 
+  it('shows a warning icon and lists the reasons when the pericia has pending problems', async () => {
+    const user = userEvent.setup();
+    const comProblema: PericiaListItem = {
+      ...items[0], id: 5, processo: null, problemas: ['processo não vinculado'],
+    };
+    render(<PericiasTable items={[comProblema]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('Sem processo')).toBeInTheDocument();
+    await user.hover(screen.getByText('Perícia com pendências', { selector: '.sr-only' }));
+    expect(await screen.findByText('processo não vinculado')).toBeInTheDocument();
+  });
+
+  it('shows fallback text and no problem icon when município and perito are missing but processo is fine', () => {
+    const semMunicipioPerito: PericiaListItem = {
+      ...items[0], id: 6, municipio: null, perito: null, problemas: ['município não vinculado', 'perito não vinculado'],
+    };
+    render(<PericiasTable items={[semMunicipioPerito]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText('Sem município')).toBeInTheDocument();
+    expect(screen.getByText('Sem perito')).toBeInTheDocument();
+  });
+
+  it('does not show the warning icon for a pericia with no problems', () => {
+    render(<PericiasTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    expect(screen.queryByText('Perícia com pendências', { selector: '.sr-only' })).not.toBeInTheDocument();
+  });
+
   it('shows the total count and paginates at 30 per page', async () => {
     const muitos: PericiaListItem[] = Array.from({ length: 35 }, (_, i) => ({
       ...items[0],
       id: i + 1,
-      processo: { ...items[0].processo, numero: `PROCESSO-${i + 1}` },
+      processo: { ...items[0].processo!, numero: `PROCESSO-${i + 1}` },
     }));
     const user = userEvent.setup();
     render(<PericiasTable items={muitos} onEdit={vi.fn()} onDelete={vi.fn()} />);

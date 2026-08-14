@@ -10,6 +10,7 @@ vi.mock('../actions', () => ({
   createPericia: vi.fn(async () => ({ success: true, data: { id: 5 } })),
   updatePericia: vi.fn(async () => ({ success: true, data: { id: 5 } })),
   getColaboradoresIndisponiveis: vi.fn(async () => []),
+  listContratosDistintos: vi.fn(async () => []),
 }));
 
 vi.mock('@/features/processos/components/processo-combobox', () => ({
@@ -120,7 +121,7 @@ describe('PericiaForm', () => {
     await user.type(screen.getByLabelText('Hora agendada'), '14:00');
     await new Promise((r) => setTimeout(r, 350));
 
-    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', undefined, undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', undefined, undefined, undefined, undefined, 'pendente');
 
     await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
     const busyOption = await screen.findByRole('option', { name: 'Bruna' });
@@ -150,7 +151,7 @@ describe('PericiaForm', () => {
     await user.type(screen.getByLabelText('Hora agendada'), '14:00');
     await new Promise((r) => setTimeout(r, 350));
 
-    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 1, undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 1, undefined, undefined, undefined, 'pendente');
   });
 
   it('does not restrict the colaborador select when no date/time is set', async () => {
@@ -239,6 +240,8 @@ describe('PericiaForm', () => {
           horaAgendada: '14:00',
           situacao: 'marcada',
           observacoes: null,
+          contrato: null,
+          local: null,
           processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' },
           municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
         }}
@@ -251,7 +254,7 @@ describe('PericiaForm', () => {
 
     await new Promise((r) => setTimeout(r, 350));
 
-    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 1, 9);
+    expect(getColaboradoresIndisponiveis).toHaveBeenCalledWith('2026-08-10', '14:00', 1, 9, 1, 'São Paulo', 'marcada');
   });
 
   it('surfaces an error via onError when the conflict check fails', async () => {
@@ -315,8 +318,8 @@ describe('PericiaForm', () => {
     await new Promise((r) => setTimeout(r, 900));
 
     expect(getColaboradoresIndisponiveis).toHaveBeenCalledTimes(2);
-    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(1, '2026-08-10', '14:00', undefined, undefined);
-    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(2, '2026-08-10', '15:00', undefined, undefined);
+    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(1, '2026-08-10', '14:00', undefined, undefined, undefined, undefined, 'pendente');
+    expect(getColaboradoresIndisponiveis).toHaveBeenNthCalledWith(2, '2026-08-10', '15:00', undefined, undefined, undefined, undefined, 'pendente');
 
     await user.click(screen.getByRole('combobox', { name: /colaborador/i }));
     const brunaOption = await screen.findByRole('option', { name: 'Bruna' });

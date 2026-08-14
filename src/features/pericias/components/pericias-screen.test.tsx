@@ -14,6 +14,12 @@ vi.mock('../actions', () => ({
   createPericia: vi.fn(async () => ({ success: true, data: { id: 9 } })),
   updatePericia: vi.fn(async () => ({ success: true, data: { id: 1 } })),
   deletePericia: vi.fn(async () => ({ success: true, data: null })),
+  listContratosDistintos: vi.fn(async () => []),
+  // Editing a pericia that already has a dataAgendada/horaAgendada set fires
+  // PericiaForm's debounced conflict check on mount — left unmocked, it hits
+  // the real server action (unavailable in this test environment) and throws
+  // asynchronously after the test's own assertions have already run.
+  getColaboradoresIndisponiveis: vi.fn(async () => []),
 }));
 
 vi.mock('@/features/processos/components/processo-combobox', () => ({
@@ -35,10 +41,13 @@ const items: PericiaListItem[] = [
     horaAgendada: '14:30',
     situacao: 'marcada',
     observacoes: null,
+    contrato: null,
+    local: null,
     processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' },
     municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     perito: { id: 1, nome: 'Carlos', contato: '', formacao: '', crea: '', jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial' },
     colaboradores: [],
+    problemas: [],
   },
 ];
 
@@ -55,6 +64,8 @@ describe('PericiasScreen', () => {
       horaAgendada: '14:30',
       situacao: 'marcada' as const,
       observacoes: null,
+      contrato: null,
+      local: null,
       processo: { id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' },
       municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
     }));

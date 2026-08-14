@@ -29,6 +29,7 @@ export type PericiaPreviewRow = {
   colaboradorIdsExistentes: number[];
   situacao: PericiaInput['situacao'];
   observacoes: string | null;
+  contrato: string | null;
 };
 
 export type PreviewImportacaoPericiasResult = {
@@ -50,6 +51,16 @@ export type RelatorioImportacaoPericias = {
   colaboradoresCriados: number;
   puladasPorDuplicidade: number;
   linhasComErro: LinhaComErro[];
+  /** The row WAS saved, but something had to be dropped/adjusted to make that
+   *  possible (e.g. a colaborador conflicted and was left unlinked) — distinct
+   *  from linhasComErro, where the row was not saved at all. */
+  linhasComAviso: LinhaComErro[];
+  /** The row was intentionally NOT saved because it's an exact duplicate of
+   *  another perícia (same processo/data/hora/perito/colaborador(es)) — either
+   *  already in the database or earlier in this same sheet. Kept apart from
+   *  linhasComErro/linhasComAviso since this isn't a failure or a compromise,
+   *  it's by design (creating it would double-book the same real perícia). */
+  linhasPuladasPorDuplicidade: LinhaComErro[];
 };
 
 export type ColaboradorPreviewRow = {

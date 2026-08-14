@@ -9,10 +9,10 @@ export default async function PericiasPage({
 }: {
   searchParams: Promise<{
     situacao?: string; busca?: string; dataInicio?: string; dataFim?: string;
-    municipioId?: string; peritoId?: string; colaboradorId?: string;
+    municipioId?: string; peritoId?: string; colaboradorId?: string; contrato?: string;
   }>;
 }) {
-  const { situacao, busca, dataInicio, dataFim, municipioId, peritoId, colaboradorId } = await searchParams;
+  const { situacao, busca, dataInicio, dataFim, municipioId, peritoId, colaboradorId, contrato } = await searchParams;
   const itemsPromise = listPericias({
     situacao,
     busca,
@@ -21,6 +21,7 @@ export default async function PericiasPage({
     municipioId: municipioId ? Number(municipioId) : undefined,
     peritoId: peritoId ? Number(peritoId) : undefined,
     colaboradorId: colaboradorId ? Number(colaboradorId) : undefined,
+    contrato,
   });
   const [peritos, colaboradores, municipio] = await Promise.all([
     listPeritosOptions(),

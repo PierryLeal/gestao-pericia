@@ -28,7 +28,7 @@ function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRo
     processoIdExistente: null, dataAgendada: '2026-09-20', horaAgendada: '10:00',
     municipioId: 3106200, municipioNome: 'Belo Horizonte', municipioUf: 'MG',
     peritoNome: 'Cleber', peritoIdExistente: 1, colaboradorNome: 'João', colaboradorIdsExistentes: [2],
-    situacao: 'marcada', observacoes: null,
+    situacao: 'marcada', observacoes: null, contrato: null,
     ...overrides,
   };
 }

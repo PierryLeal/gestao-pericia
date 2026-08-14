@@ -51,6 +51,8 @@ const items: PericiaListItem[] = [
     horaAgendada: '10:00',
     situacao: 'pendente' as const,
     observacoes: null,
+    contrato: null,
+    local: null,
     processo: { id: 5, numero: '0001234-56.2026', autor: 'Autor X', reu: 'Réu Y', escritorio: 'PMRA' },
     municipio: { id: 3, nome: 'Belo Horizonte', uf: 'MG' },
     perito: {
@@ -58,6 +60,7 @@ const items: PericiaListItem[] = [
       jaTrabalhamos: true, relacao: 'boa' as const, resultados: 'positivo' as const,
     },
     colaboradores: [],
+    problemas: [],
   },
 ];
 

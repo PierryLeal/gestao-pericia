@@ -4,7 +4,13 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import type { CalendarEventDetails } from '../lib/calendario-mapping';
 
 export function renderCalendarEventContent(arg: EventContentArg) {
-  const details = arg.event.extendedProps as CalendarEventDetails;
+  const details = arg.event.extendedProps as Partial<CalendarEventDetails>;
+  // While an unscheduled pericia is being dragged from the sidebar, FullCalendar
+  // renders a drop-preview chip in the target cell using only the {id, title}
+  // handed to the Draggable — extendedProps (including `problemas`) isn't
+  // populated yet, so this must tolerate a partial/empty details object instead
+  // of assuming the full shape used once the event is actually on the calendar.
+  const problemas = details.problemas ?? [];
 
   return (
     <Tooltip>
@@ -27,7 +33,14 @@ export function renderCalendarEventContent(arg: EventContentArg) {
         <p>
           {details.municipioNome}/{details.municipioUf} às {details.horaAgendada}
         </p>
-        <StatusBadge situacao={details.situacao} />
+        {details.situacao && <StatusBadge situacao={details.situacao} />}
+        {problemas.length > 0 && (
+          <ul className="list-disc pl-3 text-destructive">
+            {problemas.map((problema) => (
+              <li key={problema}>{problema}</li>
+            ))}
+          </ul>
+        )}
       </TooltipContent>
     </Tooltip>
   );

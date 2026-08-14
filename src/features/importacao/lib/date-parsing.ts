@@ -17,8 +17,29 @@ export function parseDataCelula(value: unknown): string | null {
   const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
 
-  const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+  // D/M/YYYY or DD/MM/YYYY — day and month typed with or without a leading zero.
+  const brMatchAnoCompleto = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (brMatchAnoCompleto) {
+    const [, dia, mes, ano] = brMatchAnoCompleto;
+    return `${ano}-${pad2(Number(mes))}-${pad2(Number(dia))}`;
+  }
+
+  // D/M/YY or DD/MM/YY — the sheet's real-world dominant format: cells typed by
+  // hand instead of picked from a date field, almost always with a 2-digit year
+  // and no leading zero on day/month (e.g. "14/6/22"). Without this, over half
+  // the rows in a real import (1289 of 2391 date cells, confirmed against
+  // TESTE.xlsx) silently lose their data_agendada — the pericia still gets
+  // created (per the "never reject a row" policy) but with no date, and two
+  // rows that only differ by date then collide on the duplicate-detection key
+  // and get wrongly skipped as if they were the same appointment.
+  const brMatchAnoCurto = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (brMatchAnoCurto) {
+    const [, dia, mes, anoCurto] = brMatchAnoCurto;
+    // Standard 2-digit-year pivot (same rule Excel itself uses): 00–68 -> 20xx,
+    // 69–99 -> 19xx. A perícia scheduling sheet has no plausible use for 1969-1999.
+    const ano = Number(anoCurto) <= 68 ? 2000 + Number(anoCurto) : 1900 + Number(anoCurto);
+    return `${ano}-${pad2(Number(mes))}-${pad2(Number(dia))}`;
+  }
 
   return null;
 }

@@ -1,13 +1,16 @@
 'use client';
 
 import { use, useState } from 'react';
-import { Pencil, Trash2, Merge } from 'lucide-react';
+import { Pencil, Trash2, Merge, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PaginationControls } from '@/components/shared/pagination-controls';
 import { paginar, totalDePaginas, ITENS_POR_PAGINA_PADRAO } from '@/lib/paginar';
 import { formatPhone } from '@/lib/masks';
+import { nomeSuspeito } from '@/lib/nome-suspeito';
+import { cn } from '@/lib/utils';
 import type { Colaborador } from '../actions';
 
 export function ColaboradoresTableAsync({
@@ -72,9 +75,26 @@ export function ColaboradoresTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {itensDaPagina.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.nome}</TableCell>
+          {itensDaPagina.map((item) => {
+            const nomeCurto = nomeSuspeito(item.nome);
+            return (
+            <TableRow key={item.id} className={cn(nomeCurto && 'bg-destructive/10')}>
+              <TableCell>
+                <div className="flex items-center gap-1.5">
+                  {nomeCurto && (
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="inline-flex" />}>
+                        <AlertTriangle className="size-4 shrink-0 text-destructive" />
+                        <span className="sr-only">Nome muito curto</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Nome muito curto — confirme se está correto e corrija/mescle o cadastro se necessário.
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  <span>{item.nome}</span>
+                </div>
+              </TableCell>
               <TableCell>{formatPhone(item.contato)}</TableCell>
               <TableCell>{item.formacao}</TableCell>
               <TableCell>{item.email}</TableCell>
@@ -93,7 +113,8 @@ export function ColaboradoresTable({
                 </Button>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
       <PaginationControls

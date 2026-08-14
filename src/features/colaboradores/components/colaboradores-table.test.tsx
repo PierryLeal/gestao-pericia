@@ -58,6 +58,18 @@ describe('ColaboradoresTable', () => {
     expect(onDelete).not.toHaveBeenCalled();
   });
 
+  it('flags a colaborador whose name is a single character with a warning icon', () => {
+    const comNomeCurto: Colaborador[] = [{ id: 2, nome: 'J', contato: '', formacao: '', email: null }];
+    render(<ColaboradoresTable items={comNomeCurto} onEdit={vi.fn()} onDelete={vi.fn()} onMerge={vi.fn()} />);
+
+    expect(screen.getByText('Nome muito curto')).toBeInTheDocument();
+  });
+
+  it('does not flag a colaborador with a short but plausible name (2+ characters)', () => {
+    render(<ColaboradoresTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} onMerge={vi.fn()} />);
+    expect(screen.queryByText('Nome muito curto')).not.toBeInTheDocument();
+  });
+
   it('shows the total count and paginates at 30 per page', async () => {
     const muitos: Colaborador[] = Array.from({ length: 35 }, (_, i) => ({
       id: i + 1, nome: `Colaborador ${i + 1}`, contato: '', formacao: '', email: null,

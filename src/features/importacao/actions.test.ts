@@ -20,12 +20,12 @@ const mockCreatePerito = vi.fn();
 const mockUpdatePerito = vi.fn();
 const mockCreateColaborador = vi.fn();
 const mockUpdateColaborador = vi.fn();
-const mockCreatePericia = vi.fn();
+const mockCreatePericiaComPendencias = vi.fn();
 
 vi.mock('@/features/processos/actions', () => ({
   listProcessos: (...args: unknown[]) => mockListProcessos(...args),
-  createProcesso: (...args: unknown[]) => mockCreateProcesso(...args),
-  updateProcesso: (...args: unknown[]) => mockUpdateProcesso(...args),
+  createProcessoComPendencias: (...args: unknown[]) => mockCreateProcesso(...args),
+  updateProcessoComPendencias: (...args: unknown[]) => mockUpdateProcesso(...args),
 }));
 vi.mock('@/features/peritos/actions', () => ({
   listPeritos: (...args: unknown[]) => mockListPeritos(...args),
@@ -39,7 +39,7 @@ vi.mock('@/features/colaboradores/actions', () => ({
 }));
 vi.mock('@/features/pericias/actions', () => ({
   listPericias: (...args: unknown[]) => mockListPericias(...args),
-  createPericia: (...args: unknown[]) => mockCreatePericia(...args),
+  createPericiaComPendencias: (...args: unknown[]) => mockCreatePericiaComPendencias(...args),
 }));
 vi.mock('@/lib/ibge/client', () => ({
   findMunicipiosPorNomeExato: (...args: unknown[]) => mockFindMunicipiosPorNomeExato(...args),
@@ -99,15 +99,26 @@ describe('previewImportacaoPericias', () => {
     });
   });
 
-  it('sends an unparseable PERÍCIA cell to naoProcessadas instead of linhas', async () => {
+  it('keeps an unparseable PERÍCIA cell as an editable row instead of dropping it into naoProcessadas', async () => {
     const buffer = await criarBuffer([HEADER, ['texto sem separador', '', '', '', '', '', '', '', '']]);
 
     const result = await previewImportacaoPericias(buffer);
 
-    expect(result.linhas).toEqual([]);
-    expect(result.naoProcessadas).toEqual([
-      { linhaOriginal: 2, texto: 'texto sem separador', motivo: 'não foi possível identificar o número do processo' },
-    ]);
+    expect(result.naoProcessadas).toEqual([]);
+    expect(result.linhas).toHaveLength(1);
+    expect(result.linhas[0]).toMatchObject({
+      status: 'atencao',
+      // The raw cell text becomes the row's provisional número instead of
+      // staying blank — a blank número is never deduped against anything, so
+      // re-importing the same sheet would otherwise recreate this row every
+      // time (confirmed in production: 147+ extra duplicates from exactly this).
+      processoNumero: 'texto sem separador',
+      processoAutor: '',
+      processoReu: '',
+    });
+    expect(result.linhas[0].motivos).toContain(
+      'processo não identificado no texto "texto sem separador" — usando o texto da célula como identificador provisório; edite o campo Processo manualmente'
+    );
   });
 
   it('flags a bare processo número with no name prefix as atencao instead of dropping the row', async () => {
@@ -157,6 +168,41 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].municipioUf).toBe('MG');
   });
 
+  it('resolves a "CIDADE-UF" LOCAL value by stripping the UF suffix and matching its uf exactly', async () => {
+    // The sheet's LOCAL column sometimes glues the state onto the city name
+    // (e.g. "ARAQUARI-SC") — an exact-name lookup never matches that as typed.
+    mockFindMunicipiosPorNomeExato.mockImplementation(async (nome: string) => {
+      if (nome === 'ARAQUARI') return [{ id: 4201208, nome: 'Araquari', uf: 'SC' }];
+      return [];
+    });
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '', '', 'ARAQUARI-SC', 'Cleber', '', '', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].municipioId).toBe(4201208);
+    expect(result.linhas[0].municipioUf).toBe('SC');
+    expect(result.linhas[0].motivos).not.toContain('município não encontrado');
+  });
+
+  it('does not use a "CIDADE-UF" match whose uf disagrees with the suffix', async () => {
+    mockFindMunicipiosPorNomeExato.mockImplementation(async (nome: string) => {
+      if (nome === 'ARAQUARI') return [{ id: 4201208, nome: 'Araquari', uf: 'MG' }];
+      return [];
+    });
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '', '', 'ARAQUARI-SC', 'Cleber', '', '', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].municipioId).toBeNull();
+    expect(result.linhas[0].motivos).toContain('município não encontrado');
+  });
+
   it('flags a row atencao and requires manual perito selection when PERITO is blank', async () => {
     const buffer = await criarBuffer([
       HEADER,
@@ -194,7 +240,9 @@ describe('previewImportacaoPericias', () => {
     const result = await previewImportacaoPericias(buffer);
 
     expect(result.linhas[0].status).toBe('suspeito');
-    expect(result.linhas[0].motivos).toEqual(['nome de colaborador "I" muito curto — confirme se está correto']);
+    expect(result.linhas[0].motivos).toEqual([
+      'nome de colaborador "I" muito curto — será cadastrado assim mesmo, confirme se está correto',
+    ]);
   });
 
   it('does not flag a single-character colaborador name that already exists in the cadastro', async () => {
@@ -307,6 +355,33 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[0].status).toBe('duplicada');
   });
 
+  it('marks a row with no CNJ/dash processo número as duplicada on re-import, via the raw-text fallback número', async () => {
+    // Before the fallback, this row's processoNumero stayed '' — which is
+    // never deduped against anything — so re-importing the same sheet always
+    // created a second copy. Confirmed in production: 147+ extra duplicates.
+    mockListProcessos.mockResolvedValue([
+      { id: 9, numero: 'FC.02.01.055', autor: '', reu: '', escritorio: '' },
+    ]);
+    mockListPericias.mockResolvedValue([
+      {
+        id: 100, dataAgendada: '2020-11-11', horaAgendada: '08:00', situacao: 'realizada', observacoes: null,
+        processo: { id: 9, numero: 'FC.02.01.055', autor: '', reu: '', escritorio: '' },
+        municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
+        perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+        colaboradores: [{ id: 2, nome: 'Lelis', contato: '', formacao: '' }],
+      },
+    ]);
+    const buffer = await criarBuffer([
+      HEADER,
+      ['FC.02.01.055', '11/11/20', '08:00', 'Belo Horizonte', 'Cleber', 'Lelis', 'OK', '', ''],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].processoNumero).toBe('FC.02.01.055');
+    expect(result.linhas[0].status).toBe('duplicada');
+  });
+
   it('does NOT mark as duplicada when only the observação differs (the multi-especialista case)', async () => {
     mockListProcessos.mockResolvedValue([{ id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' }]);
     mockListPericias.mockResolvedValue([
@@ -329,10 +404,12 @@ describe('previewImportacaoPericias', () => {
   });
 
   it('flags both sides of a same-colaborador schedule conflict between two sheet rows', async () => {
+    // Different peritos (and thus not exempt by the same-perito+local carve-out
+    // below) so this stays a genuine, unresolved conflict.
     const buffer = await criarBuffer([
       HEADER,
       ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
-      ['Ana x José - 0007654-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+      ['Ana x José - 0007654-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Outro Perito', 'João', 'CAMPO', '', 'PMRA'],
     ]);
 
     const result = await previewImportacaoPericias(buffer);
@@ -348,12 +425,14 @@ describe('previewImportacaoPericias', () => {
   });
 
   it('flags a sheet row that conflicts with an existing pericia already saved in the system', async () => {
+    // Different perito than the sheet row below (so this stays a genuine
+    // conflict, not exempted by the same-perito+local carve-out).
     mockListPericias.mockResolvedValue([
       {
         id: 100, dataAgendada: '2026-09-20', horaAgendada: '10:00:00', situacao: 'marcada', observacoes: null,
         processo: { id: 9, numero: '0009999-99.2019', autor: 'Outra', reu: 'Parte', escritorio: 'PMRA' },
         municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
-        perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+        perito: { id: 1, nome: 'Outro Perito', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
         colaboradores: [{ id: 2, nome: 'João', contato: '', formacao: '' }],
       },
     ]);
@@ -383,6 +462,22 @@ describe('previewImportacaoPericias', () => {
     expect(result.linhas[1].motivos).toEqual([]);
   });
 
+  it('does not flag a schedule conflict for two rows sharing colaborador/data/hora/perito/local, even across different processos', async () => {
+    // Confirmed with the user: same perito, data, hora, local AND colaborador
+    // is understood as the colaborador finishing one pericia and moving
+    // straight into the next — not a double-booking.
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+      ['Ana x José - 0007654-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].motivos).toEqual([]);
+    expect(result.linhas[1].motivos).toEqual([]);
+  });
+
   it('finds the header row even when a title row sits above it', async () => {
     const buffer = await criarBuffer([
       ['RELATÓRIO DE PERÍCIAS 2026'],
@@ -395,6 +490,68 @@ describe('previewImportacaoPericias', () => {
     expect(result.naoProcessadas).toEqual([]);
     expect(result.linhas).toHaveLength(1);
     expect(result.linhas[0].processoNumero).toBe('0001234-56.2026');
+  });
+
+  it('tags rows with the contrato read from a banner row above the header', async () => {
+    const buffer = await criarBuffer([
+      Array(9).fill('VALE BRUMADINHO'),
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas).toHaveLength(1);
+    expect(result.linhas[0].contrato).toBe('VALE BRUMADINHO');
+  });
+
+  it('leaves contrato null for an older, single-block sheet with no banner row', async () => {
+    const buffer = await criarBuffer([
+      HEADER,
+      ['Maria x João - 0001234-56.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].contrato).toBeNull();
+  });
+
+  it('parses several contrato blocks in the same sheet, tagging each row with its own block\'s contrato', async () => {
+    const buffer = await criarBuffer([
+      Array(9).fill('VALE AT'),
+      HEADER,
+      ['Maria x João - 0001111-11.2026', '20/09/2026', '10:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+      ['Ana x José - 0002222-22.2026', '21/09/2026', '11:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+      Array(9).fill('VALE BRUMADINHO'),
+      HEADER,
+      ['Carlos x Davi - 0003333-33.2026', '22/09/2026', '12:00', 'Belo Horizonte', 'Cleber', 'João', 'CAMPO', '', 'PMRA'],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas).toHaveLength(3);
+    const porContrato = Object.fromEntries(result.linhas.map((l) => [l.processoNumero, l.contrato]));
+    expect(porContrato).toEqual({
+      '0001111-11.2026': 'VALE AT',
+      '0002222-22.2026': 'VALE AT',
+      '0003333-33.2026': 'VALE BRUMADINHO',
+    });
+  });
+
+  it('carries the row\'s contrato through to the pericia create payload on confirm, not the processo', async () => {
+    // A processo can legitimately be worked under more than one contrato over
+    // time (confirmed in a real import), so contrato describes the specific
+    // pericia, not the lawsuit — it must NOT be written onto the processo.
+    mockListProcessos.mockResolvedValue([]);
+    mockCreateProcesso.mockResolvedValue({ success: true, data: { id: 50, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' } });
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
+
+    await confirmarImportacaoPericias([
+      linhaBase({ contrato: 'VALE BRUMADINHO' }),
+    ]);
+
+    expect(mockCreateProcesso).not.toHaveBeenCalledWith(expect.objectContaining({ contrato: expect.anything() }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ contrato: 'VALE BRUMADINHO' }));
   });
 
   it('explains itself via naoProcessadas when the PERÍCIA header column is missing entirely', async () => {
@@ -464,6 +621,7 @@ function linhaBase(overrides: Partial<PericiaPreviewRow> = {}): PericiaPreviewRo
     colaboradorIdsExistentes: [2],
     situacao: 'marcada',
     observacoes: null,
+    contrato: null,
     ...overrides,
   };
 }
@@ -474,7 +632,7 @@ describe('confirmarImportacaoPericias', () => {
     mockUpdateProcesso.mockResolvedValue({ success: true, data: { id: 9, numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA' } });
     mockCreatePerito.mockResolvedValue({ success: true, data: { id: 60, nome: 'Novo Perito' } });
     mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 70, nome: 'Novo Colaborador' } });
-    mockCreatePericia.mockResolvedValue({ success: true, data: { id: 100 } });
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
     mockListPericias.mockResolvedValue([]);
     mockUpsertMunicipio.mockResolvedValue({ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' });
   });
@@ -487,9 +645,10 @@ describe('confirmarImportacaoPericias', () => {
     expect(mockCreateProcesso).toHaveBeenCalledWith({
       numero: '0001234-56.2026', autor: 'Maria', reu: 'João', escritorio: 'PMRA',
     });
-    expect(mockCreatePericia).toHaveBeenCalledWith({
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith({
       processoId: 50, municipioId: 3106200, peritoId: 1, colaboradorIds: [2],
       dataAgendada: '2026-09-20', horaAgendada: '10:00', situacao: 'marcada', observacoes: null,
+      contrato: null, local: 'Belo Horizonte',
     });
     expect(relatorio.processosCriados).toBe(1);
     expect(relatorio.processosAtualizados).toBe(0);
@@ -523,7 +682,7 @@ describe('confirmarImportacaoPericias', () => {
       nome: 'Novo Perito', contato: '', formacao: '', crea: '', documento: '',
       jaTrabalhamos: false, relacao: 'neutra', resultados: 'parcial',
     });
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 60 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 60 }));
   });
 
   it('creates the same new perito only once across two rows referencing it, reusing the id on the second row', async () => {
@@ -535,15 +694,15 @@ describe('confirmarImportacaoPericias', () => {
     await confirmarImportacaoPericias(linhas);
 
     expect(mockCreatePerito).toHaveBeenCalledTimes(1);
-    expect(mockCreatePericia).toHaveBeenNthCalledWith(1, expect.objectContaining({ peritoId: 60 }));
-    expect(mockCreatePericia).toHaveBeenNthCalledWith(2, expect.objectContaining({ peritoId: 60 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenNthCalledWith(1, expect.objectContaining({ peritoId: 60 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenNthCalledWith(2, expect.objectContaining({ peritoId: 60 }));
   });
 
   it('leaves colaboradorIds empty when colaboradorNome is blank, without creating a colaborador', async () => {
     await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9, colaboradorNome: '', colaboradorIdsExistentes: [] })]);
 
     expect(mockCreateColaborador).not.toHaveBeenCalled();
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [] }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [] }));
   });
 
   it('re-checks duplicidade against a fresh DB read and skips a row that now matches an existing pericia', async () => {
@@ -559,9 +718,12 @@ describe('confirmarImportacaoPericias', () => {
 
     const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9 })]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
     expect(relatorio.periciasCriadas).toBe(0);
     expect(relatorio.puladasPorDuplicidade).toBe(1);
+    expect(relatorio.linhasPuladasPorDuplicidade).toEqual([
+      { linhaOriginal: 2, erro: expect.stringContaining('banco de dados') },
+    ]);
   });
 
   it('recognizes a duplicate even though the DB returns hora_agendada with seconds ("10:00:00") while the sheet parses to "10:00"', async () => {
@@ -581,7 +743,7 @@ describe('confirmarImportacaoPericias', () => {
 
     const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9, horaAgendada: '10:00' })]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
     expect(relatorio.periciasCriadas).toBe(0);
     expect(relatorio.puladasPorDuplicidade).toBe(1);
   });
@@ -589,8 +751,11 @@ describe('confirmarImportacaoPericias', () => {
   it('skips a row whose own status is duplicada without a fresh-DB check', async () => {
     const relatorio = await confirmarImportacaoPericias([linhaBase({ processoIdExistente: 9, status: 'duplicada' })]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
     expect(relatorio.puladasPorDuplicidade).toBe(1);
+    expect(relatorio.linhasPuladasPorDuplicidade).toEqual([
+      { linhaOriginal: 2, erro: expect.stringContaining('banco de dados') },
+    ]);
   });
 
   it('creates the same new processo only once across two rows referencing it, reusing the id on the second row', async () => {
@@ -602,8 +767,8 @@ describe('confirmarImportacaoPericias', () => {
     const relatorio = await confirmarImportacaoPericias(linhas);
 
     expect(mockCreateProcesso).toHaveBeenCalledTimes(1);
-    expect(mockCreatePericia).toHaveBeenNthCalledWith(1, expect.objectContaining({ processoId: 50 }));
-    expect(mockCreatePericia).toHaveBeenNthCalledWith(2, expect.objectContaining({ processoId: 50 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenNthCalledWith(1, expect.objectContaining({ processoId: 50 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenNthCalledWith(2, expect.objectContaining({ processoId: 50 }));
     // The second row reuses the batch-created processo without rewriting it.
     expect(mockUpdateProcesso).not.toHaveBeenCalled();
     expect(relatorio.processosCriados).toBe(1);
@@ -622,7 +787,7 @@ describe('confirmarImportacaoPericias', () => {
 
     expect(mockUpdateProcesso).toHaveBeenCalledTimes(1);
     expect(mockCreateProcesso).not.toHaveBeenCalled();
-    expect(mockCreatePericia).toHaveBeenCalledTimes(3);
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledTimes(3);
     expect(relatorio.processosAtualizados).toBe(1);
   });
 
@@ -634,9 +799,12 @@ describe('confirmarImportacaoPericias', () => {
 
     const relatorio = await confirmarImportacaoPericias(linhas);
 
-    expect(mockCreatePericia).toHaveBeenCalledTimes(1);
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledTimes(1);
     expect(relatorio.periciasCriadas).toBe(1);
     expect(relatorio.puladasPorDuplicidade).toBe(1);
+    expect(relatorio.linhasPuladasPorDuplicidade).toEqual([
+      { linhaOriginal: 3, erro: expect.stringContaining('linha 2') },
+    ]);
   });
 
   // --- C1: municípios resolved from the IBGE API must land in the local table
@@ -645,7 +813,7 @@ describe('confirmarImportacaoPericias', () => {
   it('upserts the row município into the local table before creating the perícia', async () => {
     const ordem: string[] = [];
     mockUpsertMunicipio.mockImplementation(async () => { ordem.push('upsertMunicipio'); });
-    mockCreatePericia.mockImplementation(async () => { ordem.push('createPericia'); return { success: true, data: { id: 100 } }; });
+    mockCreatePericiaComPendencias.mockImplementation(async () => { ordem.push('createPericia'); return { success: true, data: { id: 100 } }; });
 
     await confirmarImportacaoPericias([linhaBase()]);
 
@@ -665,7 +833,7 @@ describe('confirmarImportacaoPericias', () => {
     expect(mockUpsertMunicipio).toHaveBeenCalledTimes(2);
     expect(mockUpsertMunicipio).toHaveBeenCalledWith({ id: 3106200, nome: 'Belo Horizonte', uf: 'MG' });
     expect(mockUpsertMunicipio).toHaveBeenCalledWith({ id: 3131307, nome: 'Ipatinga', uf: 'MG' });
-    expect(mockCreatePericia).toHaveBeenCalledTimes(3);
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledTimes(3);
   });
 
   it('records the row as an error and skips it when the município upsert throws', async () => {
@@ -673,7 +841,7 @@ describe('confirmarImportacaoPericias', () => {
 
     const relatorio = await confirmarImportacaoPericias([linhaBase({ linhaOriginal: 4 })]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
     expect(relatorio.periciasCriadas).toBe(0);
     expect(relatorio.linhasComErro).toEqual([
       { linhaOriginal: 4, erro: 'falha ao salvar município: permission denied for table municipios' },
@@ -726,7 +894,7 @@ describe('confirmarImportacaoPericias', () => {
     await confirmarImportacaoPericias([linhaBase({ peritoNome: 'Cleber', peritoIdExistente: null })]);
 
     expect(mockCreatePerito).not.toHaveBeenCalled();
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 1 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 1 }));
   });
 
   it('re-resolves a corrected colaborador name against the fresh list instead of creating a duplicate', async () => {
@@ -735,7 +903,7 @@ describe('confirmarImportacaoPericias', () => {
     await confirmarImportacaoPericias([linhaBase({ colaboradorNome: 'João', colaboradorIdsExistentes: [] })]);
 
     expect(mockCreateColaborador).not.toHaveBeenCalled();
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [2] }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [2] }));
   });
 
   it('ignores a stale peritoIdExistente and creates when the fresh list no longer has that name', async () => {
@@ -745,14 +913,14 @@ describe('confirmarImportacaoPericias', () => {
     await confirmarImportacaoPericias([linhaBase({ peritoNome: 'Cleber', peritoIdExistente: 1 })]);
 
     expect(mockCreatePerito).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Cleber' }));
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 60 }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ peritoId: 60 }));
   });
 
   // --- C3 / I1: failures are reported instead of silently dropping the row.
 
   it('records a linhaComErro with the DB message when createPericia fails', async () => {
     mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
-    mockCreatePericia.mockResolvedValue({ success: false, error: 'violates foreign key constraint "pericias_municipio_id_fkey"' });
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: false, error: 'violates foreign key constraint "pericias_municipio_id_fkey"' });
 
     const relatorio = await confirmarImportacaoPericias([linhaBase({ linhaOriginal: 7 })]);
 
@@ -767,7 +935,7 @@ describe('confirmarImportacaoPericias', () => {
 
     const relatorio = await confirmarImportacaoPericias([linhaBase({ linhaOriginal: 3 })]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
     expect(relatorio.processosCriados).toBe(0);
     expect(relatorio.linhasComErro).toEqual([
       { linhaOriginal: 3, erro: 'falha ao criar processo: Já existe um processo com esse número' },
@@ -782,42 +950,118 @@ describe('confirmarImportacaoPericias', () => {
       linhaBase({ linhaOriginal: 5, peritoNome: 'Perito Novo', peritoIdExistente: null }),
     ]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
     expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 5, erro: 'falha ao criar perito: nome é obrigatório' }]);
   });
 
-  it('records a linhaComErro when the row has no perito at all', async () => {
+  it('saves the pericia with peritoId null instead of rejecting the row when there is no perito at all', async () => {
     mockListProcessos.mockResolvedValue([PROCESSO_EXISTENTE]);
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
 
     const relatorio = await confirmarImportacaoPericias([
       linhaBase({ linhaOriginal: 6, peritoNome: '', peritoIdExistente: null }),
     ]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
-    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 6, erro: 'perito não informado' }]);
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ peritoId: null }));
+    expect(relatorio.linhasComErro).toEqual([]);
+    expect(relatorio.periciasCriadas).toBe(1);
   });
 
-  it('skips an atencao row whose município was never resolved instead of sending null to createPericia', async () => {
+  it('saves the pericia with municipioId null instead of rejecting an atencao row whose município was never resolved', async () => {
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
+
     const relatorio = await confirmarImportacaoPericias([
       linhaBase({ linhaOriginal: 8, status: 'atencao', motivos: ['município não encontrado'], municipioId: null }),
     ]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ municipioId: null }));
     expect(mockUpsertMunicipio).not.toHaveBeenCalled();
-    expect(mockCreateProcesso).not.toHaveBeenCalled();
-    expect(relatorio.periciasCriadas).toBe(0);
-    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 8, erro: 'município não resolvido' }]);
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.linhasComErro).toEqual([]);
   });
 
-  it('refuses to auto-create a colaborador with a single-character name, and skips the row', async () => {
+  it('saves the pericia without a processo instead of rejecting a row whose número was never identified', async () => {
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 11, processoNumero: '' }),
+    ]);
+
+    expect(mockCreateProcesso).not.toHaveBeenCalled();
+    expect(mockUpdateProcesso).not.toHaveBeenCalled();
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ processoId: null }));
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.linhasComErro).toEqual([]);
+  });
+
+  it('creates the processo even with a blank autor/réu instead of rejecting the row', async () => {
+    mockCreateProcesso.mockResolvedValue({
+      success: true, data: { id: 50, numero: '0001234-56.2026', autor: '', reu: 'Vale', escritorio: 'PMRA' },
+    });
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 12, processoAutor: '' }),
+    ]);
+
+    expect(mockCreateProcesso).toHaveBeenCalledWith(expect.objectContaining({ autor: '' }));
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.linhasComErro).toEqual([]);
+  });
+
+  it('retries without colaboradores and reports an aviso (not an erro) when the DB rejects a genuine double-booking', async () => {
+    mockCreatePericiaComPendencias
+      .mockResolvedValueOnce({
+        success: false, error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
+      })
+      .mockResolvedValueOnce({ success: true, data: { id: 100 } });
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 13, colaboradorNome: 'João', colaboradorIdsExistentes: [2] }),
+    ]);
+
+    expect(mockCreatePericiaComPendencias).toHaveBeenNthCalledWith(1, expect.objectContaining({ colaboradorIds: [2] }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenNthCalledWith(2, expect.objectContaining({ colaboradorIds: [] }));
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.linhasComErro).toEqual([]);
+    expect(relatorio.linhasComAviso).toHaveLength(1);
+    expect(relatorio.linhasComAviso[0].linhaOriginal).toBe(13);
+    expect(relatorio.linhasComAviso[0].erro).toContain('já está atribuído a outra perícia');
+  });
+
+  it('reports a genuine erro (not just a dropped colaborador) when the retry without colaboradores also fails', async () => {
+    mockCreatePericiaComPendencias
+      .mockResolvedValueOnce({
+        success: false, error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
+      })
+      .mockResolvedValueOnce({ success: false, error: 'erro inesperado' });
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ linhaOriginal: 14, colaboradorNome: 'João', colaboradorIdsExistentes: [2] }),
+    ]);
+
+    expect(relatorio.periciasCriadas).toBe(0);
+    expect(relatorio.linhasComAviso).toEqual([]);
+    expect(relatorio.linhasComErro).toEqual([{ linhaOriginal: 14, erro: 'falha ao criar perícia: erro inesperado' }]);
+  });
+
+  it('creates a single-character colaborador name anyway, links it, and flags it as an aviso', async () => {
+    mockCreateColaborador.mockResolvedValue({ success: true, data: { id: 71, nome: 'I' } });
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
+
     const relatorio = await confirmarImportacaoPericias([
       linhaBase({ linhaOriginal: 9, colaboradorNome: 'I', colaboradorIdsExistentes: [] }),
     ]);
 
-    expect(mockCreateColaborador).not.toHaveBeenCalled();
-    expect(mockCreatePericia).not.toHaveBeenCalled();
-    expect(relatorio.linhasComErro).toEqual([
-      { linhaOriginal: 9, erro: 'nome de colaborador "I" muito curto para cadastrar — corrija antes de confirmar' },
+    expect(mockCreateColaborador).toHaveBeenCalledWith(expect.objectContaining({ nome: 'I' }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [71] }));
+    expect(relatorio.linhasComErro).toEqual([]);
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.linhasComAviso).toEqual([
+      {
+        linhaOriginal: 9,
+        erro: 'colaborador(es) com nome muito curto vinculado(s): "I". Confirme se está correto e corrija/mescle o cadastro se necessário.',
+      },
     ]);
   });
 
@@ -828,7 +1072,7 @@ describe('confirmarImportacaoPericias', () => {
     ]);
 
     expect(mockCreateColaborador).not.toHaveBeenCalled();
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [5] }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [5] }));
     expect(relatorio.linhasComErro).toEqual([]);
   });
 
@@ -848,21 +1092,44 @@ describe('confirmarImportacaoPericias', () => {
 
     expect(mockCreateColaborador).toHaveBeenCalledTimes(1);
     expect(mockCreateColaborador).toHaveBeenCalledWith({ nome: 'Julio Cesar Mulatti', contato: '', formacao: '', email: '' });
-    expect(mockCreatePericia).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [2, 71] }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [2, 71] }));
     expect(relatorio.colaboradoresCriados).toBe(1);
     expect(relatorio.linhasComErro).toEqual([]);
   });
 
-  it('fails the whole row when any one of several named colaboradores cannot be created, without creating the pericia', async () => {
+  it('still fails the whole row when a (non-suspicious) named colaborador genuinely fails to be created', async () => {
     mockListColaboradores.mockResolvedValue([]);
+    mockCreateColaborador.mockResolvedValue({ success: false, error: 'nome é obrigatório' });
+
+    const relatorio = await confirmarImportacaoPericias([
+      linhaBase({ colaboradorNome: 'Novo Colaborador', colaboradorIdsExistentes: [] }),
+    ]);
+
+    expect(mockCreatePericiaComPendencias).not.toHaveBeenCalled();
+    expect(relatorio.linhasComErro).toEqual([
+      { linhaOriginal: 2, erro: 'falha ao criar colaborador: nome é obrigatório' },
+    ]);
+  });
+
+  it('creates both a genuinely new colaborador and a suspicious single-character one from a mixed CAMPO, flagging only the latter', async () => {
+    mockListColaboradores.mockResolvedValue([]);
+    mockCreateColaborador.mockImplementation(async ({ nome }: { nome: string }) => ({
+      success: true, data: { id: nome === 'I' ? 72 : 71, nome },
+    }));
+    mockCreatePericiaComPendencias.mockResolvedValue({ success: true, data: { id: 100 } });
 
     const relatorio = await confirmarImportacaoPericias([
       linhaBase({ colaboradorNome: 'Novo Colaborador/I', colaboradorIdsExistentes: [] }),
     ]);
 
-    expect(mockCreatePericia).not.toHaveBeenCalled();
-    expect(relatorio.linhasComErro).toEqual([
-      { linhaOriginal: 2, erro: 'nome de colaborador "I" muito curto para cadastrar — corrija antes de confirmar' },
+    expect(mockCreateColaborador).toHaveBeenCalledTimes(2);
+    expect(mockCreateColaborador).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Novo Colaborador' }));
+    expect(mockCreateColaborador).toHaveBeenCalledWith(expect.objectContaining({ nome: 'I' }));
+    expect(mockCreatePericiaComPendencias).toHaveBeenCalledWith(expect.objectContaining({ colaboradorIds: [71, 72] }));
+    expect(relatorio.linhasComErro).toEqual([]);
+    expect(relatorio.periciasCriadas).toBe(1);
+    expect(relatorio.linhasComAviso).toEqual([
+      { linhaOriginal: 2, erro: 'colaborador(es) com nome muito curto vinculado(s): "I". Confirme se está correto e corrija/mescle o cadastro se necessário.' },
     ]);
   });
 });

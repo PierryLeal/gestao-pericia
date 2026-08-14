@@ -1,9 +1,10 @@
 'use client';
 
 import { Fragment, use, useState } from 'react';
-import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { RelacaoBadge } from '@/components/shared/relacao-badge';
 import { ResultadoBadge } from '@/components/shared/resultado-badge';
@@ -78,6 +79,7 @@ export function PericiasTable({
             <TableHead className="w-8" />
             <TableHead>Nº Processo</TableHead>
             <TableHead>Escritório</TableHead>
+            <TableHead>Contrato</TableHead>
             <TableHead>Data - Hora</TableHead>
             <TableHead>Local</TableHead>
             <TableHead>Perito</TableHead>
@@ -90,21 +92,45 @@ export function PericiasTable({
         <TableBody>
           {itensDaPagina.map((item) => {
             const isExpanded = expanded.has(item.id);
+            const numeroLabel = item.processo?.numero ?? 'Sem processo';
+            const temProblema = item.problemas.length > 0;
             return (
               <Fragment key={item.id}>
-                <TableRow>
+                <TableRow className={cn(temProblema && 'bg-destructive/10')}>
                   <TableCell>
                     <Button type="button" variant="ghost" size="icon-sm" onClick={() => toggle(item.id)}>
                       <ChevronRight className={cn('size-4 transition-transform', isExpanded && 'rotate-90')} />
-                      <span className="sr-only">Detalhes da perícia {item.processo.numero}</span>
+                      <span className="sr-only">Detalhes da perícia {numeroLabel}</span>
                     </Button>
                   </TableCell>
-                  <TableCell>{item.processo.numero}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      {temProblema && (
+                        <Tooltip>
+                          <TooltipTrigger render={<span className="inline-flex" />}>
+                            <AlertTriangle className="size-4 shrink-0 text-destructive" />
+                            <span className="sr-only">Perícia com pendências</span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <ul className="list-disc pl-3">
+                              {item.problemas.map((problema) => (
+                                <li key={problema}>{problema}</li>
+                              ))}
+                            </ul>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <span className={cn(!item.processo && 'text-muted-foreground')}>{numeroLabel}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <TooltipCell
-                      label={<span className="block max-w-32 truncate">{item.processo.escritorio}</span>}
-                      detail={item.processo.escritorio}
+                      label={<span className="block max-w-32 truncate">{item.processo?.escritorio ?? '—'}</span>}
+                      detail={item.processo?.escritorio ?? ''}
                     />
+                  </TableCell>
+                  <TableCell>
+                    {item.contrato ?? <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     {item.dataAgendada && item.horaAgendada ? (
@@ -128,8 +154,16 @@ export function PericiasTable({
                       <span className="text-muted-foreground">Não agendado</span>
                     )}
                   </TableCell>
-                  <TableCell>{item.municipio.nome}/{item.municipio.uf}</TableCell>
-                  <TableCell>{item.perito.nome}</TableCell>
+                  <TableCell>
+                    {item.municipio ? (
+                      `${item.municipio.nome}/${item.municipio.uf}`
+                    ) : (
+                      <span className="text-muted-foreground">Sem município</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.perito ? item.perito.nome : <span className="text-muted-foreground">Sem perito</span>}
+                  </TableCell>
                   <TableCell>
                     {item.colaboradores.length > 0
                       ? item.colaboradores.map((c) => c.nome).join(', ')
@@ -151,41 +185,51 @@ export function PericiasTable({
                   <TableCell>
                     <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(item)}>
                       <Pencil className="size-4" />
-                      <span className="sr-only">Editar perícia {item.processo.numero}</span>
+                      <span className="sr-only">Editar perícia {numeroLabel}</span>
                     </Button>
                     <Button type="button" variant="ghost" size="icon-sm" onClick={() => setConfirmTarget(item)}>
                       <Trash2 className="size-4" />
-                      <span className="sr-only">Excluir perícia {item.processo.numero}</span>
+                      <span className="sr-only">Excluir perícia {numeroLabel}</span>
                     </Button>
                   </TableCell>
                 </TableRow>
                 {isExpanded && (
                   <TableRow>
-                    <TableCell colSpan={10} className="whitespace-normal bg-muted/30">
+                    <TableCell colSpan={11} className="whitespace-normal bg-muted/30">
                       <div className="grid gap-4 py-2 md:grid-cols-3">
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">Processo</p>
-                          <p className="text-sm">
-                            Autor: {item.processo.autor}
-                            <br />
-                            Réu: {item.processo.reu}
-                          </p>
+                          {item.processo ? (
+                            <p className="text-sm">
+                              Autor: {item.processo.autor}
+                              <br />
+                              Réu: {item.processo.reu}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Nenhum processo vinculado.</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">Perito</p>
-                          <p className="text-sm">
-                            Contato: {formatPhone(item.perito.contato)}
-                            <br />
-                            Formação: {item.perito.formacao}
-                            <br />
-                            CREA: {item.perito.crea}
-                            <br />
-                            Já trabalhamos: {item.perito.jaTrabalhamos ? 'Sim' : 'Não'}
-                          </p>
-                          <div className="mt-1 flex gap-1.5">
-                            <RelacaoBadge relacao={item.perito.relacao} />
-                            <ResultadoBadge resultado={item.perito.resultados} />
-                          </div>
+                          {item.perito ? (
+                            <>
+                              <p className="text-sm">
+                                Contato: {formatPhone(item.perito.contato)}
+                                <br />
+                                Formação: {item.perito.formacao}
+                                <br />
+                                CREA: {item.perito.crea}
+                                <br />
+                                Já trabalhamos: {item.perito.jaTrabalhamos ? 'Sim' : 'Não'}
+                              </p>
+                              <div className="mt-1 flex gap-1.5">
+                                <RelacaoBadge relacao={item.perito.relacao} />
+                                <ResultadoBadge resultado={item.perito.resultados} />
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Nenhum perito vinculado.</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">
@@ -227,7 +271,7 @@ export function PericiasTable({
         open={confirmTarget !== null}
         onOpenChange={(open) => !open && setConfirmTarget(null)}
         title="Excluir perícia"
-        description={`Excluir a perícia do processo "${confirmTarget?.processo.numero}"? Essa ação não pode ser desfeita.`}
+        description={`Excluir a perícia do processo "${confirmTarget?.processo?.numero ?? 'sem processo'}"? Essa ação não pode ser desfeita.`}
         onConfirm={handleConfirmDelete}
         loading={deleting}
       />

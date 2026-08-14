@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buscarTodasAsPaginas } from './pagination';
+import { buscarTodasAsPaginas, buscarPorIdsEmLotes } from './pagination';
 
 describe('buscarTodasAsPaginas', () => {
   it('returns all rows from a single short page without a second request', async () => {
@@ -55,5 +55,58 @@ describe('buscarTodasAsPaginas', () => {
   it('throws with the PostgREST error message when a page errors', async () => {
     const construirPagina = vi.fn().mockResolvedValue({ data: null, error: { message: 'permission denied' } });
     await expect(buscarTodasAsPaginas(construirPagina)).rejects.toThrow('permission denied');
+  });
+});
+
+describe('buscarPorIdsEmLotes', () => {
+  it('makes a single call when ids fit in one lote', async () => {
+    const construirConsulta = vi.fn().mockResolvedValue({ data: [{ id: 1 }, { id: 2 }], error: null });
+
+    const resultado = await buscarPorIdsEmLotes([1, 2, 3], construirConsulta, 500);
+
+    expect(construirConsulta).toHaveBeenCalledTimes(1);
+    expect(construirConsulta).toHaveBeenCalledWith([1, 2, 3], 0, 999);
+    expect(resultado).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
+  it('splits ids into multiple lotes and merges every result, avoiding one giant .in() list', async () => {
+    const construirConsulta = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [{ id: 'a' }], error: null })
+      .mockResolvedValueOnce({ data: [{ id: 'b' }], error: null })
+      .mockResolvedValueOnce({ data: [{ id: 'c' }], error: null });
+
+    const ids = [1, 2, 3, 4, 5];
+    const resultado = await buscarPorIdsEmLotes(ids, construirConsulta, 2);
+
+    expect(construirConsulta).toHaveBeenCalledTimes(3);
+    expect(construirConsulta).toHaveBeenNthCalledWith(1, [1, 2], 0, 999);
+    expect(construirConsulta).toHaveBeenNthCalledWith(2, [3, 4], 0, 999);
+    expect(construirConsulta).toHaveBeenNthCalledWith(3, [5], 0, 999);
+    expect(resultado).toEqual([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
+  });
+
+  it('paginates within a single lote when that lote alone returns a full page of result rows', async () => {
+    // Row pagination here is buscarTodasAsPaginas' own default (1000) — a
+    // page exactly that size must trigger a follow-up call for the same lote.
+    const paginaCheia = Array.from({ length: 1000 }, (_, i) => ({ id: i }));
+    const construirConsulta = vi
+      .fn()
+      .mockResolvedValueOnce({ data: paginaCheia, error: null })
+      .mockResolvedValueOnce({ data: [{ id: 1000 }], error: null });
+
+    const resultado = await buscarPorIdsEmLotes([1, 2], construirConsulta, 500);
+
+    expect(construirConsulta).toHaveBeenCalledTimes(2);
+    expect(construirConsulta).toHaveBeenNthCalledWith(1, [1, 2], 0, 999);
+    expect(construirConsulta).toHaveBeenNthCalledWith(2, [1, 2], 1000, 1999);
+    expect(resultado).toHaveLength(1001);
+  });
+
+  it('returns an empty array without calling construirConsulta when ids is empty', async () => {
+    const construirConsulta = vi.fn();
+    const resultado = await buscarPorIdsEmLotes([], construirConsulta, 500);
+    expect(resultado).toEqual([]);
+    expect(construirConsulta).not.toHaveBeenCalled();
   });
 });

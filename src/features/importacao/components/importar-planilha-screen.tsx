@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Loader2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -100,8 +101,9 @@ function LegendaPreview({
           <span className="size-2.5 shrink-0 rounded-full bg-amber-500/70" />
           <span>
             <strong className="font-medium text-foreground">Linha amarela:</strong> o nome do colaborador
-            tem só uma letra — provavelmente um erro de leitura da planilha, não uma pessoa real. Corrija
-            o nome antes de confirmar; enquanto estiver assim, essa linha não será importada.
+            tem só uma letra — pode ser um apelido real (ex.: inicial de um colaborador conhecido) ou um
+            erro de leitura da planilha. A linha será importada e o colaborador cadastrado assim mesmo;
+            confirme o nome depois e corrija/mescle o cadastro se necessário.
           </span>
         </p>
       )}
@@ -172,6 +174,89 @@ function LinhasComErro({ linhas }: { linhas: LinhaComErro[] }) {
   );
 }
 
+// Errors (row not saved at all), avisos (row WAS saved, but something had to
+// be dropped to make that possible), and duplicadas (row intentionally not
+// saved because it's an exact repeat) are kept in separate lists — mixing
+// them would make it unclear which rows still need a re-import vs. just a
+// manual touch-up vs. nothing at all — but share one filter so the user can
+// jump straight to, say, every mention of "colaborador" across all three
+// without scanning by eye.
+function LinhasComErroEAviso({
+  erros,
+  avisos,
+  duplicadas,
+}: {
+  erros: LinhaComErro[];
+  avisos: LinhaComErro[];
+  duplicadas: LinhaComErro[];
+}) {
+  const [filtro, setFiltro] = useState('');
+  if (erros.length === 0 && avisos.length === 0 && duplicadas.length === 0) return null;
+
+  const filtroNormalizado = filtro.trim().toLowerCase();
+  function filtrar(linhas: LinhaComErro[]) {
+    if (!filtroNormalizado) return linhas;
+    return linhas.filter(
+      (linha) =>
+        linha.erro.toLowerCase().includes(filtroNormalizado) ||
+        String(linha.linhaOriginal).includes(filtroNormalizado)
+    );
+  }
+  const errosFiltrados = filtrar(erros);
+  const avisosFiltrados = filtrar(avisos);
+  const duplicadasFiltradas = filtrar(duplicadas);
+
+  return (
+    <div className="space-y-3">
+      <Input
+        placeholder="Filtrar por palavra (ex: colaborador, processo, autor)..."
+        value={filtro}
+        onChange={(e) => setFiltro(e.target.value)}
+      />
+      {errosFiltrados.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <p className="flex items-center gap-1.5 font-medium text-destructive">
+            <AlertTriangle className="size-4" />
+            {errosFiltrados.length} de {erros.length} {pluralizar(erros.length, 'linha com erro', 'linhas com erro')}:
+          </p>
+          {errosFiltrados.map((linha, index) => (
+            <p key={`${linha.linhaOriginal}-${index}`} className="text-xs text-muted-foreground">
+              Linha {linha.linhaOriginal}: {linha.erro}
+            </p>
+          ))}
+        </div>
+      )}
+      {avisosFiltrados.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+          <p className="flex items-center gap-1.5 font-medium text-amber-600">
+            <AlertTriangle className="size-4" />
+            {avisosFiltrados.length} de {avisos.length} {pluralizar(avisos.length, 'linha criada com aviso', 'linhas criadas com aviso')}:
+          </p>
+          {avisosFiltrados.map((linha, index) => (
+            <p key={`${linha.linhaOriginal}-${index}`} className="text-xs text-muted-foreground">
+              Linha {linha.linhaOriginal}: {linha.erro}
+            </p>
+          ))}
+        </div>
+      )}
+      {duplicadasFiltradas.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-muted-foreground/30 bg-muted/30 p-3">
+          <p className="flex items-center gap-1.5 font-medium text-muted-foreground">
+            <AlertTriangle className="size-4" />
+            {duplicadasFiltradas.length} de {duplicadas.length}{' '}
+            {pluralizar(duplicadas.length, 'linha pulada por duplicidade', 'linhas puladas por duplicidade')}:
+          </p>
+          {duplicadasFiltradas.map((linha, index) => (
+            <p key={`${linha.linhaOriginal}-${index}`} className="text-xs text-muted-foreground">
+              Linha {linha.linhaOriginal}: {linha.erro}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ImportarPlanilhaScreen() {
   const [linhas, setLinhas] = useState<PericiaPreviewRow[]>([]);
   const [naoProcessadas, setNaoProcessadas] = useState<NaoProcessada[]>([]);
@@ -216,7 +301,8 @@ export function ImportarPlanilhaScreen() {
     setProgressoPericias({ processadas: 0, total: linhas.length });
     let acumulado: RelatorioImportacaoPericias = {
       processosCriados: 0, processosAtualizados: 0, periciasCriadas: 0,
-      peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0, linhasComErro: [],
+      peritosCriados: 0, colaboradoresCriados: 0, puladasPorDuplicidade: 0,
+      linhasComErro: [], linhasComAviso: [], linhasPuladasPorDuplicidade: [],
     };
     let processadas = 0;
     try {
@@ -232,6 +318,10 @@ export function ImportarPlanilhaScreen() {
       if (acumulado.linhasComErro.length > 0) {
         toast.warning(
           `Importação concluída, mas ${acumulado.linhasComErro.length} ${pluralizar(acumulado.linhasComErro.length, 'linha falhou', 'linhas falharam')} — veja "Linhas com erro" no relatório abaixo.`
+        );
+      } else if (acumulado.linhasComAviso.length > 0) {
+        toast.warning(
+          `Importação concluída, mas ${acumulado.linhasComAviso.length} ${pluralizar(acumulado.linhasComAviso.length, 'linha foi criada', 'linhas foram criadas')} com aviso — veja o relatório abaixo.`
         );
       } else {
         toast.success('Importação concluída com sucesso.');
@@ -353,7 +443,15 @@ export function ImportarPlanilhaScreen() {
                 <LegendaPreview mostrarDuplicada mostrarSuspeito />
                 <PericiasPreviewTable linhas={linhas} onChange={setLinhas} />
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex-col items-stretch gap-3">
+                {!podeConfirmarPericias && linhas.length > 0 && (
+                  <p className="flex items-center gap-1.5 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    <Info className="size-4 shrink-0" />
+                    {linhas.length === 1
+                      ? 'Essa linha já foi importada anteriormente — não há nada novo para confirmar.'
+                      : `Todas as ${linhas.length} linhas desta planilha já foram importadas anteriormente — não há nada novo para confirmar.`}
+                  </p>
+                )}
                 <Button type="button" onClick={handleConfirmarPericias} disabled={!podeConfirmarPericias || processandoPericias}>
                   {processandoPericias && <Loader2 className="size-4 animate-spin" />}
                   {processandoPericias
@@ -400,7 +498,11 @@ export function ImportarPlanilhaScreen() {
                     label={pluralizar(relatorio.puladasPorDuplicidade, 'linha pulada', 'linhas puladas')}
                   />
                 </div>
-                <LinhasComErro linhas={relatorio.linhasComErro} />
+                <LinhasComErroEAviso
+                  erros={relatorio.linhasComErro}
+                  avisos={relatorio.linhasComAviso}
+                  duplicadas={relatorio.linhasPuladasPorDuplicidade}
+                />
               </CardContent>
             </Card>
           )}
