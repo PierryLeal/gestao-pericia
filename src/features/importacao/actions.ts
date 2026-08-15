@@ -171,6 +171,7 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
         motivos.push(`processo não identificado no texto "${textoPericia.trim()}" — usando o texto da célula como identificador provisório; edite o campo Processo manualmente`);
       }
       if (!parseado.autor.trim()) motivos.push('autor não identificado');
+      if (!parseado.reu.trim()) motivos.push('réu não identificado');
 
       const processoExistente = processos.find(
         (p) => normalizeForSearch(p.numero) === normalizeForSearch(parseado.numeroProcesso)
@@ -210,7 +211,8 @@ export async function previewImportacaoPericias(fileBuffer: ArrayBuffer): Promis
       const { situacao, reconhecida } = mapSituacao(textoCelula(row, indices.situacao));
       if (!reconhecida) motivos.push('situação não reconhecida');
 
-      const dataAgendada = parseDataCelula(indices.data !== null ? row.getCell(indices.data).value : null);
+      const dataCell = indices.data !== null ? row.getCell(indices.data) : null;
+      const dataAgendada = parseDataCelula(dataCell?.value ?? null, dataCell?.numFmt);
       const horaAgendada = parseHoraCelula(indices.hora !== null ? row.getCell(indices.hora).value : null);
       const observacoesTexto = textoCelula(row, indices.obs);
       const observacoes = observacoesTexto.trim() || null;

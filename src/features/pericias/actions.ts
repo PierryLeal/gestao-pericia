@@ -40,11 +40,16 @@ export type PericiaListItem = {
 };
 
 function problemasDaPericia(row: {
-  processo: { numero: string } | null; municipio: unknown; perito: unknown; colaboradores: { nome: string }[];
+  processo: { numero: string; autor: string; reu: string } | null;
+  municipio: unknown; perito: unknown; colaboradores: { nome: string }[];
 }): string[] {
   const problemas: string[] = [];
   if (!row.processo) problemas.push('processo não vinculado');
-  else if (isNumeroProvisorio(row.processo.numero)) problemas.push('número do processo não identificado na importação');
+  else {
+    if (isNumeroProvisorio(row.processo.numero)) problemas.push('número do processo não identificado na importação');
+    if (!row.processo.autor.trim()) problemas.push('autor do processo não identificado');
+    if (!row.processo.reu.trim()) problemas.push('réu do processo não identificado');
+  }
   if (!row.municipio) problemas.push('município não vinculado');
   if (!row.perito) problemas.push('perito não vinculado');
   for (const colaborador of row.colaboradores) {
@@ -263,8 +268,10 @@ export async function createPericia(input: PericiaInput): Promise<ActionResult<{
 /**
  * Used only by the bulk-import confirm flow — saves a pericia even when its
  * processo/município/perito couldn't be resolved from the sheet, instead of
- * dropping the row. The gaps are filled in later via the normal edit dialog,
- * which still validates through the strict `periciaSchema`/`updatePericia`.
+ * dropping the row. The gaps can be filled in incrementally later via the
+ * normal edit dialog — `updatePericia` below accepts the same partial shape,
+ * so one missing field can be fixed without having to supply all of them at
+ * once (the pericias listing keeps flagging what's still missing).
  */
 export async function createPericiaComPendencias(input: PericiaImportInput): Promise<ActionResult<{ id: number }>> {
   await requireRole(['admin', 'gerencia']);
@@ -292,12 +299,18 @@ export async function createPericiaComPendencias(input: PericiaImportInput): Pro
   return { success: true, data: { id: data as number } };
 }
 
+// Accepts the same partial shape as createPericiaComPendencias (nullable
+// processo/município/perito) rather than the strict `periciaSchema` — a
+// pericia created incomplete by import (or left incomplete deliberately)
+// must be editable one field at a time, without forcing every gap to be
+// filled before any single change can be saved. The manual "Nova perícia"
+// dialog still enforces the strict schema client-side on create.
 export async function updatePericia(
   id: number,
-  input: PericiaInput
+  input: PericiaImportInput
 ): Promise<ActionResult<{ id: number }>> {
   await requireRole(['admin', 'gerencia']);
-  const parsed = periciaSchema.safeParse(input);
+  const parsed = periciaImportSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
   const supabase = await createClient();
   const { error } = await supabase.rpc('update_pericia_with_colaboradores', {
@@ -361,7 +374,11 @@ export async function getPericiaForEdit(id: number): Promise<EditingPericia | nu
     id: row.id,
     processoId: row.processo?.id ?? null,
     dataAgendada: row.data_agendada,
-    horaAgendada: row.hora_agendada,
+    // Postgres' `time` column round-trips as "HH:MM:SS", but the edit
+    // form's <input type="time"> and its Zod schema both expect "HH:MM" —
+    // left as-is, saving without touching the time field failed validation
+    // (same asymmetry already handled in chavePericia, see importacao/actions.ts).
+    horaAgendada: row.hora_agendada?.slice(0, 5) ?? null,
     municipioId: row.municipio?.id ?? null,
     peritoId: row.perito_id,
     colaboradorIds: (colaboradoresLinks ?? []).map((pc) => pc.colaborador_id),

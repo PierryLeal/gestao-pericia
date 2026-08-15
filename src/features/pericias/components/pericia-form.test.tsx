@@ -2,9 +2,17 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PericiaForm } from './pericia-form';
-import { createPericia, getColaboradoresIndisponiveis } from '../actions';
+import { createPericia, updatePericia, getColaboradoresIndisponiveis } from '../actions';
 import type { Processo } from '@/features/processos/actions';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
+
+const mockToastSuccess = vi.fn();
+vi.mock('sonner', () => ({
+  toast: {
+    success: (...args: unknown[]) => mockToastSuccess(...args),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('../actions', () => ({
   createPericia: vi.fn(async () => ({ success: true, data: { id: 5 } })),
@@ -14,12 +22,26 @@ vi.mock('../actions', () => ({
 }));
 
 vi.mock('@/features/processos/components/processo-combobox', () => ({
-  ProcessoCombobox: ({ onChange }: { onChange: (p: Processo) => void }) => (
+  ProcessoCombobox: ({ onChange, onNovoProcesso }: { onChange: (p: Processo) => void; onNovoProcesso: () => void }) => (
+    <>
+      <button
+        type="button"
+        onClick={() => onChange({ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' })}
+      >
+        selecionar processo
+      </button>
+      <button type="button" onClick={onNovoProcesso}>novo processo</button>
+    </>
+  ),
+}));
+
+vi.mock('@/features/processos/components/processo-form', () => ({
+  ProcessoForm: ({ onSaved }: { onSaved: (p: Processo) => void }) => (
     <button
       type="button"
-      onClick={() => onChange({ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: 'PMRA' })}
+      onClick={() => onSaved({ id: 9, numero: 'NOVO-1', autor: 'X', reu: 'Y', escritorio: '' })}
     >
-      selecionar processo
+      salvar novo processo
     </button>
   ),
 }));
@@ -33,7 +55,10 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
 }));
 
 describe('PericiaForm', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockToastSuccess.mockClear();
+  });
 
   it('calls onError when processo, municipio, or perito are missing', async () => {
     const user = userEvent.setup();
@@ -444,6 +469,103 @@ describe('PericiaForm', () => {
       await user.click(screen.getByRole('combobox', { name: 'Colaborador 2' }));
       expect(await screen.findByRole('option', { name: 'Duda' })).toBeInTheDocument();
       expect(screen.queryByRole('option', { name: 'Bruna' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('editing an incomplete pericia', () => {
+    const incompleta = {
+      id: 9,
+      processoId: null,
+      municipioId: null,
+      peritoId: null,
+      colaboradorIds: [] as number[],
+      dataAgendada: null,
+      horaAgendada: null,
+      situacao: 'pendente' as const,
+      observacoes: null,
+      contrato: null,
+      local: null,
+      processo: null,
+      municipio: null,
+    };
+
+    it('saves without blocking even though processo, município, and perito are still missing', async () => {
+      const user = userEvent.setup();
+      const onSaved = vi.fn();
+      const onError = vi.fn();
+      render(
+        <PericiaForm pericia={incompleta} peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={onSaved} onError={onError} />
+      );
+
+      await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(onSaved).toHaveBeenCalledWith(5);
+    });
+
+    it('sends null for processoId/municipioId/peritoId that were never filled in', async () => {
+      const user = userEvent.setup();
+      render(
+        <PericiaForm pericia={incompleta} peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />
+      );
+
+      await user.click(screen.getByRole('button', { name: /salvar perícia/i }));
+
+      expect(vi.mocked(updatePericia)).toHaveBeenCalledWith(
+        9,
+        expect.objectContaining({ processoId: null, municipioId: null, peritoId: null })
+      );
+    });
+  });
+
+  describe('criar novo processo from within the pericia form', () => {
+    it('swaps to the novo-processo form in place instead of opening a nested dialog', async () => {
+      const user = userEvent.setup();
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      await user.click(screen.getByText('novo processo'));
+
+      // The pericia's own form fields are gone while the processo form is showing —
+      // there is only ever one form on screen, never two dialogs stacked.
+      expect(screen.queryByLabelText('Observações')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /salvar perícia/i })).not.toBeInTheDocument();
+      expect(screen.getByText('salvar novo processo')).toBeInTheDocument();
+    });
+
+    it('returns to the pericia form with earlier field values intact after creating a processo', async () => {
+      const user = userEvent.setup();
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      await user.type(screen.getByLabelText('Observações'), 'não perder isso');
+      await user.click(screen.getByText('novo processo'));
+      await user.click(screen.getByText('salvar novo processo'));
+
+      expect(screen.getByLabelText('Observações')).toHaveValue('não perder isso');
+      expect(mockToastSuccess).toHaveBeenCalledWith('Processo criado com sucesso');
+    });
+
+    it('returns to the pericia form via "Voltar" without creating a processo, keeping field values', async () => {
+      const user = userEvent.setup();
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      await user.type(screen.getByLabelText('Observações'), 'não perder isso');
+      await user.click(screen.getByText('novo processo'));
+      await user.click(screen.getByRole('button', { name: /voltar para a perícia/i }));
+
+      expect(screen.getByLabelText('Observações')).toHaveValue('não perder isso');
+    });
+
+    it('does not submit the pericia form when the nested processo form is saved (no stray validation toast)', async () => {
+      const user = userEvent.setup();
+      const onError = vi.fn();
+      // No processo/município/perito selected — if the outer form's submit ever
+      // fired too, this would call onError with the "missing fields" message.
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={onError} />);
+
+      await user.click(screen.getByText('novo processo'));
+      await user.click(screen.getByText('salvar novo processo'));
+
+      expect(onError).not.toHaveBeenCalled();
     });
   });
 });

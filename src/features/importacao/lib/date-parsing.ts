@@ -2,13 +2,33 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-export function parseDataCelula(value: unknown): string | null {
+// A month-before-day display format ("m/d/yy", "mm/dd/yyyy") — the signature
+// left behind when a cell was typed or copied under a US-locale Excel
+// session instead of the sheet's normal Brazilian (day-first) convention.
+const NUMFMT_MES_ANTES_DO_DIA = /^m+\/d+\/y+$/i;
+
+export function parseDataCelula(value: unknown, numFmt?: string | null): string | null {
   if (value instanceof Date) {
     // exceljs anchors date-only cells at UTC midnight regardless of the
     // runtime's timezone (e.g. 2020-09-18 becomes 2020-09-18T00:00:00.000Z).
     // Reading it with local getters shifts the calendar date by the
     // runtime's UTC offset — off by one day in any timezone behind UTC.
-    return `${value.getUTCFullYear()}-${pad2(value.getUTCMonth() + 1)}-${pad2(value.getUTCDate())}`;
+    const ano = value.getUTCFullYear();
+    let mes = value.getUTCMonth() + 1;
+    let dia = value.getUTCDate();
+    // Confirmed against a real sheet (TESTE all.xlsx, row 2220): a cell typed
+    // as "7/11/2023" meaning 7 de novembro, under a US-locale Excel session,
+    // gets stored as July 11th instead — and, because the cell's own display
+    // format is month-first, it still *renders* as "7/11/23" in Excel,
+    // leaving no visual trace of the swap. Reversing day/month for exactly
+    // these cells recovers the original, correctly Brazilian-ordered value.
+    // Only valid (and only applied) when the reversal itself produces an
+    // in-range month — day > 12 has no ambiguity to begin with (Excel could
+    // only have stored that exact value, from either locale).
+    if (numFmt && dia <= 12 && NUMFMT_MES_ANTES_DO_DIA.test(numFmt.trim())) {
+      [dia, mes] = [mes, dia];
+    }
+    return `${ano}-${pad2(mes)}-${pad2(dia)}`;
   }
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();

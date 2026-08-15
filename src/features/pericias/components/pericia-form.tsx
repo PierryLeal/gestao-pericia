@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ProcessoCombobox } from '@/features/processos/components/processo-combobox';
+import { ProcessoForm } from '@/features/processos/components/processo-form';
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
 import { ContratoCombobox } from './contrato-combobox';
 import { createPericia, updatePericia, getColaboradoresIndisponiveis, type EditingPericia } from '../actions';
@@ -46,6 +48,11 @@ export function PericiaForm({
   const [contrato, setContrato] = useState<string | null>(pericia?.contrato ?? null);
   const [saving, setSaving] = useState(false);
   const [busyColaboradorIds, setBusyColaboradorIds] = useState<number[]>([]);
+  // Creating a processo from inside this form swaps the form's own content
+  // instead of opening a second dialog on top of this one — the rest of the
+  // pericia's fields (all the state above) stay exactly as the user left
+  // them and reappear once the new processo is picked or the user backs out.
+  const [criandoProcesso, setCriandoProcesso] = useState(false);
 
   useEffect(() => {
     if (!dataAgendada || !horaAgendada) {
@@ -92,7 +99,11 @@ export function PericiaForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!processo || !municipio || !peritoId) {
+    // A brand-new pericia is a deliberate manual entry — require the core
+    // fields up front. An existing pericia (e.g. one left incomplete by
+    // import) can be edited and saved one field at a time instead; the
+    // pericias listing keeps flagging whatever is still missing.
+    if (!pericia && (!processo || !municipio || !peritoId)) {
       onError('Preencha processo, município e perito.');
       return;
     }
@@ -101,19 +112,29 @@ export function PericiaForm({
       return;
     }
     setSaving(true);
-    const input: PericiaInput = {
-      processoId: processo.id,
-      municipioId: municipio.id,
-      peritoId: Number(peritoId),
+    const base = {
       colaboradorIds: colaboradorSelecionados.map(Number),
       dataAgendada: dataAgendada || null,
       horaAgendada: horaAgendada || null,
       situacao,
       observacoes: observacoes.trim() || null,
       contrato,
-      local: municipio.nome,
+      local: municipio?.nome ?? null,
     };
-    const result = pericia ? await updatePericia(pericia.id, input) : await createPericia(input);
+    const result = pericia
+      ? await updatePericia(pericia.id, {
+          ...base,
+          processoId: processo?.id ?? null,
+          municipioId: municipio?.id ?? null,
+          peritoId: peritoId ? Number(peritoId) : null,
+        })
+      : await createPericia({
+          ...base,
+          // Guarded above: processo/municipio/peritoId are non-null here.
+          processoId: processo!.id,
+          municipioId: municipio!.id,
+          peritoId: Number(peritoId),
+        });
     setSaving(false);
     if (!result.success) {
       onError(result.error);
@@ -122,11 +143,36 @@ export function PericiaForm({
     onSaved(result.data.id);
   }
 
+  if (criandoProcesso) {
+    return (
+      <div className="space-y-4">
+        <Button type="button" variant="ghost" size="sm" onClick={() => setCriandoProcesso(false)} className="-ml-2">
+          <ArrowLeft className="size-4" />
+          Voltar para a perícia
+        </Button>
+        <ProcessoForm
+          submitLabel="Salvar e vincular"
+          onSaved={(novoProcesso) => {
+            toast.success('Processo criado com sucesso');
+            setProcesso(novoProcesso);
+            setCriandoProcesso(false);
+          }}
+          onError={onError}
+        />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <Label>Processo</Label>
-        <ProcessoCombobox value={processo?.id ?? null} selected={processo} onChange={setProcesso} />
+        <ProcessoCombobox
+          value={processo?.id ?? null}
+          selected={processo}
+          onChange={setProcesso}
+          onNovoProcesso={() => setCriandoProcesso(true)}
+        />
       </div>
 
       <div className="space-y-2">

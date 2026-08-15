@@ -133,7 +133,7 @@ describe('previewImportacaoPericias', () => {
     expect(result.naoProcessadas).toEqual([]);
     expect(result.linhas).toHaveLength(1);
     expect(result.linhas[0]).toMatchObject({
-      status: 'atencao', motivos: ['autor não identificado'],
+      status: 'atencao', motivos: ['autor não identificado', 'réu não identificado'],
       processoNumero: '5003036-80.2022.8.13.0090', processoAutor: '', processoReu: '',
     });
   });
@@ -360,13 +360,40 @@ describe('previewImportacaoPericias', () => {
     // Before the fallback, this row's processoNumero stayed '' — which is
     // never deduped against anything — so re-importing the same sheet always
     // created a second copy. Confirmed in production: 147+ extra duplicates.
+    // "PERICIA PREVIA" (no digit) stays a fully opaque fallback — see the
+    // separate test below for a bare *coded* cell like "FC.02.01.055", which
+    // is now recognized as a real número instead (it has a digit).
     mockListProcessos.mockResolvedValue([
-      { id: 9, numero: marcarNumeroProvisorio('FC.02.01.055'), autor: '', reu: '', escritorio: '' },
+      { id: 9, numero: marcarNumeroProvisorio('PERICIA PREVIA'), autor: '', reu: '', escritorio: '' },
     ]);
     mockListPericias.mockResolvedValue([
       {
         id: 100, dataAgendada: '2020-11-11', horaAgendada: '08:00', situacao: 'realizada', observacoes: null,
-        processo: { id: 9, numero: marcarNumeroProvisorio('FC.02.01.055'), autor: '', reu: '', escritorio: '' },
+        processo: { id: 9, numero: marcarNumeroProvisorio('PERICIA PREVIA'), autor: '', reu: '', escritorio: '' },
+        municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
+        perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
+        colaboradores: [{ id: 2, nome: 'Lelis', contato: '', formacao: '' }],
+      },
+    ]);
+    const buffer = await criarBuffer([
+      HEADER,
+      ['PERICIA PREVIA', '11/11/20', '08:00', 'Belo Horizonte', 'Cleber', 'Lelis', 'OK', '', ''],
+    ]);
+
+    const result = await previewImportacaoPericias(buffer);
+
+    expect(result.linhas[0].processoNumero).toBe(marcarNumeroProvisorio('PERICIA PREVIA'));
+    expect(result.linhas[0].status).toBe('duplicada');
+  });
+
+  it('treats a bare coded cell like "FC.02.01.055" as a real número (not provisório) and dedupes on it directly', async () => {
+    mockListProcessos.mockResolvedValue([
+      { id: 9, numero: 'FC.02.01.055', autor: '', reu: '', escritorio: '' },
+    ]);
+    mockListPericias.mockResolvedValue([
+      {
+        id: 100, dataAgendada: '2020-11-11', horaAgendada: '08:00', situacao: 'realizada', observacoes: null,
+        processo: { id: 9, numero: 'FC.02.01.055', autor: '', reu: '', escritorio: '' },
         municipio: { id: 3106200, nome: 'Belo Horizonte', uf: 'MG' },
         perito: { id: 1, nome: 'Cleber', contato: '', formacao: '', crea: '', jaTrabalhamos: true, relacao: 'boa', resultados: 'positivo' },
         colaboradores: [{ id: 2, nome: 'Lelis', contato: '', formacao: '' }],
@@ -379,7 +406,7 @@ describe('previewImportacaoPericias', () => {
 
     const result = await previewImportacaoPericias(buffer);
 
-    expect(result.linhas[0].processoNumero).toBe(marcarNumeroProvisorio('FC.02.01.055'));
+    expect(result.linhas[0].processoNumero).toBe('FC.02.01.055');
     expect(result.linhas[0].status).toBe('duplicada');
   });
 

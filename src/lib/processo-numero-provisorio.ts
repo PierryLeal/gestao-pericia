@@ -8,6 +8,9 @@
  */
 const PREFIX = '[SEM_NUMERO_IDENTIFICADO] ';
 
+/** SQL LIKE pattern for excluding provisório rows in a `.not('numero', 'like', ...)` filter. */
+export const NUMERO_PROVISORIO_LIKE_PATTERN = `${PREFIX}%`;
+
 export function marcarNumeroProvisorio(textoOriginal: string): string {
   return `${PREFIX}${textoOriginal}`;
 }

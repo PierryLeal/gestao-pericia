@@ -8,15 +8,15 @@ describe('parseColunaPericia', () => {
     });
   });
 
-  it('assigns "Vale" as reu when there is no " x " separator', () => {
+  it('leaves reu blank (not a guessed default) when there is no " x " separator', () => {
     expect(parseColunaPericia('PAULO MONTEIRO - 5001808-87.2020.8.13.0301')).toEqual({
-      autor: 'PAULO MONTEIRO', reu: 'Vale', numeroProcesso: '5001808-87.2020.8.13.0301',
+      autor: 'PAULO MONTEIRO', reu: '', numeroProcesso: '5001808-87.2020.8.13.0301',
     });
   });
 
   it('does not split on "x" inside a name (e.g. "Alex")', () => {
     expect(parseColunaPericia('Alex Souza - 123456')).toEqual({
-      autor: 'Alex Souza', reu: 'Vale', numeroProcesso: '123456',
+      autor: 'Alex Souza', reu: '', numeroProcesso: '123456',
     });
   });
 
@@ -26,8 +26,12 @@ describe('parseColunaPericia', () => {
     });
   });
 
-  it('returns null when there is no " - " separator at all', () => {
+  it('returns null when there is no " - " separator at all and no digit either', () => {
     expect(parseColunaPericia('texto sem separador nenhum')).toBeNull();
+  });
+
+  it('treats a bare short code with a digit and no separator as a real número (e.g. "LT 74")', () => {
+    expect(parseColunaPericia('LT 74')).toEqual({ autor: '', reu: '', numeroProcesso: 'LT 74' });
   });
 
   it('uses the LAST " - " when the name portion itself contains a hyphenated word', () => {
@@ -42,19 +46,31 @@ describe('parseColunaPericia', () => {
 
   it('finds a CNJ-format número even with a "nome- número" separator (dash, no leading space)', () => {
     expect(parseColunaPericia('MURILO LOPES FERREIRA- 5001487-40.2019.8.13.0090')).toEqual({
-      autor: 'MURILO LOPES FERREIRA', reu: 'Vale', numeroProcesso: '5001487-40.2019.8.13.0090',
+      autor: 'MURILO LOPES FERREIRA', reu: '', numeroProcesso: '5001487-40.2019.8.13.0090',
     });
   });
 
   it('finds a CNJ-format número separated by an en dash ("–")', () => {
     expect(parseColunaPericia('IRANI GONCALVES PIMENTA LIMA – 5006889-93.2020.8.13.0114')).toEqual({
-      autor: 'IRANI GONCALVES PIMENTA LIMA', reu: 'Vale', numeroProcesso: '5006889-93.2020.8.13.0114',
+      autor: 'IRANI GONCALVES PIMENTA LIMA', reu: '', numeroProcesso: '5006889-93.2020.8.13.0114',
     });
   });
 
   it('finds a CNJ-format número with "nome -número" separator (dash, no trailing space)', () => {
     expect(parseColunaPericia('GERALDA LUIZA DE SOUZA -5002269-37.2022.8.13.0027')).toEqual({
-      autor: 'GERALDA LUIZA DE SOUZA', reu: 'Vale', numeroProcesso: '5002269-37.2022.8.13.0027',
+      autor: 'GERALDA LUIZA DE SOUZA', reu: '', numeroProcesso: '5002269-37.2022.8.13.0027',
+    });
+  });
+
+  it('finds a name after the CNJ número when nothing precedes it ("número - autor x réu")', () => {
+    expect(parseColunaPericia('5000556-39.2020.8.13.0175 - ANGLO x ANTÔNIO COSTA DE OLIVEIRA')).toEqual({
+      autor: 'ANGLO', reu: 'ANTÔNIO COSTA DE OLIVEIRA', numeroProcesso: '5000556-39.2020.8.13.0175',
+    });
+  });
+
+  it('prefers the text before the número when both sides have text', () => {
+    expect(parseColunaPericia('ANGLO x ANTÔNIO - 5000556-39.2020.8.13.0175 - ignorado')).toEqual({
+      autor: 'ANGLO', reu: 'ANTÔNIO', numeroProcesso: '5000556-39.2020.8.13.0175',
     });
   });
 
@@ -82,7 +98,7 @@ describe('parseColunaPericia', () => {
 
   it('still treats the text after the last " - " as número when it contains a digit (internal code)', () => {
     expect(parseColunaPericia('JOÃO SILVA - FC.02.01.055')).toEqual({
-      autor: 'JOÃO SILVA', reu: 'Vale', numeroProcesso: 'FC.02.01.055',
+      autor: 'JOÃO SILVA', reu: '', numeroProcesso: 'FC.02.01.055',
     });
   });
 

@@ -49,6 +49,41 @@ describe('parseDataCelula', () => {
     // guessing at malformed input.
     expect(parseDataCelula('30-31-01/11/2020')).toBeNull();
   });
+
+  // Confirmed against a real sheet (TESTE all.xlsx, row 2220): "7 de novembro"
+  // typed under a US-locale Excel session gets stored as July 11th — but the
+  // cell's own display format (month-first) still renders it back as
+  // "7/11/23", so there's no visible sign of the swap. The cell's numFmt is
+  // the only remaining evidence of which locale resolved the typed digits.
+  describe('day/month swap recovery for US-locale-typed Date cells', () => {
+    it('swaps day/month when the numFmt is month-first and the day is ambiguous (<=12)', () => {
+      // Stored as July 11th (month=7, day=11) under numFmt "m/d/yy" — the
+      // sheet author meant 7 de novembro (day=7, month=11).
+      expect(parseDataCelula(new Date(Date.UTC(2023, 6, 11)), 'm/d/yy')).toBe('2023-11-07');
+    });
+
+    it('also swaps for the fully-padded "mm/dd/yyyy" numFmt spelling', () => {
+      expect(parseDataCelula(new Date(Date.UTC(2023, 6, 11)), 'mm/dd/yyyy')).toBe('2023-11-07');
+    });
+
+    it('does not swap when the numFmt is day-first (the normal case)', () => {
+      expect(parseDataCelula(new Date(Date.UTC(2023, 6, 11)), 'dd/mm/yyyy')).toBe('2023-07-11');
+    });
+
+    it('does not swap when no numFmt is provided', () => {
+      expect(parseDataCelula(new Date(Date.UTC(2023, 6, 11)))).toBe('2023-07-11');
+    });
+
+    it('does not swap when the day exceeds 12 — the value is unambiguous regardless of numFmt', () => {
+      // day=19 can never be a valid month, so this could only ever have been
+      // stored as September 19th, no matter which locale resolved it.
+      expect(parseDataCelula(new Date(Date.UTC(2023, 8, 19)), 'm/d/yy')).toBe('2023-09-19');
+    });
+
+    it('is a no-op when day and month are the same value', () => {
+      expect(parseDataCelula(new Date(Date.UTC(2023, 4, 5)), 'm/d/yy')).toBe('2023-05-05');
+    });
+  });
 });
 
 describe('parseHoraCelula', () => {

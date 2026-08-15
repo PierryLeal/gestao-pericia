@@ -1,15 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  listProcessos, getProcesso, updateProcesso, deleteProcesso, listEscritoriosDistintos,
+  listProcessos, getProcesso, updateProcesso, deleteProcesso, listEscritoriosDistintos, searchProcessos,
 } from './actions';
 
 const mockSingle = vi.fn();
 const mockEq = vi.fn<(...args: unknown[]) => unknown>(() => ({ single: mockSingle }));
 const mockRange = vi.fn();
+// searchProcessos's chain (.not().order().limit()) reuses the same terminal
+// mocks as listProcessos's (.order().range()) — only one of range()/limit()
+// is ever called in a given test, so aliasing them is safe.
 const mockOrder = vi.fn<(...args: unknown[]) => unknown>();
-mockOrder.mockImplementation(() => ({ order: mockOrder, range: mockRange }));
+mockOrder.mockImplementation(() => ({ order: mockOrder, range: mockRange, limit: mockRange }));
 const mockOr = vi.fn(() => ({ order: mockOrder }));
-const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockEq, or: mockOr }));
+const mockNot = vi.fn(() => ({ order: mockOrder }));
+const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockEq, or: mockOr, not: mockNot }));
 const mockUpdateEq = vi.fn(() => ({ select: () => ({ single: mockSingle }) }));
 const mockUpdate = vi.fn(() => ({ eq: mockUpdateEq }));
 const mockDeleteEq = vi.fn();
@@ -71,6 +75,25 @@ describe('listProcessos busca', () => {
     mockRange.mockResolvedValue({ data: rows, error: null });
     const result = await listProcessos();
     expect(result).toEqual(rows);
+  });
+});
+
+describe('searchProcessos', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOrder.mockImplementation(() => ({ order: mockOrder, range: mockRange, limit: mockRange }));
+  });
+
+  it('excludes processos with an unidentified (provisório) número from the picker', async () => {
+    mockRange.mockResolvedValue({ data: [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' }], error: null });
+    await searchProcessos('');
+    expect(mockNot).toHaveBeenCalledWith('numero', 'like', '[SEM_NUMERO_IDENTIFICADO] %');
+  });
+
+  it('still returns the (already-filtered) results', async () => {
+    mockRange.mockResolvedValue({ data: [{ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' }], error: null });
+    const result = await searchProcessos('');
+    expect(result).toEqual([{ id: 1, numero: 'P-1', autor: 'A', reu: 'B', escritorio: '' }]);
   });
 });
 

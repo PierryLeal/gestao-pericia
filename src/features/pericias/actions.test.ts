@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createPericia, listPericias, updatePericia, deletePericia, getColaboradoresIndisponiveis,
-  listPericiasPorColaboradorIds, listPericiasPorPeritoIds, listContratosDistintos,
+  listPericiasPorColaboradorIds, listPericiasPorPeritoIds, listContratosDistintos, getPericiaForEdit,
 } from './actions';
 
 const mockRpc = vi.fn();
@@ -16,6 +16,13 @@ const periciasSelectCalls: string[] = [];
 const periciasEqCalls: [string, unknown][] = [];
 let periciasQueryResult: { data: unknown[] | null; error: { message: string } | null } = {
   data: [],
+  error: null,
+};
+// Only getPericiaForEdit terminates its query with `.single()` instead of
+// being awaited directly — a separate result so it doesn't have to share
+// shape with the list-query result above.
+let periciaSingleResult: { data: unknown | null; error: { message: string } | null } = {
+  data: null,
   error: null,
 };
 
@@ -52,6 +59,7 @@ function periciasQueryBuilder() {
       return builder;
     }),
     range: vi.fn(() => builder),
+    single: vi.fn(() => Promise.resolve(periciaSingleResult)),
     then: (resolve: (v: typeof periciasQueryResult) => void, reject?: (e: unknown) => void) =>
       Promise.resolve(periciasQueryResult).then(resolve, reject),
   };
@@ -145,6 +153,7 @@ beforeEach(() => {
   periciasSelectCalls.length = 0;
   periciasEqCalls.length = 0;
   periciasQueryResult = { data: [], error: null };
+  periciaSingleResult = { data: null, error: null };
   periciaColaboradoresEqCalls.length = 0;
   periciaColaboradoresResult = { data: [], error: null };
   processosOrCalls.length = 0;
@@ -214,6 +223,48 @@ describe('updatePericia', () => {
       success: false,
       error: 'Este colaborador já está atribuído a outra perícia nesse mesmo dia e horário.',
     });
+  });
+
+  it('saves an edit even with processo/município/perito still missing, unlike createPericia', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null });
+    const result = await updatePericia(10, {
+      ...validInput, processoId: null, municipioId: null, peritoId: null,
+    });
+    expect(result).toEqual({ success: true, data: { id: 10 } });
+    expect(mockRpc).toHaveBeenCalledWith('update_pericia_with_colaboradores', {
+      p_id: 10, p_processo_id: null, p_data_agendada: '2026-08-01', p_hora_agendada: '14:30',
+      p_municipio_id: null, p_perito_id: null, p_situacao: 'marcada', p_observacoes: null,
+      p_colaborador_ids: [], p_contrato: null, p_local: null,
+    });
+  });
+});
+
+describe('getPericiaForEdit', () => {
+  it('strips the trailing seconds Postgres adds to hora_agendada, matching the "HH:MM" the edit form expects', async () => {
+    periciaSingleResult = {
+      data: {
+        id: 10, data_agendada: '2026-08-01', hora_agendada: '14:30:00', situacao: 'marcada',
+        observacoes: null, perito_id: 1, contrato: null, local: null,
+        processo: { id: 1, numero: '123', autor: 'A', reu: 'B', escritorio: '' },
+        municipio: { id: 3550308, nome: 'São Paulo', uf: 'SP' },
+      },
+      error: null,
+    };
+    const result = await getPericiaForEdit(10);
+    expect(result?.horaAgendada).toBe('14:30');
+  });
+
+  it('returns null hora_agendada as null instead of throwing', async () => {
+    periciaSingleResult = {
+      data: {
+        id: 10, data_agendada: null, hora_agendada: null, situacao: 'pendente',
+        observacoes: null, perito_id: null, contrato: null, local: null,
+        processo: null, municipio: null,
+      },
+      error: null,
+    };
+    const result = await getPericiaForEdit(10);
+    expect(result?.horaAgendada).toBeNull();
   });
 });
 
@@ -349,6 +400,18 @@ describe('listPericias', () => {
     const result = await listPericias();
 
     expect(result[0].problemas).toEqual(['processo não vinculado', 'município não vinculado', 'perito não vinculado']);
+  });
+
+  it('flags a processo with a blank autor or réu (e.g. left blank instead of a guessed "Vale" default)', async () => {
+    periciasQueryResult = {
+      data: [{ ...fullRow, processo: { ...fullRow.processo, autor: '', reu: '' } }],
+      error: null,
+    };
+    periciaColaboradoresResult = { data: [], error: null };
+
+    const result = await listPericias();
+
+    expect(result[0].problemas).toEqual(['autor do processo não identificado', 'réu do processo não identificado']);
   });
 
   it('flags a colaborador whose name is a single character as a problema', async () => {

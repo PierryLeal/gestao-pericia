@@ -6,16 +6,27 @@ import type { ActionResult } from '@/lib/action-result';
 import { postgrestQuoted } from '@/lib/postgrest';
 import { matchesSearch } from '@/lib/search';
 import { buscarTodasAsPaginas } from '@/lib/supabase/pagination';
+import { NUMERO_PROVISORIO_LIKE_PATTERN } from '@/lib/processo-numero-provisorio';
 import { processoSchema, processoImportSchema, type ProcessoInput, type ProcessoImportInput } from './schemas';
 
 export type Processo = {
   id: number; numero: string; autor: string; reu: string; escritorio: string;
 };
 
+// A processo whose número the import couldn't identify (see
+// processo-numero-provisorio.ts) isn't a meaningful, reusable identifier —
+// picking one from this list would silently attach a pericia to the wrong
+// (unrelated) placeholder row. Those still show up, and are still editable,
+// in the full "Processos" listing — just not offered here.
 export async function searchProcessos(query: string): Promise<Processo[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  let request = supabase.from('processos').select('id, numero, autor, reu, escritorio').order('numero').limit(20);
+  let request = supabase
+    .from('processos')
+    .select('id, numero, autor, reu, escritorio')
+    .not('numero', 'like', NUMERO_PROVISORIO_LIKE_PATTERN)
+    .order('numero')
+    .limit(20);
   if (query.trim()) {
     const pattern = postgrestQuoted(`%${query}%`);
     request = request.or(`numero.ilike.${pattern},autor.ilike.${pattern},reu.ilike.${pattern}`);

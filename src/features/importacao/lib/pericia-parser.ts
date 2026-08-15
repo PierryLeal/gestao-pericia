@@ -18,7 +18,11 @@ function extrairAutorReu(nomePart: string): { autor: string; reu: string } {
   // a name like "Alex" or "Max".
   const xMatch = nomePart.match(/^(.*?)\s+x\s+(.*)$/i);
   if (xMatch) return { autor: xMatch[1].trim(), reu: xMatch[2].trim() };
-  return { autor: nomePart, reu: 'Vale' };
+  // No "x" found: previously defaulted réu to "Vale", assuming Vale was
+  // always the (unstated) opposing party — wrong often enough that it can no
+  // longer be assumed. Leave it blank for manual review instead (surfaced as
+  // a "réu não identificado" motivo/pendência) rather than guessing.
+  return { autor: nomePart, reu: '' };
 }
 
 /**
@@ -34,13 +38,28 @@ export function parseColunaPericia(texto: string): PericiaParseada | null {
   const cnjMatch = trimmed.match(NUMERO_PROCESSO_CNJ_REGEX);
   if (cnjMatch) {
     const numeroProcesso = cnjMatch[0];
-    const nomePart = trimmed.slice(0, cnjMatch.index).replace(/[-–—\s]+$/, '').trim();
+    const matchIndex = cnjMatch.index ?? 0;
+    // The name part is usually before the número ("Nome - 123...") but some
+    // sheet rows write it the other way around ("123... - Nome x Réu") — try
+    // both sides and use whichever actually has text, preferring the text
+    // before the número when both do.
+    const antes = trimmed.slice(0, matchIndex).replace(/[-–—\s]+$/, '').trim();
+    const depois = trimmed.slice(matchIndex + numeroProcesso.length).replace(/^[-–—\s]+/, '').trim();
+    const nomePart = antes || depois;
     if (!nomePart) return { autor: '', reu: '', numeroProcesso };
     return { ...extrairAutorReu(nomePart), numeroProcesso };
   }
 
   const lastDashIndex = trimmed.lastIndexOf(' - ');
-  if (lastDashIndex === -1) return null;
+  if (lastDashIndex === -1) {
+    // No " x "/" - " structure to split autor/réu from a número at all — but
+    // a bare short code like "LT 74" (no autor/réu, just the code itself) is
+    // still a real, useful processo identifier as long as it has a digit,
+    // same rule as the número-after-a-dash case below. Only truly opaque
+    // prose with no digit at all (e.g. "PERICIA PRÉVIA") stays unparseable.
+    if (/\d/.test(trimmed)) return { autor: '', reu: '', numeroProcesso: trimmed };
+    return null;
+  }
 
   const nomePart = trimmed.slice(0, lastDashIndex).trim();
   const numeroProcesso = trimmed.slice(lastDashIndex + 3).trim();
