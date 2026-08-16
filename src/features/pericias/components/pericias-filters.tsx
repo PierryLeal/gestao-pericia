@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MunicipioCombobox } from '@/features/municipios/components/municipio-combobox';
 import { OptionCombobox } from '@/components/shared/option-combobox';
 import { ContratoFiltro } from '@/components/shared/contrato-filtro';
+import { parseContratos, serializeContratos } from '@/lib/contratos';
 import { situacaoOptions } from '../schemas';
 import type { MunicipioIBGE } from '@/lib/ibge/client';
 
@@ -175,8 +176,8 @@ export function PericiasFilters({
           </div>
           <ContratoFiltro
             id="contrato-filtro"
-            value={searchParams.get('contrato') ?? ''}
-            onChange={(value) => updateParam('contrato', value)}
+            value={parseContratos(searchParams.get('contrato'))}
+            onChange={(value) => updateParam('contrato', serializeContratos(value))}
           />
         </div>
       </CardContent>

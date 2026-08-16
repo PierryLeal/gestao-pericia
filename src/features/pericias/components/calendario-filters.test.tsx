@@ -69,6 +69,6 @@ describe('CalendarioFilters', () => {
     await user.click(screen.getByRole('combobox', { name: /contrato/i }));
     await user.click(await screen.findByRole('option', { name: 'VALE AT' }));
 
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ contrato: 'VALE AT' }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ contrato: ['VALE AT'] }));
   });
 });

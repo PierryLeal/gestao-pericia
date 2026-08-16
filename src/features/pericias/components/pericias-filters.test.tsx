@@ -20,7 +20,7 @@ vi.mock('@/features/municipios/components/municipio-combobox', () => ({
 }));
 
 vi.mock('@/features/pericias/actions', () => ({
-  listContratosDistintos: vi.fn(async () => ['VALE AT']),
+  listContratosDistintos: vi.fn(async () => ['VALE AT', 'VALE BRUMADINHO']),
 }));
 
 describe('PericiasFilters', () => {
@@ -98,6 +98,20 @@ describe('PericiasFilters', () => {
     await user.click(await screen.findByRole('option', { name: 'VALE AT' }));
 
     expect(push).toHaveBeenCalledWith(expect.stringContaining('contrato=VALE+AT'));
+  });
+
+  it('combines more than one contrato (multi-select) into a comma-joined URL param', async () => {
+    // Seeded with one contrato already selected (rather than clicking twice
+    // in a row) since the mocked useSearchParams here is static and doesn't
+    // reflect a just-pushed URL between clicks the way the real router would.
+    params = new URLSearchParams('contrato=VALE+AT');
+    const user = userEvent.setup();
+    render(<PericiasFilters peritos={[]} colaboradores={[]} municipio={null} startTransition={(cb) => cb()} />);
+
+    await user.click(screen.getByRole('combobox', { name: /contrato/i }));
+    await user.click(await screen.findByRole('option', { name: 'VALE BRUMADINHO' }));
+
+    expect(push).toHaveBeenCalledWith(expect.stringContaining('contrato=VALE+AT%2CVALE+BRUMADINHO'));
   });
 
   it('clears data, municipioId, peritoId, colaboradorId and contrato when "Limpar filtros" is clicked', async () => {

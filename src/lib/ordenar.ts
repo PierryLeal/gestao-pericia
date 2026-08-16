@@ -7,11 +7,17 @@ export type CriterioOrdenacao<Coluna extends string> = {
 
 /**
  * Tri-state per column: clicking the arrow that's already active for that
- * column drops it back to unsorted (neither arrow highlighted); clicking the
- * other arrow flips its direction in place, keeping its priority; clicking a
- * column with no criterio yet appends it as the lowest-priority tiebreaker —
- * this is what makes sorts "somáveis" (e.g. Data - Hora asc, then Contrato
- * asc as a tiebreaker) instead of one column replacing the last.
+ * column drops it back to unsorted (neither arrow highlighted); otherwise
+ * the clicked column becomes the new *primary* key (prepended), demoting
+ * whatever was already active to tiebreaker roles behind it — this is what
+ * makes sorts "somáveis" (e.g. Contrato asc, then Data - Hora asc as a
+ * tiebreaker within each contrato).
+ *
+ * The most-recent-click-wins order matters: if an earlier-picked column
+ * happened to already be unique per row (e.g. Data - Hora, rarely repeated),
+ * appending new columns behind it would leave them with no ties left to
+ * break — clicking them would visibly do nothing. Promoting the new pick to
+ * primary instead guarantees it always has an effect.
  */
 export function alternarCriterio<Coluna extends string>(
   criterios: CriterioOrdenacao<Coluna>[],
@@ -22,10 +28,8 @@ export function alternarCriterio<Coluna extends string>(
   if (existente?.direcao === direcao) {
     return criterios.filter((c) => c.coluna !== coluna);
   }
-  if (existente) {
-    return criterios.map((c) => (c.coluna === coluna ? { ...c, direcao } : c));
-  }
-  return [...criterios, { coluna, direcao }];
+  const outros = criterios.filter((c) => c.coluna !== coluna);
+  return [{ coluna, direcao }, ...outros];
 }
 
 /**

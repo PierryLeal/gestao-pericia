@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatarNumeroProcesso } from '@/lib/processo-numero-provisorio';
+import { parseContratos } from '@/lib/contratos';
 import { listPericias } from '../actions';
 
 const SITUACAO_LABELS: Record<string, string> = {
@@ -31,7 +32,7 @@ export function ExportPericiasButton() {
       const municipioId = searchParams.get('municipioId');
       const peritoId = searchParams.get('peritoId');
       const colaboradorId = searchParams.get('colaboradorId');
-      const contrato = searchParams.get('contrato');
+      const contrato = parseContratos(searchParams.get('contrato'));
       if (situacao) filters.situacao = situacao;
       if (busca) filters.busca = busca;
       if (dataInicio) filters.dataInicio = dataInicio;
@@ -39,7 +40,7 @@ export function ExportPericiasButton() {
       if (municipioId) filters.municipioId = Number(municipioId);
       if (peritoId) filters.peritoId = Number(peritoId);
       if (colaboradorId) filters.colaboradorId = Number(colaboradorId);
-      if (contrato) filters.contrato = contrato;
+      if (contrato.length > 0) filters.contrato = contrato;
 
       const items = await listPericias(filters);
       if (items.length === 0) {

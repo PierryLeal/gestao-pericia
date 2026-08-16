@@ -2,6 +2,7 @@ import { listPericias, getPericiaForEdit } from '@/features/pericias/actions';
 import { listPeritosOptions } from '@/features/peritos/actions';
 import { listColaboradoresOptions } from '@/features/colaboradores/actions';
 import { getMunicipioById } from '@/features/municipios/actions';
+import { parseContratos } from '@/lib/contratos';
 import { PericiasScreen } from '@/features/pericias/components/pericias-screen';
 
 export default async function PericiasPage({
@@ -21,7 +22,7 @@ export default async function PericiasPage({
     municipioId: municipioId ? Number(municipioId) : undefined,
     peritoId: peritoId ? Number(peritoId) : undefined,
     colaboradorId: colaboradorId ? Number(colaboradorId) : undefined,
-    contrato,
+    contrato: parseContratos(contrato),
   });
   const [peritos, colaboradores, municipio] = await Promise.all([
     listPeritosOptions(),

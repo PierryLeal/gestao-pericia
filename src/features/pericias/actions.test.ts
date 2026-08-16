@@ -445,9 +445,17 @@ describe('listPericias', () => {
     // no longer be resolved through the processo relationship.
     periciasQueryResult = { data: [], error: null };
 
-    await listPericias({ contrato: 'VALE AT' });
+    await listPericias({ contrato: ['VALE AT'] });
 
-    expect(periciasEqCalls).toContainEqual(['contrato', 'VALE AT']);
+    expect(periciasEqCalls).toContainEqual(['in:contrato', ['VALE AT']]);
+  });
+
+  it('filters by multiple contratos at once (multi-select)', async () => {
+    periciasQueryResult = { data: [], error: null };
+
+    await listPericias({ contrato: ['VALE AT', 'VALE BRUMADINHO'] });
+
+    expect(periciasEqCalls).toContainEqual(['in:contrato', ['VALE AT', 'VALE BRUMADINHO']]);
   });
 
   it('does not apply the contrato filter when it is empty', async () => {

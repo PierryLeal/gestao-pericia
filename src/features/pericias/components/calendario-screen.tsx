@@ -40,7 +40,7 @@ export function CalendarioScreen({
     if (filters.busca && !formatarNumeroProcesso(item.processo?.numero).toLowerCase().includes(filters.busca.toLowerCase())) return false;
     if (filters.peritoId && item.perito?.id !== filters.peritoId) return false;
     if (filters.colaboradorId && !item.colaboradores.some((c) => c.id === filters.colaboradorId)) return false;
-    if (filters.contrato && item.contrato !== filters.contrato) return false;
+    if (filters.contrato && filters.contrato.length > 0 && !(item.contrato && filters.contrato.includes(item.contrato))) return false;
     return true;
   });
   const { events, unscheduled } = splitAgendadasNaoAgendadas(filteredItems);

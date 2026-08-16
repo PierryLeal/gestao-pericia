@@ -2,28 +2,32 @@ import { describe, it, expect } from 'vitest';
 import { alternarCriterio, ordenar } from './ordenar';
 
 describe('alternarCriterio', () => {
-  it('adds a new column as the lowest-priority criterio when none exists for it yet', () => {
+  it('adds a new column as the only (and thus primary) criterio when none exists for it yet', () => {
     expect(alternarCriterio([], 'data', 'asc')).toEqual([{ coluna: 'data', direcao: 'asc' }]);
   });
 
-  it('appends a second column after the first, keeping both (somáveis)', () => {
+  it('promotes a newly-clicked second column to primary, demoting the first to a tiebreaker (somáveis)', () => {
     const primeiro = alternarCriterio([], 'data', 'asc');
     const resultado = alternarCriterio(primeiro, 'contrato', 'asc');
+    // "contrato" was clicked last, so it leads — "data" only breaks ties
+    // within equal contrato values now. If it stayed appended behind "data"
+    // instead, and data-hora happened to already be unique per row, contrato
+    // would never have any visible effect.
     expect(resultado).toEqual([
-      { coluna: 'data', direcao: 'asc' },
       { coluna: 'contrato', direcao: 'asc' },
+      { coluna: 'data', direcao: 'asc' },
     ]);
   });
 
-  it('flips the direction in place (same position) when the other arrow is clicked', () => {
-    const asc = [
+  it('re-promotes an existing column to primary when the other arrow is clicked (direction flip counts as a fresh click)', () => {
+    const criterios = [
       { coluna: 'data', direcao: 'asc' as const },
       { coluna: 'contrato', direcao: 'asc' as const },
     ];
-    const resultado = alternarCriterio(asc, 'data', 'desc');
+    const resultado = alternarCriterio(criterios, 'contrato', 'desc');
     expect(resultado).toEqual([
-      { coluna: 'data', direcao: 'desc' },
-      { coluna: 'contrato', direcao: 'asc' },
+      { coluna: 'contrato', direcao: 'desc' },
+      { coluna: 'data', direcao: 'asc' },
     ]);
   });
 
@@ -43,6 +47,46 @@ describe('alternarCriterio', () => {
       { coluna: 'data', direcao: 'asc' },
       { coluna: 'perito', direcao: 'desc' },
     ]);
+  });
+});
+
+describe('alternarCriterio + ordenar together: click-order regression', () => {
+  type Linha = { id: number; contrato: string; data: string };
+  // Deliberately chosen so contrato-led and data-led orderings disagree —
+  // otherwise a test could pass "by accident" without proving which column
+  // actually won priority.
+  const linhas: Linha[] = [
+    { id: 1, contrato: 'B-CONTRATO', data: '2026-08-01' },
+    { id: 2, contrato: 'A-CONTRATO', data: '2026-08-03' },
+    { id: 3, contrato: 'A-CONTRATO', data: '2026-08-02' },
+  ];
+  const getValor = (item: Linha, coluna: 'contrato' | 'data') => item[coluna];
+
+  it('clicking contrato after data promotes contrato to primary — its order is visibly applied', () => {
+    // Reported bug: clicking "Data - Hora" then "Contrato" appeared to have
+    // no effect, because data (already unique per row) left no ties for a
+    // *trailing* contrato tiebreaker to ever break. Clicking contrato must
+    // promote it to primary so its order always takes effect regardless of
+    // what was clicked before it.
+    let criterios = alternarCriterio<'contrato' | 'data'>([], 'data', 'asc');
+    criterios = alternarCriterio(criterios, 'contrato', 'asc');
+
+    const resultado = ordenar(linhas, criterios, getValor);
+
+    // Grouped by contrato (A before B); within A, data asc breaks the tie.
+    expect(resultado.map((l) => l.id)).toEqual([3, 2, 1]);
+  });
+
+  it('the reverse click order (contrato then data) makes data primary instead', () => {
+    let criterios = alternarCriterio<'contrato' | 'data'>([], 'contrato', 'asc');
+    criterios = alternarCriterio(criterios, 'data', 'asc');
+
+    const resultado = ordenar(linhas, criterios, getValor);
+
+    // data (clicked last) leads now — every row's data is distinct here, so
+    // contrato's grouping never shows through, unlike the test above. This
+    // is the expected trade-off: whichever column you click last wins.
+    expect(resultado.map((l) => l.id)).toEqual([1, 3, 2]);
   });
 });
 

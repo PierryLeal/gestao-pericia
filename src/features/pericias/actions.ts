@@ -61,7 +61,7 @@ function problemasDaPericia(row: {
 export async function listPericias(
   filters: {
     situacao?: string; busca?: string; dataInicio?: string; dataFim?: string;
-    municipioId?: number; peritoId?: number; colaboradorId?: number; contrato?: string;
+    municipioId?: number; peritoId?: number; colaboradorId?: number; contrato?: string[];
   } = {}
 ): Promise<PericiaListItem[]> {
   await requireRole(['admin', 'gerencia']);
@@ -139,8 +139,8 @@ export async function listPericias(
     if (filters.peritoId) {
       query = query.eq('perito_id', filters.peritoId);
     }
-    if (filters.contrato) {
-      query = query.eq('contrato', filters.contrato);
+    if (filters.contrato && filters.contrato.length > 0) {
+      query = query.in('contrato', filters.contrato);
     }
     if (idsPericiaDoLote) {
       query = query.in('id', idsPericiaDoLote);

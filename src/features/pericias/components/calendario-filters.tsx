@@ -16,7 +16,7 @@ export type CalendarioFiltersValue = {
   busca?: string;
   peritoId?: number;
   colaboradorId?: number;
-  contrato?: string;
+  contrato?: string[];
 };
 
 export function CalendarioFilters({
@@ -96,8 +96,8 @@ export function CalendarioFilters({
         </div>
         <ContratoFiltro
           id="calendario-contrato"
-          value={value.contrato ?? ''}
-          onChange={(v) => update({ contrato: v || undefined })}
+          value={value.contrato ?? []}
+          onChange={(v) => update({ contrato: v.length > 0 ? v : undefined })}
         />
       </CardContent>
     </Card>

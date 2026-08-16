@@ -272,20 +272,24 @@ describe('PericiasTable', () => {
       expect(setaCrescente).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('combines two columns (somáveis): Data - Hora asc as primary, Contrato as a stacked tiebreaker', async () => {
+    it('combines two columns (somáveis): the last-clicked column leads, the earlier one breaks ties', async () => {
       const empatadas = [
-        linhaOrdenavel('P-1', 'B-CONTRATO', '2026-08-01'),
+        linhaOrdenavel('P-1', 'A-CONTRATO', '2026-08-03'),
         linhaOrdenavel('P-2', 'A-CONTRATO', '2026-08-01'),
-        linhaOrdenavel('P-3', 'Z-CONTRATO', '2026-07-01'),
+        linhaOrdenavel('P-3', 'B-CONTRATO', '2026-08-02'),
       ];
       const user = userEvent.setup();
       render(<PericiasTable items={empatadas} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
+      // Data - Hora clicked first, then Contrato — Contrato, clicked last,
+      // becomes primary; Data - Hora demotes to a tiebreaker within it.
+      // (Regression: clicking Contrato used to have no visible effect here,
+      // since Data - Hora alone already made every row unique.)
       await user.click(screen.getByRole('button', { name: 'Ordenar Data - Hora em ordem crescente' }));
       await user.click(screen.getByRole('button', { name: 'Ordenar Contrato em ordem crescente' }));
 
-      // P-3 (07-01) first by date; P-1/P-2 tie on 08-01, broken by contrato asc (A before B).
-      expect(numerosVisiveisEmOrdem()).toEqual(['P-3', 'P-2', 'P-1']);
+      // Grouped by contrato (A before B); within A, data asc breaks the tie.
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-2', 'P-1', 'P-3']);
     });
 
     it('resets to page 1 when a sort is applied', async () => {
