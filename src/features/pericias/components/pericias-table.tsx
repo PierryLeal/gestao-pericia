@@ -11,11 +11,39 @@ import { ResultadoBadge } from '@/components/shared/resultado-badge';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { TooltipCell } from '@/components/shared/tooltip-cell';
 import { PaginationControls } from '@/components/shared/pagination-controls';
+import { SortableTableHead } from '@/components/shared/sortable-table-head';
 import { paginar, totalDePaginas, ITENS_POR_PAGINA_PADRAO } from '@/lib/paginar';
+import { alternarCriterio, ordenar, type CriterioOrdenacao, type DirecaoOrdenacao } from '@/lib/ordenar';
 import { cn } from '@/lib/utils';
 import { formatPhone } from '@/lib/masks';
-import { isNumeroProvisorio, rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
+import { formatarNumeroProcesso, isNumeroProvisorio, rotuloNumeroProcesso } from '@/lib/processo-numero-provisorio';
 import type { PericiaListItem } from '../actions';
+
+type ColunaOrdenavel =
+  | 'numero' | 'escritorio' | 'contrato' | 'dataHora' | 'local' | 'perito' | 'colaborador' | 'situacao' | 'observacoes';
+
+function valorParaOrdenar(item: PericiaListItem, coluna: ColunaOrdenavel): string | number | null {
+  switch (coluna) {
+    case 'numero':
+      return formatarNumeroProcesso(item.processo?.numero) || null;
+    case 'escritorio':
+      return item.processo?.escritorio || null;
+    case 'contrato':
+      return item.contrato;
+    case 'dataHora':
+      return item.dataAgendada ? `${item.dataAgendada}T${item.horaAgendada ?? '00:00'}` : null;
+    case 'local':
+      return item.municipio ? `${item.municipio.nome}/${item.municipio.uf}` : null;
+    case 'perito':
+      return item.perito?.nome ?? null;
+    case 'colaborador':
+      return item.colaboradores.length > 0 ? item.colaboradores.map((c) => c.nome).join(', ') : null;
+    case 'situacao':
+      return item.situacao;
+    case 'observacoes':
+      return item.observacoes;
+  }
+}
 
 export function PericiasTableAsync({
   itemsPromise,
@@ -43,14 +71,22 @@ export function PericiasTable({
   const [confirmTarget, setConfirmTarget] = useState<PericiaListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [pagina, setPagina] = useState(1);
+  const [criterios, setCriterios] = useState<CriterioOrdenacao<ColunaOrdenavel>[]>([]);
 
   if (items.length === 0) {
     return <p className="p-6 text-sm text-muted-foreground">Nenhuma perícia encontrada.</p>;
   }
 
-  const totalPaginas = totalDePaginas(items.length, ITENS_POR_PAGINA_PADRAO);
+  function ordenarPor(coluna: ColunaOrdenavel, direcao: DirecaoOrdenacao) {
+    setCriterios((atual) => alternarCriterio(atual, coluna, direcao));
+    setPagina(1);
+  }
+  const direcaoDe = (coluna: ColunaOrdenavel) => criterios.find((c) => c.coluna === coluna)?.direcao ?? null;
+
+  const itensOrdenados = ordenar(items, criterios, valorParaOrdenar);
+  const totalPaginas = totalDePaginas(itensOrdenados.length, ITENS_POR_PAGINA_PADRAO);
   const paginaEfetiva = Math.min(pagina, totalPaginas);
-  const itensDaPagina = paginar(items, paginaEfetiva, ITENS_POR_PAGINA_PADRAO);
+  const itensDaPagina = paginar(itensOrdenados, paginaEfetiva, ITENS_POR_PAGINA_PADRAO);
 
   async function handleConfirmDelete() {
     if (!confirmTarget) return;
@@ -78,15 +114,15 @@ export function PericiasTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-8" />
-            <TableHead>Nº Processo</TableHead>
-            <TableHead>Escritório</TableHead>
-            <TableHead>Contrato</TableHead>
-            <TableHead>Data - Hora</TableHead>
-            <TableHead>Local</TableHead>
-            <TableHead>Perito</TableHead>
-            <TableHead>Colaborador</TableHead>
-            <TableHead>Situação</TableHead>
-            <TableHead>Obs.</TableHead>
+            <SortableTableHead label="Nº Processo" direcao={direcaoDe('numero')} onOrdenar={(d) => ordenarPor('numero', d)} />
+            <SortableTableHead label="Escritório" direcao={direcaoDe('escritorio')} onOrdenar={(d) => ordenarPor('escritorio', d)} />
+            <SortableTableHead label="Contrato" direcao={direcaoDe('contrato')} onOrdenar={(d) => ordenarPor('contrato', d)} />
+            <SortableTableHead label="Data - Hora" direcao={direcaoDe('dataHora')} onOrdenar={(d) => ordenarPor('dataHora', d)} />
+            <SortableTableHead label="Local" direcao={direcaoDe('local')} onOrdenar={(d) => ordenarPor('local', d)} />
+            <SortableTableHead label="Perito" direcao={direcaoDe('perito')} onOrdenar={(d) => ordenarPor('perito', d)} />
+            <SortableTableHead label="Colaborador" direcao={direcaoDe('colaborador')} onOrdenar={(d) => ordenarPor('colaborador', d)} />
+            <SortableTableHead label="Situação" direcao={direcaoDe('situacao')} onOrdenar={(d) => ordenarPor('situacao', d)} />
+            <SortableTableHead label="Obs." direcao={direcaoDe('observacoes')} onOrdenar={(d) => ordenarPor('observacoes', d)} />
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>

@@ -60,7 +60,13 @@ describe('PericiasPreviewTable', () => {
       />
     );
     expect(screen.getByDisplayValue('Perito Novo')).toBeInTheDocument();
-    expect(screen.getByText('(novo)')).toBeInTheDocument();
+    // The "(novo)" caption always renders (reserving its line height so every
+    // row/column stays the same height — see the misalignment fix), so both
+    // the Perito and Colaborador columns have one; only the Perito one
+    // should actually be visible here.
+    const badges = screen.getAllByText('(novo)');
+    expect(badges).toHaveLength(2);
+    expect(badges.filter((b) => !b.className.includes('invisible'))).toHaveLength(1);
   });
 
   it('shows a município combobox and calls onChange with the picked município when status is atencao with no município', async () => {
@@ -167,7 +173,17 @@ describe('PericiasPreviewTable', () => {
       />
     );
     expect(screen.getByDisplayValue('João/Novo Colaborador')).toBeInTheDocument();
-    expect(screen.getByText('(novo)')).toBeInTheDocument();
+    const badges = screen.getAllByText('(novo)');
+    expect(badges).toHaveLength(2);
+    expect(badges.filter((b) => !b.className.includes('invisible'))).toHaveLength(1);
+  });
+
+  it('keeps the "(novo)" caption\'s line reserved (invisible, not removed) even when nothing is new, so row height stays uniform', () => {
+    render(<PericiasPreviewTable linhas={[linhaBase()]} onChange={vi.fn()} />);
+
+    const badges = screen.getAllByText('(novo)');
+    expect(badges).toHaveLength(2);
+    expect(badges.every((b) => b.className.includes('invisible'))).toBe(true);
   });
 
   it('gives every row the same number of cells as the header has columns, flagged or not', () => {

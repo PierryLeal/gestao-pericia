@@ -149,9 +149,14 @@ export function PericiasPreviewTable({
                       onChange={(e) => atualizarLinha(index, { peritoNome: e.target.value, peritoIdExistente: null })}
                     />
                   </TooltipField>
-                  {!linha.peritoIdExistente && linha.peritoNome.trim() && (
-                    <span className="mt-0.5 block text-xs text-muted-foreground">(novo)</span>
-                  )}
+                  <span
+                    className={cn(
+                      'mt-0.5 block text-xs text-muted-foreground',
+                      !(!linha.peritoIdExistente && linha.peritoNome.trim()) && 'invisible'
+                    )}
+                  >
+                    (novo)
+                  </span>
                 </TableCell>
                 <TableCell className="min-w-36">
                   <TooltipField value={linha.colaboradorNome}>
@@ -161,10 +166,15 @@ export function PericiasPreviewTable({
                       onChange={(e) => atualizarLinha(index, { colaboradorNome: e.target.value, colaboradorIdsExistentes: [] })}
                     />
                   </TooltipField>
-                  {linha.colaboradorNome.split('/').map((n) => n.trim()).filter(Boolean).length
-                    > linha.colaboradorIdsExistentes.length && (
-                    <span className="mt-0.5 block text-xs text-muted-foreground">(novo)</span>
-                  )}
+                  <span
+                    className={cn(
+                      'mt-0.5 block text-xs text-muted-foreground',
+                      linha.colaboradorNome.split('/').map((n) => n.trim()).filter(Boolean).length
+                        <= linha.colaboradorIdsExistentes.length && 'invisible'
+                    )}
+                  >
+                    (novo)
+                  </span>
                 </TableCell>
                 <TableCell className="min-w-28">
                   <Select

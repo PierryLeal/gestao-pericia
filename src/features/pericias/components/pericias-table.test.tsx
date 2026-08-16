@@ -213,4 +213,94 @@ describe('PericiasTable', () => {
     expect(screen.getByText('PROCESSO-31')).toBeInTheDocument();
     expect(screen.queryByText('PROCESSO-1')).not.toBeInTheDocument();
   });
+
+  describe('sorting', () => {
+    function linhaOrdenavel(numero: string, contrato: string, dataAgendada: string) {
+      return {
+        ...items[0],
+        id: Number(numero.split('-')[1]),
+        processo: { ...items[0].processo!, numero },
+        contrato,
+        dataAgendada,
+      };
+    }
+    const linhas = [
+      linhaOrdenavel('P-1', 'C-CONTRATO', '2026-08-03'),
+      linhaOrdenavel('P-2', 'A-CONTRATO', '2026-08-01'),
+      linhaOrdenavel('P-3', 'B-CONTRATO', '2026-08-02'),
+    ];
+
+    function numerosVisiveisEmOrdem() {
+      return screen.getAllByText(/^P-\d$/).map((el) => el.textContent);
+    }
+
+    it('keeps the original (unsorted) row order by default', () => {
+      render(<PericiasTable items={linhas} onEdit={vi.fn()} onDelete={vi.fn()} />);
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-1', 'P-2', 'P-3']);
+    });
+
+    it('sorts ascending when the up arrow is clicked, and highlights only that arrow', async () => {
+      const user = userEvent.setup();
+      render(<PericiasTable items={linhas} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: 'Ordenar Contrato em ordem crescente' }));
+
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-2', 'P-3', 'P-1']);
+      expect(screen.getByRole('button', { name: 'Ordenar Contrato em ordem crescente' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Ordenar Contrato em ordem decrescente' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('sorts descending when the down arrow is clicked', async () => {
+      const user = userEvent.setup();
+      render(<PericiasTable items={linhas} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: 'Ordenar Contrato em ordem decrescente' }));
+
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-1', 'P-3', 'P-2']);
+    });
+
+    it('returns to the default (unsorted) order when the active arrow is clicked again', async () => {
+      const user = userEvent.setup();
+      render(<PericiasTable items={linhas} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+      const setaCrescente = screen.getByRole('button', { name: 'Ordenar Contrato em ordem crescente' });
+      await user.click(setaCrescente);
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-2', 'P-3', 'P-1']);
+
+      await user.click(setaCrescente);
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-1', 'P-2', 'P-3']);
+      expect(setaCrescente).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('combines two columns (somáveis): Data - Hora asc as primary, Contrato as a stacked tiebreaker', async () => {
+      const empatadas = [
+        linhaOrdenavel('P-1', 'B-CONTRATO', '2026-08-01'),
+        linhaOrdenavel('P-2', 'A-CONTRATO', '2026-08-01'),
+        linhaOrdenavel('P-3', 'Z-CONTRATO', '2026-07-01'),
+      ];
+      const user = userEvent.setup();
+      render(<PericiasTable items={empatadas} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: 'Ordenar Data - Hora em ordem crescente' }));
+      await user.click(screen.getByRole('button', { name: 'Ordenar Contrato em ordem crescente' }));
+
+      // P-3 (07-01) first by date; P-1/P-2 tie on 08-01, broken by contrato asc (A before B).
+      expect(numerosVisiveisEmOrdem()).toEqual(['P-3', 'P-2', 'P-1']);
+    });
+
+    it('resets to page 1 when a sort is applied', async () => {
+      const muitas = Array.from({ length: 35 }, (_, i) =>
+        linhaOrdenavel(`P-${i + 1}`, String.fromCharCode(90 - (i % 26)) + '-CONTRATO', '2026-08-01')
+      );
+      const user = userEvent.setup();
+      render(<PericiasTable items={muitas} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: 'Próxima' }));
+      expect(screen.queryByText('P-1')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Ordenar Contrato em ordem crescente' }));
+
+      expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    });
+  });
 });
