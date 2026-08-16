@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,11 +48,16 @@ export function PericiaForm({
   const [contrato, setContrato] = useState<string | null>(pericia?.contrato ?? null);
   const [saving, setSaving] = useState(false);
   const [busyColaboradorIds, setBusyColaboradorIds] = useState<number[]>([]);
-  // Creating a processo from inside this form swaps the form's own content
-  // instead of opening a second dialog on top of this one — the rest of the
-  // pericia's fields (all the state above) stay exactly as the user left
-  // them and reappear once the new processo is picked or the user backs out.
-  const [criandoProcesso, setCriandoProcesso] = useState(false);
+  // Creating or editing a processo from inside this form swaps the form's
+  // own content instead of opening a second dialog on top of this one — the
+  // rest of the pericia's fields (all the state above) stay exactly as the
+  // user left them and reappear once the processo is saved or the user backs
+  // out. "Editar" matters especially for a processo the import couldn't
+  // identify (see processo-numero-provisorio.ts): it's excluded from the
+  // picker's search results, so there's no way to find that exact row again
+  // from the Processos screen — fixing it in place here avoids creating a
+  // second, throwaway processo and leaving the original as orphaned junk.
+  const [modoProcesso, setModoProcesso] = useState<'novo' | 'editar' | null>(null);
 
   useEffect(() => {
     if (!dataAgendada || !horaAgendada) {
@@ -143,19 +148,20 @@ export function PericiaForm({
     onSaved(result.data.id);
   }
 
-  if (criandoProcesso) {
+  if (modoProcesso) {
     return (
       <div className="space-y-4">
-        <Button type="button" variant="ghost" size="sm" onClick={() => setCriandoProcesso(false)} className="-ml-2">
+        <Button type="button" variant="ghost" size="sm" onClick={() => setModoProcesso(null)} className="-ml-2">
           <ArrowLeft className="size-4" />
           Voltar para a perícia
         </Button>
         <ProcessoForm
-          submitLabel="Salvar e vincular"
-          onSaved={(novoProcesso) => {
-            toast.success('Processo criado com sucesso');
-            setProcesso(novoProcesso);
-            setCriandoProcesso(false);
+          processo={modoProcesso === 'editar' ? (processo ?? undefined) : undefined}
+          submitLabel={modoProcesso === 'editar' ? 'Salvar processo' : 'Salvar e vincular'}
+          onSaved={(processoSalvo) => {
+            toast.success(modoProcesso === 'editar' ? 'Processo atualizado com sucesso' : 'Processo criado com sucesso');
+            setProcesso(processoSalvo);
+            setModoProcesso(null);
           }}
           onError={onError}
         />
@@ -167,12 +173,22 @@ export function PericiaForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <Label>Processo</Label>
-        <ProcessoCombobox
-          value={processo?.id ?? null}
-          selected={processo}
-          onChange={setProcesso}
-          onNovoProcesso={() => setCriandoProcesso(true)}
-        />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <ProcessoCombobox
+              value={processo?.id ?? null}
+              selected={processo}
+              onChange={setProcesso}
+              onNovoProcesso={() => setModoProcesso('novo')}
+            />
+          </div>
+          {processo && (
+            <Button type="button" variant="outline" size="icon" onClick={() => setModoProcesso('editar')}>
+              <Pencil className="size-4" />
+              <span className="sr-only">Editar processo vinculado</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">

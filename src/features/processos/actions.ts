@@ -173,9 +173,16 @@ export async function deleteProcesso(id: number): Promise<ActionResult<null>> {
 export async function listEscritoriosDistintos(): Promise<string[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('processos').select('escritorio').order('escritorio');
-  if (error) throw new Error(error.message);
-  const values = (data ?? []).map((row) => row.escritorio).filter((v): v is string => Boolean(v));
+  // Unbounded .select() silently truncates at PostgREST's 1000-row cap (see
+  // buscarTodasAsPaginas) — confirmed the hard way: with ~1566 of 2003
+  // processos rows blank and the rest sorted after them ascending, the first
+  // (and only) page fetched was 1000 rows deep into the blanks and never
+  // reached a single real escritorio value, making the picker look
+  // permanently empty despite 437 real values existing in the table.
+  const rows = await buscarTodasAsPaginas<{ escritorio: string | null }>((inicio, fim) =>
+    supabase.from('processos').select('escritorio').order('escritorio').range(inicio, fim)
+  );
+  const values = rows.map((row) => row.escritorio).filter((v): v is string => Boolean(v));
   return [...new Set(values)];
 }
 

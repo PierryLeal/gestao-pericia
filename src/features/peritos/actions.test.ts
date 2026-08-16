@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listPeritos, deletePerito, mesclarPeritos } from './actions';
+import { listPeritos, listPeritosOptions, deletePerito, mesclarPeritos } from './actions';
 
 const mockRange = vi.fn();
 const mockOrder = vi.fn(() => ({ order: mockOrder, range: mockRange }));
@@ -51,6 +51,30 @@ describe('listPeritos', () => {
     mockRange.mockResolvedValue({ data: rows, error: null });
     const result = await listPeritos();
     expect(result.map((p) => p.id)).toEqual([1, 2]);
+  });
+});
+
+describe('listPeritosOptions', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns id/nome for every perito', async () => {
+    mockRange.mockResolvedValue({ data: [{ id: 1, nome: 'Carlos Lima' }, { id: 2, nome: 'André Simões' }], error: null });
+    const result = await listPeritosOptions();
+    expect(result).toEqual([{ id: 1, nome: 'Carlos Lima' }, { id: 2, nome: 'André Simões' }]);
+  });
+
+  // Regression: an unbounded .select() silently truncates at PostgREST's
+  // 1000-row cap (confirmed live on a sibling function) — this must page
+  // through .range() to see every perito once the table grows past it.
+  it('pages through more than 1000 rows instead of stopping at the first page', async () => {
+    const primeiraPagina = Array.from({ length: 1000 }, (_, i) => ({ id: i + 1, nome: `P${i + 1}` }));
+    const segundaPagina = [{ id: 1001, nome: 'Último' }];
+    mockRange
+      .mockResolvedValueOnce({ data: primeiraPagina, error: null })
+      .mockResolvedValueOnce({ data: segundaPagina, error: null });
+    const result = await listPeritosOptions();
+    expect(result).toHaveLength(1001);
+    expect(mockRange).toHaveBeenCalledTimes(2);
   });
 });
 

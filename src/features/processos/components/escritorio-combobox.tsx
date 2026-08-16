@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
@@ -20,11 +20,25 @@ export function EscritorioCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     listEscritoriosDistintos()
-      .then(setOptions)
-      .catch(() => setOptions([]));
+      .then((result) => {
+        // A successful call that comes back empty is otherwise
+        // indistinguishable from a thrown error that got swallowed — this
+        // flags that specific case (query ran fine, RLS/role check passed,
+        // but zero rows matched) instead of just silently showing nothing.
+        if (result.length === 0) {
+          console.warn('listEscritoriosDistintos() retornou uma lista vazia (sem erro).');
+        }
+        setOptions(result);
+      })
+      .catch((err) => {
+        console.error('Falha ao carregar escritórios', err);
+        setOptions([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const trimmedQuery = query.trim();
@@ -56,7 +70,15 @@ export function EscritorioCombobox({
         <Command shouldFilter={false}>
           <CommandInput placeholder="Buscar ou digitar escritório..." value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>Nenhum escritório encontrado.</CommandEmpty>
+            <CommandEmpty>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="size-4 animate-spin" /> Carregando...
+                </span>
+              ) : (
+                'Nenhum escritório encontrado.'
+              )}
+            </CommandEmpty>
             <CommandGroup>
               {filtered.map((escritorio) => (
                 <CommandItem key={escritorio} value={escritorio} onSelect={() => handleSelect(escritorio)}>

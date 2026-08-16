@@ -551,8 +551,12 @@ export async function listPericiasPorPeritoIds(peritoIds: number[]): Promise<Per
 export async function listContratosDistintos(): Promise<string[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('pericias').select('contrato').order('contrato');
-  if (error) throw new Error(error.message);
-  const values = (data ?? []).map((row) => row.contrato).filter((v): v is string => Boolean(v));
+  // Unbounded .select() silently truncates at PostgREST's 1000-row cap (see
+  // buscarTodasAsPaginas) — pericias already has 2000+ rows, well past it.
+  // Confirmed the same bug pattern hiding real values in listEscritoriosDistintos.
+  const rows = await buscarTodasAsPaginas<{ contrato: string | null }>((inicio, fim) =>
+    supabase.from('pericias').select('contrato').order('contrato').range(inicio, fim)
+  );
+  const values = rows.map((row) => row.contrato).filter((v): v is string => Boolean(v));
   return [...new Set(values)];
 }

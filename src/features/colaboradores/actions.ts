@@ -28,9 +28,13 @@ export async function listColaboradores(busca?: string): Promise<Colaborador[]> 
 export async function listColaboradoresOptions(): Promise<{ id: number; nome: string }[]> {
   await requireRole(['admin', 'gerencia']);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('colaboradores').select('id, nome').order('nome');
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  // Unbounded .select() silently truncates at PostgREST's 1000-row cap (see
+  // buscarTodasAsPaginas) — under that today, but the same bug pattern
+  // confirmed live elsewhere (listEscritoriosDistintos), so fixed here too
+  // before colaboradores grows past it.
+  return buscarTodasAsPaginas<{ id: number; nome: string }>((inicio, fim) =>
+    supabase.from('colaboradores').select('id, nome').order('nome').range(inicio, fim)
+  );
 }
 
 export async function getColaborador(id: number): Promise<Colaborador | null> {

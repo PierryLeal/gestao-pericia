@@ -149,10 +149,13 @@ describe('updateProcesso', () => {
 });
 
 describe('listEscritoriosDistintos', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOrder.mockReturnValue({ order: mockOrder, range: mockRange });
+  });
 
   it('returns the deduped, ordered list of escritorios', async () => {
-    mockOrder.mockResolvedValue({
+    mockRange.mockResolvedValue({
       data: [{ escritorio: 'PMRA' }, { escritorio: 'CESCON' }, { escritorio: 'PMRA' }],
       error: null,
     });
@@ -161,14 +164,32 @@ describe('listEscritoriosDistintos', () => {
   });
 
   it('filters out empty-string values', async () => {
-    mockOrder.mockResolvedValue({ data: [{ escritorio: '' }, { escritorio: 'PMRA' }], error: null });
+    mockRange.mockResolvedValue({ data: [{ escritorio: '' }, { escritorio: 'PMRA' }], error: null });
     const result = await listEscritoriosDistintos();
     expect(result).toEqual(['PMRA']);
   });
 
   it('throws when the query returns an error', async () => {
-    mockOrder.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    mockRange.mockResolvedValue({ data: null, error: { message: 'boom' } });
     await expect(listEscritoriosDistintos()).rejects.toThrow('boom');
+  });
+
+  // Regression: an unbounded .select() silently truncates at PostgREST's
+  // 1000-row cap — confirmed live, this is exactly what made every real
+  // escritório invisible when most rows sorted ahead of them were blank.
+  it('pages through more than 1000 rows instead of stopping at the first page', async () => {
+    const primeiraPagina = Array.from({ length: 1000 }, () => ({ escritorio: '' }));
+    const segundaPagina = [{ escritorio: 'PMRA' }, ...Array.from({ length: 3 }, () => ({ escritorio: '' }))];
+    mockRange
+      .mockResolvedValueOnce({ data: primeiraPagina, error: null })
+      .mockResolvedValueOnce({ data: segundaPagina, error: null });
+
+    const result = await listEscritoriosDistintos();
+
+    expect(result).toEqual(['PMRA']);
+    expect(mockRange).toHaveBeenCalledTimes(2);
+    expect(mockRange).toHaveBeenNthCalledWith(1, 0, 999);
+    expect(mockRange).toHaveBeenNthCalledWith(2, 1000, 1999);
   });
 });
 

@@ -36,13 +36,21 @@ vi.mock('@/features/processos/components/processo-combobox', () => ({
 }));
 
 vi.mock('@/features/processos/components/processo-form', () => ({
-  ProcessoForm: ({ onSaved }: { onSaved: (p: Processo) => void }) => (
-    <button
-      type="button"
-      onClick={() => onSaved({ id: 9, numero: 'NOVO-1', autor: 'X', reu: 'Y', escritorio: '' })}
-    >
-      salvar novo processo
-    </button>
+  ProcessoForm: ({
+    processo, submitLabel, onSaved,
+  }: {
+    processo?: Processo; submitLabel?: string; onSaved: (p: Processo) => void;
+  }) => (
+    <div>
+      <span>{submitLabel}</span>
+      {processo && <span>editando processo {processo.numero}</span>}
+      <button
+        type="button"
+        onClick={() => onSaved(processo ? { ...processo, numero: 'EDITADO-1' } : { id: 9, numero: 'NOVO-1', autor: 'X', reu: 'Y', escritorio: '' })}
+      >
+        salvar processo (mock)
+      </button>
+    </div>
   ),
 }));
 
@@ -529,7 +537,9 @@ describe('PericiaForm', () => {
       // there is only ever one form on screen, never two dialogs stacked.
       expect(screen.queryByLabelText('Observações')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /salvar perícia/i })).not.toBeInTheDocument();
-      expect(screen.getByText('salvar novo processo')).toBeInTheDocument();
+      expect(screen.getByText('Salvar e vincular')).toBeInTheDocument();
+      // Nothing to edit — this is a brand-new processo, not the linked one.
+      expect(screen.queryByText(/editando processo/)).not.toBeInTheDocument();
     });
 
     it('returns to the pericia form with earlier field values intact after creating a processo', async () => {
@@ -538,7 +548,7 @@ describe('PericiaForm', () => {
 
       await user.type(screen.getByLabelText('Observações'), 'não perder isso');
       await user.click(screen.getByText('novo processo'));
-      await user.click(screen.getByText('salvar novo processo'));
+      await user.click(screen.getByText('salvar processo (mock)'));
 
       expect(screen.getByLabelText('Observações')).toHaveValue('não perder isso');
       expect(mockToastSuccess).toHaveBeenCalledWith('Processo criado com sucesso');
@@ -563,9 +573,43 @@ describe('PericiaForm', () => {
       render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={onError} />);
 
       await user.click(screen.getByText('novo processo'));
-      await user.click(screen.getByText('salvar novo processo'));
+      await user.click(screen.getByText('salvar processo (mock)'));
 
       expect(onError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('editar processo vinculado from within the pericia form', () => {
+    it('does not show an "Editar processo" button when no processo is linked yet', () => {
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />);
+      expect(screen.queryByRole('button', { name: /editar processo vinculado/i })).not.toBeInTheDocument();
+    });
+
+    it('shows "Editar processo" once a processo is linked, and swaps to the edit form for it', async () => {
+      const user = userEvent.setup();
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      await user.click(screen.getByText('selecionar processo'));
+      await user.click(screen.getByRole('button', { name: /editar processo vinculado/i }));
+
+      // Edits the currently-linked processo (id 1, P-1), not a new one — this
+      // is the point: avoid creating throwaway processos for rows a "Novo
+      // processo" not identified by import (excluded from the picker's
+      // search, so there'd be no way to find that exact row again otherwise).
+      expect(screen.getByText('editando processo P-1')).toBeInTheDocument();
+      expect(screen.getByText('Salvar processo')).toBeInTheDocument();
+    });
+
+    it('updates the linked processo shown after editing, and returns to the pericia form', async () => {
+      const user = userEvent.setup();
+      render(<PericiaForm peritos={[{ id: 1, nome: 'Carlos' }]} colaboradores={[]} onSaved={vi.fn()} onError={vi.fn()} />);
+
+      await user.click(screen.getByText('selecionar processo'));
+      await user.click(screen.getByRole('button', { name: /editar processo vinculado/i }));
+      await user.click(screen.getByText('salvar processo (mock)'));
+
+      expect(mockToastSuccess).toHaveBeenCalledWith('Processo atualizado com sucesso');
+      expect(screen.getByRole('button', { name: /salvar perícia/i })).toBeInTheDocument();
     });
   });
 });
